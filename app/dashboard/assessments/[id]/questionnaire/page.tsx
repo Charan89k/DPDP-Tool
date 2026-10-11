@@ -29,7 +29,7 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
           a.title,
           t.name AS tenant_name
         FROM assessments a
-        JOIN tenants t ON t.id = a.tenant_id
+        LEFT JOIN tenants t ON t.id = a.tenant_id
         WHERE a.id = $1
         LIMIT 1;
       `;

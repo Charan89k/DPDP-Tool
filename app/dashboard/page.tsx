@@ -48,9 +48,18 @@ export default async function DashboardPage() {
     const ropaCount = ropaRes.rows[0]?.count || 0;
 
     // 4. Recent assessment sample
-    const recentRes = await client.query(
-      "SELECT id, title, status, target_framework, start_date FROM assessments ORDER BY created_at DESC LIMIT 1;"
-    );
+    const recentRes = await client.query(`
+      SELECT 
+        a.id, 
+        a.title, 
+        a.status, 
+        fv.name AS target_framework, 
+        a.created_at AS start_date 
+      FROM assessments a
+      JOIN framework_versions fv ON fv.id = a.framework_version_id
+      ORDER BY a.created_at DESC 
+      LIMIT 1;
+    `);
     const latestAssessment = recentRes.rows[0] || null;
 
     return {

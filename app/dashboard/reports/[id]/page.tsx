@@ -49,18 +49,20 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           a.tenant_id,
           a.title,
           a.status,
-          a.target_framework,
-          a.start_date,
+          fv.name AS target_framework,
+          a.created_at AS start_date,
           a.target_completion_date,
-          a.lead_consultant_name,
-          a.dpo_contact_name,
+          u.full_name AS lead_consultant_name,
+          t.dpo_name AS dpo_contact_name,
           a.created_at,
           t.name AS tenant_name,
           t.slug AS tenant_slug,
           t.industry,
           t.is_sdf
         FROM assessments a
-        JOIN tenants t ON t.id = a.tenant_id
+        JOIN framework_versions fv ON fv.id = a.framework_version_id
+        LEFT JOIN users u ON u.id = a.lead_consultant_id
+        LEFT JOIN tenants t ON t.id = a.tenant_id
         WHERE a.id = $1
         LIMIT 1;
       `;

@@ -60,6 +60,8 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **33** | [Phase 3D Canonical Governance Reconciliation & Foundation Gate](33_phase_3d_canonical_governance_reconciliation.md) | Authoritative decision audit (DEC-01..10), 13 database domain counts, 14-state lifecycle reconciliation, and foundation readiness gate. |
 | **34** | [Phase 3D.UI.1 Questionnaire Structure, Local Storage Vault & Editorial Redesign](34_phase_3d_ui_questionnaire_and_storage_implementation.md) | Canonical MCQ pagination engine (max 4 questions/section), local disk evidence vault, fail-closed quarantine download gate, and editorial audit login redesign. |
 | **35** | [Phase 3D UI Refinement & Demo Access](35_ui_refinement_and_demo_access.md) | Restrained enterprise consulting visual refinement, local demo accounts (`consultant.demo` & `customer.demo`), questionnaire navigation, and document report preview. |
+| **36** | [Post-Login Failure Diagnosis & Recovery Report](36_post_login_failure_diagnosis_and_recovery.md) | Empirical root cause analysis of post-login server crashes, column mismatch remediation, Migration 006 RLS scoping, and 55-test verification. |
+| **37** | [Migration 006 Security Review & Policy Remediation Report](37_migration_006_security_review.md) | Security audit of Migration 006 RLS policies, discovery of High-severity `FOR ALL` write vulnerability, Migration 007 remediation, and 60-test verification. |
 
 ---
 
@@ -72,7 +74,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Evidence Catalogue** | 27 | [JSON](../data/evidence_catalogue.json) \| [CSV](../data/evidence_catalogue.csv) | Evidence types with linked controls, verification procedures, confidentiality tiers, and masking rules. |
 | **Formal JSON Schemas** | 3 Schemas | [`schemas/`](../schemas/) | Formal Draft 2020-12 schemas for controls, evidence items, and legal sources. |
 | **Automated Data Validator** | Test Suite | [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py) | Standalone, offline Python test runner enforcing 100% schema compliance and referential integrity. |
-| **PostgreSQL Migrations** | 5 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, and evidence lifecycle. |
+| **PostgreSQL Migrations** | 7 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, evidence lifecycle, consultant RLS scoping, and write boundary remediation. |
 | **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
 | **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 | **Evidence Storage Test Suite** | Test Suite | [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py) | Automated test suite verifying presigned S3 workflows, file signature checks, malware quarantine, and tenant boundaries. |

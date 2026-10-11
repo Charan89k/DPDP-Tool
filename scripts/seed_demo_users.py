@@ -75,6 +75,14 @@ def seed_demo_users(database_url: str):
         full_name = EXCLUDED.full_name,
         role = EXCLUDED.role,
         is_active = TRUE;
+
+    -- 3. Ensure Demo Users are mapped to demo assessments in assessment_assignments
+    INSERT INTO assessment_assignments (id, assessment_id, user_id, assignment_role)
+    VALUES 
+        ('018f3a5b-7c8d-7e90-8000-000000000291', '018f3a5b-7c8d-7e90-8000-000000000201', '018f3a5b-7c8d-7e90-8000-000000000191', 'ENGAGEMENT_LEAD'),
+        ('018f3a5b-7c8d-7e90-8000-000000000292', '018f3a5b-7c8d-7e90-8000-000000000202', '018f3a5b-7c8d-7e90-8000-000000000191', 'ENGAGEMENT_LEAD'),
+        ('018f3a5b-7c8d-7e90-8000-000000000293', '018f3a5b-7c8d-7e90-8000-000000000201', '018f3a5b-7c8d-7e90-8000-000000000192', 'CLIENT_COORDINATOR')
+    ON CONFLICT (assessment_id, user_id) DO NOTHING;
     """
 
     cmd = ["psql", database_url, "-v", "ON_ERROR_STOP=1", "-c", sql]
