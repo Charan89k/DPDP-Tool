@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-TLI DPDP Compliance Gap Analysis Tool — Phase 3B Test Suite
-Evidence Storage Vault & Presigned S3 Infrastructure Verification
+TLI DPDP Compliance Gap Analysis Tool — Phase 3B.1 Test Suite
+Evidence Storage Vault Security, Governance & Remediation Verification
 
-Executes comprehensive validation of:
-1. File validation, sanitization, and magic byte signatures
-2. Multi-tenant upload authorization and cross-tenant upload blocking
-3. Presigned POST policy and PUT URL generation
-4. Incomplete upload and header mismatch detection
-5. Malware scanning integration with fail-closed quarantine (EICAR detection)
-6. Multi-tenant download authorization and cross-tenant download blocking
-7. Live HTTP direct upload and download over local S3-compatible service
-8. Forensic audit logging and immutability verification
+Comprehensive verification covering:
+1. File validation, sanitization, and binary magic bytes
+2. Strictly opaque server-generated storage keys (zero user filename in keys)
+3. Upload size policy enforcement: Presigned POST content-length-range
+4. Expired upload authorization and incomplete upload rejections
+5. Fail-closed malware scanning: ClamAV, GuardDuty, and EICAR quarantine
+6. Repeated, out-of-order, or malformed scanner event handling
+7. Multi-tenant download gates (blocking PENDING, QUARANTINED, REJECTED, DELETED)
+8. End-to-end live HTTP wire multipart POST upload and GET download
+9. Dual-layer forensic audit immutability (least-privilege SQL + trigger)
 
 Usage:
     python3 scripts/test_evidence_vault.py [--database-url=URL] [--s3-port=PORT]
@@ -26,7 +27,7 @@ import hashlib
 import argparse
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 
 import boto3
@@ -44,9 +45,11 @@ from storage import (
     FileValidator,
     MockOrLocalScanner,
     ClamAVScanner,
+    AWSGuardDutyEventScanner,
     EvidenceVaultService,
     RequestContext,
     ScanVerdict,
+    ScanResult,
     ValidationError,
     AuthorizationError,
     LifecycleError,
@@ -78,7 +81,6 @@ VALID_PDF_PAYLOAD = (
     b"xref\n0 5\n0000000000 65535 f \n0000000015 00000 n \n0000000095 00000 n \n0000000142 00000 n \n0000000199 00000 n \n"
     b"trailer\n<< /Size 5 /Root 2 0 R >>\nstartxref\n268\n%%EOF\n"
 )
-# Valid PNG with ancillary tEXt chunk to ensure length > 100 bytes (128 bytes)
 VALID_PNG_PAYLOAD = (
     b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4"
     b"\x00\x00\x00\x28tEXtComment\x00TLI DPDP Compliance Gap Analysis Valid PNG\x95\x77\x55\x12"
@@ -95,8 +97,8 @@ class TestResult:
         self.skipped = skipped
 
 
-def create_multipart_form(fields: Dict[str, str], file_field: str, file_name: str, file_bytes: bytes, content_type: str) -> Tuple[bytes, str]:
-    """Encodes multipart/form-data payload for S3 presigned POST upload."""
+def encode_multipart_form(fields: Dict[str, str], file_field: str, file_name: str, file_bytes: bytes, content_type: str) -> Tuple[bytes, str]:
+    """Encodes standard multipart/form-data for S3 presigned POST policy uploads."""
     boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
     body = bytearray()
     for k, v in fields.items():
@@ -117,8 +119,8 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
     bucket_name = "tli-dpdp-vault-test"
 
     print("============================================================================")
-    print("  TLI DPDP Compliance Gap Analysis Tool — Phase 3B Test Suite")
-    print("  Evidence Storage Vault & Presigned S3 Infrastructure Verification")
+    print("  TLI DPDP Compliance Gap Analysis Tool — Phase 3B.1 Test Suite")
+    print("  Evidence Vault Security Review, Governance & Remediation Verification")
     print("============================================================================")
     print(f"PostgreSQL target: {db_url}")
     print(f"Local S3 target:   http://127.0.0.1:{s3_port}/{bucket_name}")
@@ -221,7 +223,7 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
                 beta_ctrl = cur.fetchone()["id"]
 
         # ====================================================================
-        # Group A: File Validation & Key Generation
+        # Group A: File Validation & Opaque Key Security
         # ====================================================================
         # A1: MIME allowlist and extension matching
         try:
@@ -258,33 +260,77 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
         except Exception as e:
             results.append(TestResult("File Validation", "Oversized File Rejection (>50MB)", False, str(e)))
 
-        # A5: Filename path traversal sanitization
+        # A5: File size boundaries (min 100 Bytes)
+        try:
+            validator.validate_metadata("tiny.pdf", "application/pdf", 50)
+            results.append(TestResult("File Validation", "Undersized File Rejection (<100B)", False, "Failed to reject 50-byte file"))
+        except ValidationError:
+            results.append(TestResult("File Validation", "Undersized File Rejection (<100B)", True, "Rejected 50-byte file below minimum boundary"))
+        except Exception as e:
+            results.append(TestResult("File Validation", "Undersized File Rejection (<100B)", False, str(e)))
+
+        # A6: Filename path traversal sanitization
         try:
             safe = validator.sanitize_filename("../../../etc/passwd.pdf")
             assert ".." not in safe and "/" not in safe and safe.endswith(".pdf")
-            results.append(TestResult("File Validation", "Path Traversal Sanitization", True, f"Sanitized to: {safe}"))
+            results.append(TestResult("File Validation", "Path Traversal Filename Sanitization", True, f"Sanitized to safe basename: {safe}"))
         except Exception as e:
-            results.append(TestResult("File Validation", "Path Traversal Sanitization", False, str(e)))
+            results.append(TestResult("File Validation", "Path Traversal Filename Sanitization", False, str(e)))
 
-        # A6: Magic byte inspection (valid PDF)
+        # A7: Magic byte inspection (valid PDF)
         try:
             validator.verify_magic_bytes(VALID_PDF_PAYLOAD[:512], "application/pdf")
             results.append(TestResult("File Validation", "Magic Bytes Verification (Valid PDF)", True, "Valid %PDF- signature verified"))
         except Exception as e:
             results.append(TestResult("File Validation", "Magic Bytes Verification (Valid PDF)", False, str(e)))
 
-        # A7: Magic byte inspection (disguised executable blocked)
+        # A8: Binary header heuristic inspection (MZ header blocked)
         try:
             fake_pdf = b"MZ\x90\x00\x03\x00\x00\x00This is a Windows executable masquerading as a PDF"
             validator.verify_magic_bytes(fake_pdf, "application/pdf")
-            results.append(TestResult("File Validation", "Disguised Executable Rejection", False, "Failed to block MZ header"))
+            results.append(TestResult("File Validation", "Masquerading Executable Blocked (MZ)", False, "Failed to block MZ header"))
         except ValidationError:
-            results.append(TestResult("File Validation", "Disguised Executable Rejection", True, "Successfully blocked executable signature (MZ)"))
+            results.append(TestResult("File Validation", "Masquerading Executable Blocked (MZ)", True, "Successfully blocked executable signature (MZ)"))
         except Exception as e:
-            results.append(TestResult("File Validation", "Disguised Executable Rejection", False, str(e)))
+            results.append(TestResult("File Validation", "Masquerading Executable Blocked (MZ)", False, str(e)))
+
+        # A9: Strictly Opaque Storage Key Generation (Zero user filename in key)
+        try:
+            test_ev_id = "018f3a5b-7c8d-7e90-8000-000000000999"
+            key = validator.generate_storage_key(
+                tenant_id=TENANT_ALPHA_ID,
+                assessment_id=ASSESSMENT_ALPHA_ID,
+                control_code="TLI-DPDP-NOT-01",
+                evidence_id=test_ev_id,
+            )
+            expected_key = f"tenants/{TENANT_ALPHA_ID}/assessments/{ASSESSMENT_ALPHA_ID}/controls/TLI-DPDP-NOT-01/{test_ev_id}.bin"
+            assert key == expected_key
+            results.append(TestResult("File Validation", "Opaque Storage Key Generation", True, f"Generated strictly opaque key: {key}"))
+        except Exception as e:
+            results.append(TestResult("File Validation", "Opaque Storage Key Generation", False, str(e)))
+
+        # A10: Filename PII & Traversal Complete Isolation
+        try:
+            auth_pii = service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="../../../John_Doe_Aadhaar_Card_Confidential_1234.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+                upload_mechanism="post",
+            )
+            # Verify the storage key contains ZERO personal name or traversal strings
+            assert "John_Doe" not in auth_pii["s3_key"]
+            assert "Aadhaar" not in auth_pii["s3_key"]
+            assert ".." not in auth_pii["s3_key"]
+            assert auth_pii["s3_key"].endswith(f"{auth_pii['evidence_id']}.bin")
+            results.append(TestResult("File Validation", "Filename PII & Traversal Isolation", True, "User filename completely isolated from S3 object key"))
+        except Exception as e:
+            results.append(TestResult("File Validation", "Filename PII & Traversal Isolation", False, str(e)))
 
         # ====================================================================
-        # Group B: Upload Authorization & Workflow
+        # Group B: Upload Authorization & Gateway Size Policy
         # ====================================================================
         # B1: Mandatory affirmative PII redaction certification check
         try:
@@ -350,14 +396,14 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             assert "upload_url" in auth_post and auth_post["upload_url"]
             assert "key" in auth_post["fields"]
             assert auth_post["s3_key"].startswith(f"tenants/{TENANT_ALPHA_ID}/")
-            results.append(TestResult("Upload Authorization", "Presigned POST Policy Generation", True, f"Issued POST policy: {auth_post['s3_key']}"))
+            assert auth_post["s3_key"].endswith(".bin")
+            results.append(TestResult("Upload Authorization", "Presigned POST Policy Generation", True, f"Issued POST policy with opaque key: {auth_post['s3_key']}"))
         except Exception as e:
             results.append(TestResult("Upload Authorization", "Presigned POST Policy Generation", False, str(e)))
 
-        # B5: Presigned PUT URL generation
-        auth_put = None
+        # B5: Presigned PUT Disallowance for Evidence Uploads (Gateway size policy defense)
         try:
-            auth_put = service.authorize_upload(
+            service.authorize_upload(
                 context=ctx_alpha_contrib,
                 assessment_control_id=str(alpha_ctrl),
                 file_name="encryption_spec.pdf",
@@ -366,12 +412,11 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
                 redaction_certified=True,
                 upload_mechanism="put",
             )
-            assert auth_put["method"] == "PUT"
-            assert auth_put["upload_url"].startswith(endpoint_url)
-            assert "Content-Type" in auth_put["headers"]
-            results.append(TestResult("Upload Authorization", "Presigned PUT URL Generation", True, f"Issued PUT URL with 600s expiry"))
+            results.append(TestResult("Upload Authorization", "Presigned PUT Disallowance Defense", False, "Allowed presigned PUT upload without gateway size policy"))
+        except ValidationError:
+            results.append(TestResult("Upload Authorization", "Presigned PUT Disallowance Defense", True, "Rejected unconstrained PUT; mandated POST with content-length-range"))
         except Exception as e:
-            results.append(TestResult("Upload Authorization", "Presigned PUT URL Generation", False, str(e)))
+            results.append(TestResult("Upload Authorization", "Presigned PUT Disallowance Defense", False, str(e)))
 
         # B6: Initial DB record in PENDING_UPLOAD status
         if auth_post:
@@ -386,8 +431,25 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Upload Authorization", "Database Record PENDING_UPLOAD Initial State", False, str(e)))
 
+        # B7: Missing Authentication Context Fails Closed
+        try:
+            empty_ctx = RequestContext(user_id="", tenant_id="", role="")
+            service.authorize_upload(
+                context=empty_ctx,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="empty_ctx.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+            )
+            results.append(TestResult("Upload Authorization", "Missing Auth Context Fails Closed", False, "Allowed upload with empty context"))
+        except AuthorizationError:
+            results.append(TestResult("Upload Authorization", "Missing Auth Context Fails Closed", True, "Failed closed on missing context"))
+        except Exception as e:
+            results.append(TestResult("Upload Authorization", "Missing Auth Context Fails Closed", False, str(e)))
+
         # ====================================================================
-        # Group C: Upload Completion, Signature Verification & Malware Scanning
+        # Group C: Upload Completion & Expiration Lifecycle
         # ====================================================================
         # C1: Incomplete upload rejection (HeadObject fails before client uploads)
         if auth_post:
@@ -402,7 +464,6 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
         # C2: Magic byte header tampering detection (declared PDF but uploaded text)
         if auth_post:
             try:
-                # Upload raw non-PDF text directly to S3 key
                 adapter.upload_bytes(bucket_name, auth_post["s3_key"], b"Plain text file pretending to be PDF", "application/pdf")
                 service.complete_upload(ctx_alpha_contrib, auth_post["evidence_id"])
                 results.append(TestResult("Upload Completion", "Header Tampering Detection", False, "Accepted non-PDF content"))
@@ -411,24 +472,58 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Upload Completion", "Header Tampering Detection", False, str(e)))
 
-        # C3: Clean upload completion (computes SHA-256, transitions to ACTIVE)
-        clean_ev_id = None
-        if auth_put:
+        # C3: Expired Upload Authorization Rejection
+        try:
+            auth_exp = service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="expired_test.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+            )
+            # Simulate expired authorization by updating upload_expires_at to the past
+            with service._get_connection(ctx_alpha_contrib) as conn:
+                with conn.cursor() as cur:
+                    past_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+                    cur.execute("UPDATE evidence_items SET upload_expires_at = %s WHERE id = %s;", (past_time, auth_exp["evidence_id"]))
+                    conn.commit()
+
+            adapter.upload_bytes(bucket_name, auth_exp["s3_key"], VALID_PDF_PAYLOAD, "application/pdf")
             try:
-                # Put valid PDF bytes into S3
-                adapter.upload_bytes(bucket_name, auth_put["s3_key"], VALID_PDF_PAYLOAD, "application/pdf")
-                res = service.complete_upload(ctx_alpha_contrib, auth_put["evidence_id"])
-                assert res["status"] == "ACTIVE"
-                assert res["scan_verdict"] == "CLEAN"
-                clean_ev_id = auth_put["evidence_id"]
+                service.complete_upload(ctx_alpha_contrib, auth_exp["evidence_id"])
+                results.append(TestResult("Upload Completion", "Expired Upload Authorization Rejection", False, "Allowed completion after expiration"))
+            except LifecycleError:
+                # Confirm status was set to REJECTED and S3 object deleted
+                assert not adapter.object_exists(bucket_name, auth_exp["s3_key"])
+                results.append(TestResult("Upload Completion", "Expired Upload Authorization Rejection", True, "Rejected expired authorization and purged object"))
+        except Exception as e:
+            results.append(TestResult("Upload Completion", "Expired Upload Authorization Rejection", False, str(e)))
 
-                expected_hash = hashlib.sha256(VALID_PDF_PAYLOAD).hexdigest()
-                assert res["sha256_hash"] == expected_hash
-                results.append(TestResult("Upload Completion", "Clean Upload Lifecycle Completion", True, f"Verified ACTIVE with SHA-256: {res['sha256_hash'][:16]}..."))
-            except Exception as e:
-                results.append(TestResult("Upload Completion", "Clean Upload Lifecycle Completion", False, str(e)))
+        # C4: Clean upload completion (computes SHA-256, transitions to ACTIVE)
+        clean_ev_id = None
+        try:
+            auth_clean = service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="clean_architecture_spec.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+            )
+            adapter.upload_bytes(bucket_name, auth_clean["s3_key"], VALID_PDF_PAYLOAD, "application/pdf")
+            res = service.complete_upload(ctx_alpha_contrib, auth_clean["evidence_id"])
+            assert res["status"] == "ACTIVE"
+            assert res["scan_verdict"] == "CLEAN"
+            clean_ev_id = auth_clean["evidence_id"]
 
-        # C4: Duplicate completion rejection
+            expected_hash = hashlib.sha256(VALID_PDF_PAYLOAD).hexdigest()
+            assert res["sha256_hash"] == expected_hash
+            results.append(TestResult("Upload Completion", "Clean Upload Lifecycle Completion", True, f"Verified ACTIVE with SHA-256: {res['sha256_hash'][:16]}..."))
+        except Exception as e:
+            results.append(TestResult("Upload Completion", "Clean Upload Lifecycle Completion", False, str(e)))
+
+        # C5: Duplicate completion rejection
         if clean_ev_id:
             try:
                 service.complete_upload(ctx_alpha_contrib, clean_ev_id)
@@ -438,10 +533,12 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Upload Completion", "Duplicate Completion Rejection", False, str(e)))
 
-        # C5: EICAR malware detection, payload quarantine move, and status QUARANTINED
+        # ====================================================================
+        # Group D: Malware Scanning & Quarantine Architecture
+        # ====================================================================
+        # D1: EICAR Antivirus Detection, Opaque Quarantine Key & Object Isolation
         quarantined_ev_id = None
         try:
-            # Authorize an upload for EICAR test
             auth_eicar = service.authorize_upload(
                 context=ctx_alpha_contrib,
                 assessment_control_id=str(alpha_ctrl),
@@ -449,9 +546,7 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
                 file_size_bytes=len(VALID_PDF_PAYLOAD) + len(EICAR_PAYLOAD),
                 mime_type="application/pdf",
                 redaction_certified=True,
-                upload_mechanism="put",
             )
-            # Embed EICAR inside PDF stream
             infected_payload = VALID_PDF_PAYLOAD + EICAR_PAYLOAD
             adapter.upload_bytes(bucket_name, auth_eicar["s3_key"], infected_payload, "application/pdf")
 
@@ -462,18 +557,50 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
 
             # Confirm original active object is DELETED from S3 active key
             assert not adapter.object_exists(bucket_name, auth_eicar["s3_key"])
-            results.append(TestResult("Malware Scanning", "EICAR Antivirus Quarantine & Isolation", True, f"Quarantined threat: {scan_res.get('threat_name')}"))
+            # Confirm quarantined key is opaque
+            expected_quarantine_key = f"quarantine/tenants/{TENANT_ALPHA_ID}/{quarantined_ev_id}.bin"
+            assert adapter.object_exists(bucket_name, expected_quarantine_key)
+            results.append(TestResult("Malware Scanning", "EICAR Antivirus Quarantine & Opaque Key Isolation", True, f"Quarantined to: {expected_quarantine_key}"))
         except Exception as e:
-            results.append(TestResult("Malware Scanning", "EICAR Antivirus Quarantine & Isolation", False, str(e)))
+            results.append(TestResult("Malware Scanning", "EICAR Antivirus Quarantine & Opaque Key Isolation", False, str(e)))
 
-        # C6: Scanner downtime / error fail-closed behavior (remains in PENDING_SCAN)
+        # D2: Fail-Closed on Scanner Downtime (UNAVAILABLE leaves evidence in PENDING_SCAN)
+        pending_scan_ev_id = None
         try:
-            error_scanner = MockOrLocalScanner(force_mode="ERROR")
+            unavail_scanner = MockOrLocalScanner(force_mode="UNAVAILABLE")
+            unavail_service = EvidenceVaultService(
+                db_connection_url=db_url,
+                storage_adapter=adapter,
+                bucket_name=bucket_name,
+                scanner=unavail_scanner,
+                validator=validator,
+            )
+            auth_unavail = unavail_service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="scanner_down_test.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+            )
+            adapter.upload_bytes(bucket_name, auth_unavail["s3_key"], VALID_PDF_PAYLOAD, "application/pdf")
+            unavail_res = unavail_service.complete_upload(ctx_alpha_contrib, auth_unavail["evidence_id"])
+
+            assert unavail_res["status"] == "PENDING_SCAN"
+            assert unavail_res["scan_verdict"] == "UNAVAILABLE"
+            pending_scan_ev_id = auth_unavail["evidence_id"]
+            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Downtime", True, "Maintained PENDING_SCAN when scanner daemon unreachable"))
+        except Exception as e:
+            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Downtime", False, str(e)))
+
+        # D3: Fail-Closed on Scanner Error (ERROR leaves evidence in PENDING_SCAN)
+        try:
+            err_scanner = MockOrLocalScanner(force_mode="ERROR")
             err_service = EvidenceVaultService(
                 db_connection_url=db_url,
                 storage_adapter=adapter,
                 bucket_name=bucket_name,
-                scanner=error_scanner,
+                scanner=err_scanner,
                 validator=validator,
             )
             auth_err = err_service.authorize_upload(
@@ -483,22 +610,51 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
                 file_size_bytes=len(VALID_PDF_PAYLOAD),
                 mime_type="application/pdf",
                 redaction_certified=True,
-                upload_mechanism="put",
             )
             adapter.upload_bytes(bucket_name, auth_err["s3_key"], VALID_PDF_PAYLOAD, "application/pdf")
             err_res = err_service.complete_upload(ctx_alpha_contrib, auth_err["evidence_id"])
 
-            # Verify fail-closed: remains PENDING_SCAN, NOT active
             assert err_res["status"] == "PENDING_SCAN"
             assert err_res["scan_verdict"] == "ERROR"
-            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Error", True, "Maintained PENDING_SCAN on scanner failure (fail-closed)"))
+            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Execution Error", True, "Maintained PENDING_SCAN on scanner I/O error"))
         except Exception as e:
-            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Error", False, str(e)))
+            results.append(TestResult("Malware Scanning", "Fail-Closed on Scanner Execution Error", False, str(e)))
+
+        # D4: Unrecognized / Malformed Scan Verdict Handling
+        if pending_scan_ev_id:
+            try:
+                # Submit malformed scan verdict
+                malformed_result = ScanResult(
+                    verdict="UNRECOGNIZED_STATUS_CODE",  # type: ignore
+                    provider="UNKNOWN_SCANNER",
+                    scanner_version="1.0",
+                    error_message="Corrupted notification format",
+                )
+                mal_res = service.process_scan_verdict(ctx_alpha_admin, pending_scan_ev_id, malformed_result)
+                assert mal_res["status"] == "PENDING_SCAN"
+                results.append(TestResult("Malware Scanning", "Malformed Scanner Verdict Fail-Closed", True, "Unrecognized verdict rejected; status kept PENDING_SCAN"))
+            except Exception as e:
+                results.append(TestResult("Malware Scanning", "Malformed Scanner Verdict Fail-Closed", False, str(e)))
+
+        # D5: Repeated / Out-of-Order Scan Event Protection (Idempotent)
+        if clean_ev_id:
+            try:
+                dup_result = ScanResult(
+                    verdict=ScanVerdict.CLEAN,
+                    provider="AWS_GUARDDUTY",
+                    scanner_version="1.0",
+                )
+                dup_res = service.process_scan_verdict(ctx_alpha_admin, clean_ev_id, dup_result)
+                assert dup_res["status"] == "ACTIVE"
+                assert "ignored" in dup_res.get("notice", "").lower()
+                results.append(TestResult("Malware Scanning", "Repeated / Out-of-Order Scan Event Protection", True, "Ignored duplicate scan event without state corruption"))
+            except Exception as e:
+                results.append(TestResult("Malware Scanning", "Repeated / Out-of-Order Scan Event Protection", False, str(e)))
 
         # ====================================================================
-        # Group D: Download Authorization & Isolation
+        # Group E: Download Security & Scoping Gates
         # ====================================================================
-        # D1: Cross-tenant download block (Beta cannot download Alpha's evidence)
+        # E1: Cross-tenant download block (Beta cannot download Alpha evidence)
         if clean_ev_id:
             try:
                 service.authorize_download(context=ctx_beta_contrib, evidence_id=clean_ev_id)
@@ -508,7 +664,7 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Download Security", "Cross-Tenant Download Block", False, str(e)))
 
-        # D2: Unassigned consultant download block
+        # E2: Unassigned consultant download block
         if clean_ev_id:
             try:
                 service.authorize_download(context=ctx_unassigned_reviewer, evidence_id=clean_ev_id)
@@ -518,18 +674,60 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Download Security", "Unassigned Consultant Download Block", False, str(e)))
 
-        # D3: Download gate blocks QUARANTINED evidence
+        # E3: Download gate blocks PENDING_UPLOAD evidence
+        if auth_post:
+            try:
+                service.authorize_download(context=ctx_alpha_contrib, evidence_id=auth_post["evidence_id"])
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_UPLOAD", False, "Allowed download of uncompleted upload"))
+            except LifecycleError:
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_UPLOAD", True, "Blocked download of PENDING_UPLOAD evidence"))
+            except Exception as e:
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_UPLOAD", False, str(e)))
+
+        # E4: Download gate blocks PENDING_SCAN evidence
+        if pending_scan_ev_id:
+            try:
+                service.authorize_download(context=ctx_alpha_contrib, evidence_id=pending_scan_ev_id)
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_SCAN", False, "Allowed download of unscanned evidence"))
+            except LifecycleError:
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_SCAN", True, "Blocked download of unscanned PENDING_SCAN evidence"))
+            except Exception as e:
+                results.append(TestResult("Download Security", "Download Gate Blocks PENDING_SCAN", False, str(e)))
+
+        # E5: Download gate blocks QUARANTINED evidence
         if quarantined_ev_id:
             try:
                 service.authorize_download(context=ctx_alpha_contrib, evidence_id=quarantined_ev_id)
-                results.append(TestResult("Download Security", "Quarantined Evidence Download Block", False, "Allowed download of quarantined file!"))
+                results.append(TestResult("Download Security", "Download Gate Blocks QUARANTINED", False, "Allowed download of quarantined file!"))
             except AuthorizationError:
-                results.append(TestResult("Download Security", "Quarantined Evidence Download Block", True, "Blocked download of QUARANTINED evidence"))
+                results.append(TestResult("Download Security", "Download Gate Blocks QUARANTINED", True, "Blocked download of QUARANTINED evidence"))
             except Exception as e:
-                results.append(TestResult("Download Security", "Quarantined Evidence Download Block", False, str(e)))
+                results.append(TestResult("Download Security", "Download Gate Blocks QUARANTINED", False, str(e)))
 
-        # D4: Authorized download issues presigned GET with ResponseContentDisposition
-        download_info = None
+        # E6: Download gate blocks REJECTED evidence
+        try:
+            auth_rej = service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="rejection_gate_test.pdf",
+                file_size_bytes=len(VALID_PDF_PAYLOAD),
+                mime_type="application/pdf",
+                redaction_certified=True,
+            )
+            # Simulate rejection
+            with service._get_connection(ctx_alpha_contrib) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE evidence_items SET status = 'REJECTED' WHERE id = %s;", (auth_rej["evidence_id"],))
+                    conn.commit()
+            try:
+                service.authorize_download(context=ctx_alpha_contrib, evidence_id=auth_rej["evidence_id"])
+                results.append(TestResult("Download Security", "Download Gate Blocks REJECTED", False, "Allowed download of rejected file"))
+            except LifecycleError:
+                results.append(TestResult("Download Security", "Download Gate Blocks REJECTED", True, "Blocked download of REJECTED evidence"))
+        except Exception as e:
+            results.append(TestResult("Download Security", "Download Gate Blocks REJECTED", False, str(e)))
+
+        # E7: Presigned GET URL Issuance with ResponseContentDisposition
         if clean_ev_id:
             try:
                 download_info = service.authorize_download(context=ctx_alpha_contrib, evidence_id=clean_ev_id)
@@ -540,7 +738,80 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Download Security", "Presigned GET URL Issuance", False, str(e)))
 
-        # D5: Audit logs verify presigned URL is omitted
+        # ====================================================================
+        # Group F: Live HTTP Wire Integration (Local S3 Daemon)
+        # ====================================================================
+        # F1: End-to-End Live HTTP Multipart POST Upload to S3 Policy
+        live_post_ev_id = None
+        try:
+            auth_wire = service.authorize_upload(
+                context=ctx_alpha_contrib,
+                assessment_control_id=str(alpha_ctrl),
+                file_name="live_wire_notice_sample.png",
+                file_size_bytes=len(VALID_PNG_PAYLOAD),
+                mime_type="image/png",
+                redaction_certified=True,
+                upload_mechanism="post",
+            )
+            # Encode genuine multipart/form-data payload
+            body_bytes, content_type_header = encode_multipart_form(
+                fields=auth_wire["fields"],
+                file_field="file",
+                file_name="live_wire_notice_sample.png",
+                file_bytes=VALID_PNG_PAYLOAD,
+                content_type="image/png",
+            )
+
+            # Perform genuine HTTP POST request over TCP socket
+            req = urllib.request.Request(
+                url=auth_wire["upload_url"],
+                data=body_bytes,
+                headers={"Content-Type": content_type_header},
+                method="POST",
+            )
+            with urllib.request.urlopen(req) as resp:
+                assert resp.status in (200, 204)
+
+            # Complete upload via service
+            comp_res = service.complete_upload(ctx_alpha_contrib, auth_wire["evidence_id"])
+            assert comp_res["status"] == "ACTIVE"
+            live_post_ev_id = auth_wire["evidence_id"]
+            results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned POST Upload", True, f"HTTP POST 204 OK -> ACTIVE ({len(VALID_PNG_PAYLOAD)} bytes)"))
+        except Exception as e:
+            results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned POST Upload", False, str(e)))
+
+        # F2: End-to-End Live HTTP GET Download Matching 100% Byte Integrity
+        if live_post_ev_id:
+            try:
+                down_res = service.authorize_download(ctx_alpha_contrib, live_post_ev_id)
+                with urllib.request.urlopen(down_res["download_url"]) as resp:
+                    assert resp.status == 200
+                    downloaded_bytes = resp.read()
+                    assert downloaded_bytes == VALID_PNG_PAYLOAD
+
+                results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned GET Download", True, f"HTTP GET 200 OK -> 100% byte integrity match ({len(downloaded_bytes)} bytes)"))
+            except Exception as e:
+                results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned GET Download", False, str(e)))
+
+        # ====================================================================
+        # Group G: Deletion Lifecycle & Forensic Audit Immutability
+        # ====================================================================
+        # G1: Authorized Soft Deletion Workflow
+        if live_post_ev_id:
+            try:
+                del_res = service.delete_evidence(ctx_alpha_admin, live_post_ev_id, reason="Audit closed")
+                assert del_res["status"] == "DELETED"
+
+                # Verify subsequent download blocked
+                try:
+                    service.authorize_download(ctx_alpha_contrib, live_post_ev_id)
+                    results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", False, "Allowed download of deleted file"))
+                except LifecycleError:
+                    results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", True, "Successfully deleted & blocked subsequent downloads"))
+            except Exception as e:
+                results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", False, str(e)))
+
+        # G2: Presigned URL Omission in Audit Trails
         if clean_ev_id:
             try:
                 with service._get_connection(ctx_alpha_contrib) as conn:
@@ -561,72 +832,7 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             except Exception as e:
                 results.append(TestResult("Audit Security", "Presigned URL Omission in Audit Logs", False, str(e)))
 
-        # ====================================================================
-        # Group E: End-to-End Live HTTP Protocol Verification
-        # ====================================================================
-        # E1: Live HTTP direct PUT upload to presigned URL
-        e2e_ev_id = None
-        try:
-            auth_e2e = service.authorize_upload(
-                context=ctx_alpha_contrib,
-                assessment_control_id=str(alpha_ctrl),
-                file_name="live_http_patient_notice.png",
-                file_size_bytes=len(VALID_PNG_PAYLOAD),
-                mime_type="image/png",
-                redaction_certified=True,
-                upload_mechanism="put",
-            )
-            # Perform genuine HTTP PUT via urllib.request against local S3 daemon
-            req = urllib.request.Request(
-                url=auth_e2e["upload_url"],
-                data=VALID_PNG_PAYLOAD,
-                headers={"Content-Type": "image/png"},
-                method="PUT",
-            )
-            with urllib.request.urlopen(req) as resp:
-                assert resp.status in (200, 204)
-
-            # Complete upload via service
-            comp_res = service.complete_upload(ctx_alpha_contrib, auth_e2e["evidence_id"])
-            assert comp_res["status"] == "ACTIVE"
-            e2e_ev_id = auth_e2e["evidence_id"]
-            results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned PUT Upload", True, f"HTTP PUT 200 OK -> ACTIVE ({len(VALID_PNG_PAYLOAD)} bytes)"))
-        except Exception as e:
-            results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned PUT Upload", False, str(e)))
-
-        # E2: Live HTTP direct GET download from presigned URL
-        if e2e_ev_id:
-            try:
-                down_res = service.authorize_download(ctx_alpha_contrib, e2e_ev_id)
-                # Fetch payload using genuine HTTP GET over TCP
-                with urllib.request.urlopen(down_res["download_url"]) as resp:
-                    assert resp.status == 200
-                    downloaded_bytes = resp.read()
-                    assert downloaded_bytes == VALID_PNG_PAYLOAD
-
-                results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned GET Download", True, f"HTTP GET 200 OK -> 100% byte integrity match ({len(downloaded_bytes)} bytes)"))
-            except Exception as e:
-                results.append(TestResult("Live HTTP Wire", "End-to-End HTTP Presigned GET Download", False, str(e)))
-
-        # ====================================================================
-        # Group F: Deletion & Immutability Verification
-        # ====================================================================
-        # F1: Soft deletion workflow
-        if e2e_ev_id:
-            try:
-                del_res = service.delete_evidence(ctx_alpha_admin, e2e_ev_id, reason="Audit closed")
-                assert del_res["status"] == "DELETED"
-
-                # Verify subsequent download blocked
-                try:
-                    service.authorize_download(ctx_alpha_contrib, e2e_ev_id)
-                    results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", False, "Allowed download of deleted file"))
-                except LifecycleError:
-                    results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", True, "Successfully deleted & blocked subsequent downloads"))
-            except Exception as e:
-                results.append(TestResult("Evidence Deletion", "Soft Deletion & Download Invalidation", False, str(e)))
-
-        # F2: Audit logs table immutability (least privilege denial + forensic trigger)
+        # G3: Forensic Audit Log Immutability (least-privilege SQL + trigger defense)
         try:
             # 1. Verify app user has no UPDATE permission on audit_logs
             app_update_blocked = False
@@ -674,7 +880,7 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
     # ------------------------------------------------------------------------
     # Print Test Report
     # ------------------------------------------------------------------------
-    print("[Phase 3B Storage Vault & Presigned S3 Test Execution]")
+    print("[Phase 3B.1 Storage Vault & Security Review Test Execution]")
     pass_count = sum(1 for r in results if r.passed)
     fail_count = sum(1 for r in results if not r.passed and not r.skipped)
     skip_count = sum(1 for r in results if r.skipped)
@@ -685,22 +891,22 @@ def run_evidence_vault_tests(db_url: str, s3_port: int = 54331) -> List[TestResu
             current_cat = r.category
             print(f"\n  --- {current_cat} ---")
         status = "[PASS]" if r.passed else ("[SKIP]" if r.skipped else "[FAIL]")
-        print(f"  {status} {r.name:<45} : {r.details}")
+        print(f"  {status} {r.name:<48} : {r.details}")
 
     print("\n" + "=" * 76)
-    print(f"Phase 3B Storage Test Summary: {pass_count}/{len(results)} passed ({fail_count} failed, {skip_count} skipped).")
+    print(f"Phase 3B.1 Storage Test Summary: {pass_count}/{len(results)} passed ({fail_count} failed, {skip_count} skipped).")
     print("=" * 76)
 
     if fail_count > 0:
-        print(">>> ONE OR MORE PHASE 3B STORAGE TESTS FAILED <<<\n")
+        print(">>> ONE OR MORE PHASE 3B.1 STORAGE TESTS FAILED <<<\n")
         return results
     else:
-        print(">>> ALL PHASE 3B STORAGE TESTS PASSED <<<\n")
+        print(">>> ALL PHASE 3B.1 STORAGE TESTS PASSED <<<\n")
         return results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="TLI DPDP Phase 3B Evidence Vault Test Suite")
+    parser = argparse.ArgumentParser(description="TLI DPDP Phase 3B.1 Evidence Vault Test Suite")
     parser.add_argument(
         "--database-url",
         default=os.environ.get("DATABASE_URL", "postgresql://postgres@127.0.0.1:54329/dpdp_test"),

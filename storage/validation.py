@@ -136,6 +136,14 @@ class FileValidator:
         """
         Inspects the initial bytes of an uploaded object to verify that
         the binary signature matches the declared MIME type.
+
+        LIMITATION NOTICE:
+        Magic-byte checking is a valuable preliminary validation layer that detects
+        trivial file extension masquerading and forbidden binary headers. However,
+        checking a short header prefix does NOT categorically guarantee freedom
+        from advanced polyglots, weaponized office macros, or embedded exploits.
+        Defense-in-depth requires subsequent antivirus scanning and forced attachment
+        download disposition (ResponseContentDisposition: attachment).
         """
         if not header_bytes or len(header_bytes) < 4:
             raise ValidationError("File content is empty or too short to contain a valid file signature.")
@@ -160,23 +168,29 @@ class FileValidator:
         assessment_id: str,
         control_code: str,
         evidence_id: str,
-        sanitized_filename: str,
     ) -> str:
         """
-        Constructs the canonical S3 partition key according to docs/05:
-        tenants/{tenant_id}/assessments/{assessment_id}/controls/{control_code}/{evidence_id}_{sanitized_basename}.{ext}
+        Constructs a strictly opaque, server-generated S3 partition key:
+        tenants/{tenant_id}/assessments/{assessment_id}/controls/{control_code}/{evidence_id}.bin
+
+        SECURITY REQUIREMENT:
+        User-supplied filenames (and any personal identifiers or confidential data they contain)
+        are NEVER placed in storage object keys. The original filename is retained solely in
+        protected database metadata and presented via ResponseContentDisposition on download.
         """
         clean_control = re.sub(r"[^a-zA-Z0-9_\-]", "_", control_code)
         return (
             f"tenants/{tenant_id}/assessments/{assessment_id}/controls/{clean_control}/"
-            f"{evidence_id}_{sanitized_filename}"
+            f"{evidence_id}.bin"
         )
 
     @staticmethod
     def generate_quarantine_key(
         tenant_id: str,
         evidence_id: str,
-        sanitized_filename: str,
     ) -> str:
-        """Generates an isolated quarantine storage key."""
-        return f"quarantine/tenants/{tenant_id}/{evidence_id}_{sanitized_filename}"
+        """
+        Generates an isolated, opaque quarantine storage key:
+        quarantine/tenants/{tenant_id}/{evidence_id}.bin
+        """
+        return f"quarantine/tenants/{tenant_id}/{evidence_id}.bin"
