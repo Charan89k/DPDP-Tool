@@ -16,6 +16,7 @@ import {
   Building,
   Check,
 } from "lucide-react";
+import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 
 interface AssessmentSummaryViewProps {
   assessmentId: string;
@@ -191,6 +192,9 @@ export function AssessmentSummaryView({
           Review responses, evidence and preliminary results before submitting for validation.
         </p>
       </div>
+
+      {/* Assessment Lifecycle & Transition Controls */}
+      <AssessmentLifecycleControls assessmentId={assessmentId} />
 
       {/* 2. Top 5 Status KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

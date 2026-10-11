@@ -27,6 +27,7 @@ import {
   RefreshCw,
   ExternalLink,
 } from "lucide-react";
+import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 
 interface CanonicalQuestion {
   code: string;
@@ -463,6 +464,15 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
           </Link>
         </div>
       </div>
+
+      {/* Assessment Lifecycle & Transition Controls */}
+      <AssessmentLifecycleControls
+        assessmentId={assessmentId}
+        onStatusChanged={(newStatus) => {
+          setAssessment((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+          loadData();
+        }}
+      />
 
       {/* Role notice if viewer/client */}
       {!isAssessor && (
