@@ -4,32 +4,22 @@ import React, { useState } from "react";
 import {
   CheckCircle2,
   AlertCircle,
-  FileCheck2,
   Clock,
-  ArrowLeft,
   Send,
   Shield,
-  FileText,
 } from "lucide-react";
 import type {
-  QuestionnaireSection,
-  QuestionResponse,
-  SectionProgressSummary,
+  CanonicalQuestionnaireSection,
+  RespondentQuestionResponse,
+  QuestionnaireProgress,
 } from "@/lib/questionnaire/types";
 
 interface ReviewStepProps {
-  sections: QuestionnaireSection[];
-  responses: Record<string, QuestionResponse>;
-  progress: {
-    totalQuestions: number;
-    totalAnswered: number;
-    totalUnanswered: number;
-    totalExcluded: number;
-    completionPercentage: number;
-    sectionSummaries: SectionProgressSummary[];
-  };
-  onJumpToQuestion: (sectionIndex: number) => void;
-  onSubmitAssessment: () => void;
+  sections: CanonicalQuestionnaireSection[];
+  responses: Record<string, RespondentQuestionResponse>;
+  progress: QuestionnaireProgress;
+  onJumpToQuestion: (sectionIndex: number, questionCode?: string) => void;
+  onSubmitAssessment: () => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -42,57 +32,78 @@ export function ReviewStep({
   isSubmitting = false,
 }: ReviewStepProps) {
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    onSubmitAssessment();
-    setSubmissionSuccess(true);
+  const handleSubmit = async () => {
+    setSubmitError(null);
+    try {
+      await onSubmitAssessment();
+      setSubmissionSuccess(true);
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to submit assessment.");
+    }
   };
 
   // Find unanswered questions
   const unansweredList: Array<{
     sectionIndex: number;
     sectionTitle: string;
-    controlId: string;
-    questionTitle: string;
+    questionCode: string;
+    questionText: string;
+  }> = [];
+
+  // Find missing justification questions
+  const missingJustificationList: Array<{
+    sectionIndex: number;
+    sectionTitle: string;
+    questionCode: string;
+    questionText: string;
   }> = [];
 
   // Find proposed exclusions
   const exclusionsList: Array<{
     sectionIndex: number;
-    controlId: string;
-    questionTitle: string;
+    questionCode: string;
+    questionText: string;
     justification: string;
   }> = [];
 
-  // Find evidence count
-  let totalEvidenceAttached = 0;
-
   sections.forEach((section, sIdx) => {
     section.questions.forEach((q) => {
-      const resp = responses[q.controlId];
-      if (resp?.evidenceItems) {
-        totalEvidenceAttached += resp.evidenceItems.length;
-      }
+      const resp = responses[q.code];
 
-      if (!resp || (!resp.selectedOption && !resp.isExcluded)) {
+      if (!resp || !resp.selectedOption) {
         unansweredList.push({
           sectionIndex: sIdx,
-          sectionTitle: section.domainTitle,
-          controlId: q.controlId,
-          questionTitle: q.title,
+          sectionTitle: section.title,
+          questionCode: q.code,
+          questionText: q.text,
         });
-      } else if (resp.isExcluded) {
-        exclusionsList.push({
-          sectionIndex: sIdx,
-          controlId: q.controlId,
-          questionTitle: q.title,
-          justification: resp.exclusionJustification || "No justification provided",
-        });
+      } else if (resp.selectedOption === "Not applicable — justification required") {
+        const hasJustification =
+          Boolean(resp.commentsAndJustification) &&
+          resp.commentsAndJustification!.trim().length > 0;
+
+        if (!hasJustification) {
+          missingJustificationList.push({
+            sectionIndex: sIdx,
+            sectionTitle: section.title,
+            questionCode: q.code,
+            questionText: q.text,
+          });
+        } else {
+          exclusionsList.push({
+            sectionIndex: sIdx,
+            questionCode: q.code,
+            questionText: q.text,
+            justification: resp.commentsAndJustification!,
+          });
+        }
       }
     });
   });
 
-  const canSubmit = unansweredList.length === 0;
+  const canSubmit = unansweredList.length === 0 && missingJustificationList.length === 0;
 
   return (
     <div className="space-y-6">
@@ -107,7 +118,7 @@ export function ReviewStep({
               Assessment Response Summary
             </h2>
             <p className="text-xs text-stone-500 mt-1">
-              Verify questionnaire completeness and evidentiary artifacts before consultant handoff.
+              Verify questionnaire completeness and mandatory justifications before submission to Truth Labs.
             </p>
           </div>
 
@@ -127,72 +138,72 @@ export function ReviewStep({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
           <div className="p-4 bg-stone-50 border border-stone-200 rounded-lg">
             <span className="text-[10px] font-mono uppercase font-semibold text-stone-500 block">
-              Total Controls
+              Total Questions
             </span>
             <span className="text-xl font-mono font-bold text-stone-900 mt-1 block">
               {progress.totalQuestions}
             </span>
-            <span className="text-[11px] text-stone-500">Across 13 domains</span>
+            <span className="text-[11px] text-stone-500">Across 8 sections</span>
           </div>
 
           <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-lg">
             <span className="text-[10px] font-mono uppercase font-semibold text-emerald-700 block">
-              Answered Controls
+              Answered Questions
             </span>
             <span className="text-xl font-mono font-bold text-emerald-950 mt-1 block">
               {progress.totalAnswered}
             </span>
-            <span className="text-[11px] text-emerald-700">Maturity evaluated</span>
+            <span className="text-[11px] text-emerald-700">State evaluated</span>
           </div>
 
           <div className="p-4 bg-purple-50/70 border border-purple-200 rounded-lg">
             <span className="text-[10px] font-mono uppercase font-semibold text-purple-700 block">
-              Proposed Exclusions
+              Proposed Exclusions (N/A)
             </span>
             <span className="text-xl font-mono font-bold text-purple-950 mt-1 block">
               {progress.totalExcluded}
             </span>
-            <span className="text-[11px] text-purple-700">Awaiting TLI approval</span>
+            <span className="text-[11px] text-purple-700">With justification</span>
           </div>
 
           <div className="p-4 bg-stone-50 border border-stone-200 rounded-lg">
             <span className="text-[10px] font-mono uppercase font-semibold text-stone-500 block">
-              Evidence Attached
+              Unanswered
             </span>
             <span className="text-xl font-mono font-bold text-stone-900 mt-1 block">
-              {totalEvidenceAttached}
+              {progress.totalUnanswered}
             </span>
-            <span className="text-[11px] text-stone-500">In vault storage</span>
+            <span className="text-[11px] text-stone-500">Remaining</span>
           </div>
         </div>
       </div>
 
-      {/* Unanswered Controls Section */}
-      {unansweredList.length > 0 ? (
-        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-6">
+      {/* Validation Error: Missing Justification for Not Applicable */}
+      {missingJustificationList.length > 0 && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6">
           <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0" />
-            <h3 className="font-serif text-base font-bold text-amber-950">
-              {unansweredList.length} Unanswered Questions Require Completion
+            <AlertCircle className="w-5 h-5 text-rose-700 flex-shrink-0" />
+            <h3 className="font-serif text-base font-bold text-rose-950">
+              {missingJustificationList.length} Questions Missing Mandatory Justification
             </h3>
           </div>
-          <p className="text-xs text-amber-900 mb-4 leading-relaxed">
-            All 30 statutory controls must be answered with a maturity level or marked with a formal exclusion justification before the assessment can be submitted to TLI consultants.
+          <p className="text-xs text-rose-900 mb-4 leading-relaxed">
+            Selecting “Not applicable — justification required” mandates a non-empty written justification. Please provide justifications for the following questions before submitting:
           </p>
 
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {unansweredList.map((item) => (
+            {missingJustificationList.map((item) => (
               <div
-                key={item.controlId}
-                className="flex items-center justify-between p-3 bg-white border border-amber-200 rounded-lg text-xs"
+                key={item.questionCode}
+                className="flex items-center justify-between p-3 bg-white border border-rose-200 rounded-lg text-xs"
               >
-                <div>
+                <div className="pr-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-stone-900 bg-stone-100 px-1.5 py-0.2 rounded">
-                      {item.controlId}
+                    <span className="font-mono font-bold text-rose-900 bg-rose-100 px-1.5 py-0.2 rounded">
+                      {item.questionCode}
                     </span>
                     <span className="font-semibold text-stone-800">
-                      {item.questionTitle}
+                      {item.questionText}
                     </span>
                   </div>
                   <span className="text-[11px] text-stone-500 block mt-0.5">
@@ -202,7 +213,53 @@ export function ReviewStep({
 
                 <button
                   type="button"
-                  onClick={() => onJumpToQuestion(item.sectionIndex)}
+                  onClick={() => onJumpToQuestion(item.sectionIndex, item.questionCode)}
+                  className="px-2.5 py-1 text-[11px] font-semibold bg-rose-800 text-stone-50 hover:bg-rose-900 rounded transition-colors flex-shrink-0"
+                >
+                  Add Justification
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unanswered Questions List */}
+      {unansweredList.length > 0 ? (
+        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-6">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0" />
+            <h3 className="font-serif text-base font-bold text-amber-950">
+              {unansweredList.length} Unanswered Questions Require Completion
+            </h3>
+          </div>
+          <p className="text-xs text-amber-900 mb-4 leading-relaxed">
+            All 60 questions must be evaluated with a current state selection before the assessment can be submitted to Truth Labs consultants.
+          </p>
+
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+            {unansweredList.map((item) => (
+              <div
+                key={item.questionCode}
+                className="flex items-center justify-between p-3 bg-white border border-amber-200 rounded-lg text-xs"
+              >
+                <div className="pr-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-stone-900 bg-stone-100 px-1.5 py-0.2 rounded">
+                      {item.questionCode}
+                    </span>
+                    <span className="font-semibold text-stone-800">
+                      {item.questionText}
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-stone-500 block mt-0.5">
+                    Section: {item.sectionTitle}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onJumpToQuestion(item.sectionIndex, item.questionCode)}
                   className="px-2.5 py-1 text-[11px] font-semibold bg-stone-900 text-stone-50 hover:bg-stone-800 rounded transition-colors flex-shrink-0"
                 >
                   Complete Question
@@ -216,7 +273,7 @@ export function ReviewStep({
           <CheckCircle2 className="w-6 h-6 text-emerald-700 flex-shrink-0" />
           <div>
             <h4 className="font-semibold text-emerald-950 text-sm">
-              All 30 Controls Evaluated
+              All 60 Questions Evaluated
             </h4>
             <p className="text-xs text-emerald-800 mt-0.5">
               The questionnaire is complete and ready for formal consultant submission.
@@ -231,25 +288,25 @@ export function ReviewStep({
           <div className="flex items-center gap-2 mb-3">
             <Shield className="w-4 h-4 text-purple-700" />
             <h3 className="font-serif text-base font-bold text-stone-900">
-              Proposed Control Exclusions ({exclusionsList.length})
+              Proposed Exclusions / Not Applicable ({exclusionsList.length})
             </h3>
           </div>
           <p className="text-xs text-stone-500 mb-4">
-            Under DEC-01 and DEC-08, exclusions are not self-executing and require formal validation by a TLI Lead Consultant.
+            Under project governance, proposing an exclusion does not mark a control as compliant and requires assessor review and written approval.
           </p>
 
           <div className="space-y-3">
             {exclusionsList.map((ex) => (
               <div
-                key={ex.controlId}
+                key={ex.questionCode}
                 className="p-3.5 bg-purple-50/50 border border-purple-200 rounded-lg text-xs"
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="font-mono font-bold text-purple-950">
-                    {ex.controlId} — {ex.questionTitle}
+                    {ex.questionCode} — {ex.questionText}
                   </span>
                   <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded font-mono font-semibold">
-                    Awaiting TLI Approval
+                    Awaiting Assessor Review
                   </span>
                 </div>
                 <p className="text-stone-700 italic text-[11px] leading-relaxed">
@@ -267,18 +324,25 @@ export function ReviewStep({
           Statutory Assessment Handoff Notice
         </h4>
         <p className="text-xs text-stone-600 leading-relaxed mb-6">
-          Upon submitting this assessment, the questionnaire state will transition to <strong>CONSULTANT_REVIEW</strong>. Truth Labs International will perform an independent verification of responses, inspect attached evidentiary artifacts, validate proposed exclusions, and compute statutory compliance gap scores according to the DPDPA 2023 evaluation model.
+          Upon submission, responses and attached evidentiary artifacts will be saved to the Truth Labs assessment vault for independent consultant evaluation.
         </p>
+
+        {submitError && (
+          <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         {submissionSuccess ? (
           <div className="p-4 bg-emerald-100 border border-emerald-300 rounded-lg text-xs text-emerald-900 font-semibold flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-700 flex-shrink-0" />
-            <span>Assessment successfully submitted to Truth Labs International review workspace!</span>
+            <span>Assessment responses successfully saved and submitted to Truth Labs International review workspace!</span>
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
             <span className="text-xs text-stone-500 font-mono">
-              Status will update from DATA_GATHERING → CONSULTANT_REVIEW
+              Status: DATA_GATHERING
             </span>
 
             <button
@@ -302,4 +366,3 @@ export function ReviewStep({
     </div>
   );
 }
-

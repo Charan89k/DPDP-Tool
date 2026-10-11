@@ -9,105 +9,67 @@ import {
   CheckCircle2,
   Clock,
   Download,
-  XCircle,
   FileCheck,
 } from "lucide-react";
 import type {
-  QuestionControl,
-  QuestionResponse,
-  ResponseOptionKey,
-  AttachedEvidenceItem,
+  CanonicalQuestion,
+  CanonicalResponseOption,
+  RespondentQuestionResponse,
 } from "@/lib/questionnaire/types";
 
+interface AttachedEvidenceItem {
+  id: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  sha256: string;
+  status: string;
+  uploadedAt: string;
+}
+
 interface QuestionCardProps {
-  question: QuestionControl;
-  response?: QuestionResponse;
+  question: CanonicalQuestion;
+  response?: RespondentQuestionResponse;
   assessmentId: string;
-  onUpdateResponse: (updated: QuestionResponse) => void;
+  evidenceItems?: AttachedEvidenceItem[];
+  onUpdateResponse: (updated: RespondentQuestionResponse) => void;
+  onAttachEvidence?: (evidence: AttachedEvidenceItem) => void;
 }
 
 export function QuestionCard({
   question,
   response,
   assessmentId,
+  evidenceItems = [],
   onUpdateResponse,
+  onAttachEvidence,
 }: QuestionCardProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [showExclusionBox, setShowExclusionBox] = useState(Boolean(response?.isExcluded));
-  const [exclusionText, setExclusionText] = useState(response?.exclusionJustification || "");
-  const [notesText, setNotesText] = useState(response?.notes || "");
 
   const selectedOption = response?.selectedOption;
-  const isExcluded = Boolean(response?.isExcluded);
-  const evidenceItems = response?.evidenceItems || [];
+  const commentsAndJustification = response?.commentsAndJustification || "";
 
-  // Determine status
-  const isAnswered = Boolean(selectedOption) && !isExcluded;
-  const hasEvidence = evidenceItems.length > 0;
-  const isEvidencePending = isAnswered && question.acceptableEvidence.length > 0 && !hasEvidence;
+  const isNA = selectedOption === "Not applicable — justification required";
+  const isMissingNAJustification = isNA && commentsAndJustification.trim().length === 0;
+  const isAnswered = Boolean(selectedOption) && !isMissingNAJustification;
 
-  const handleSelectOption = (key: ResponseOptionKey) => {
-    const opt = question.options.find((o) => o.key === key);
+  const handleSelectOption = (option: CanonicalResponseOption) => {
     onUpdateResponse({
-      controlId: question.controlId,
-      selectedOption: key,
-      selfMaturityScore: opt?.maturityScore || 0,
-      notes: notesText,
-      isExcluded: false,
-      exclusionJustification: undefined,
-      evidenceItems,
-    });
-    setShowExclusionBox(false);
-  };
-
-  const handleToggleExclusion = () => {
-    if (showExclusionBox) {
-      // Canceling exclusion
-      setShowExclusionBox(false);
-      onUpdateResponse({
-        controlId: question.controlId,
-        selectedOption: undefined,
-        selfMaturityScore: 0,
-        notes: notesText,
-        isExcluded: false,
-        exclusionJustification: undefined,
-        evidenceItems,
-      });
-    } else {
-      setShowExclusionBox(true);
-      onUpdateResponse({
-        controlId: question.controlId,
-        selectedOption: undefined,
-        selfMaturityScore: 0,
-        notes: notesText,
-        isExcluded: true,
-        exclusionJustification: exclusionText,
-        evidenceItems,
-      });
-    }
-  };
-
-  const handleExclusionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setExclusionText(val);
-    onUpdateResponse({
-      controlId: question.controlId,
-      selectedOption: undefined,
-      selfMaturityScore: 0,
-      notes: notesText,
-      isExcluded: true,
-      exclusionJustification: val,
-      evidenceItems,
+      questionCode: question.code,
+      selectedOption: option,
+      commentsAndJustification,
+      updatedAt: new Date().toISOString(),
     });
   };
 
-  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleCommentsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    setNotesText(val);
     onUpdateResponse({
-      ...(response || { controlId: question.controlId }),
-      notes: val,
+      questionCode: question.code,
+      selectedOption,
+      commentsAndJustification: val,
+      updatedAt: new Date().toISOString(),
     });
   };
 
@@ -122,7 +84,7 @@ export function QuestionCard({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("assessmentId", assessmentId);
-      formData.append("controlCode", question.controlId);
+      formData.append("controlCode", question.canonicalControlId || question.code);
 
       const res = await fetch("/api/evidence/upload", {
         method: "POST",
@@ -147,15 +109,11 @@ export function QuestionCard({
         uploadedAt: data.evidence.uploadedAt,
       };
 
-      const updatedEvidenceList = [...evidenceItems, newEvidence];
-
-      onUpdateResponse({
-        ...(response || { controlId: question.controlId }),
-        evidenceItems: updatedEvidenceList,
-      });
+      if (onAttachEvidence) {
+        onAttachEvidence(newEvidence);
+      }
 
       setIsUploading(false);
-      // Clear file input
       e.target.value = "";
     } catch (err) {
       console.error("Upload network error:", err);
@@ -165,49 +123,55 @@ export function QuestionCard({
   };
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl p-6 sm:p-7 shadow-sm transition-all hover:border-stone-300">
-      {/* Control Header & Statutory Citations */}
+    <div
+      id={`question-${question.code}`}
+      className={`bg-white border rounded-xl p-6 sm:p-7 shadow-sm transition-all ${
+        isMissingNAJustification
+          ? "border-amber-400 ring-1 ring-amber-400"
+          : "border-stone-200 hover:border-stone-300"
+      }`}
+    >
+      {/* Header with Question Code & Section Reference */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-stone-200/80">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
             <span className="font-mono text-xs font-bold text-stone-900 bg-stone-100 px-2.5 py-0.5 rounded border border-stone-300">
-              {question.controlId}
+              {question.code}
             </span>
             <span className="text-xs font-semibold text-stone-600 bg-stone-50 px-2 py-0.5 rounded border border-stone-200">
-              {question.sourceProvision}
+              Section {question.sectionCode}
             </span>
             <span className="text-[11px] font-mono text-stone-500">
-              v{question.controlVersion}
+              Question #{question.order} of 60
             </span>
+            {question.canonicalControlId && (
+              <span className="text-[10px] font-mono text-stone-500 bg-stone-100/70 px-1.5 py-0.5 rounded">
+                Ref: {question.canonicalControlId}
+              </span>
+            )}
           </div>
-          <h3 className="font-serif text-lg font-bold text-stone-900">
-            {question.title}
+          <h3 className="font-serif text-lg font-bold text-stone-900 leading-snug pt-1">
+            {question.text}
           </h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            {question.objective}
-          </p>
         </div>
 
         {/* Status Pill */}
         <div className="self-start sm:self-auto flex-shrink-0">
-          {isExcluded ? (
+          {isMissingNAJustification ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-300">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+              Justification Required
+            </span>
+          ) : isNA ? (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-              <Clock className="w-3.5 h-3.5" />
-              Exclusion Proposed
+              <Shield className="w-3.5 h-3.5" />
+              Not Applicable
             </span>
           ) : isAnswered ? (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Answered
-              </span>
-              {isEvidencePending && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                  <AlertCircle className="w-3 h-3 text-amber-600" />
-                  Evidence Pending
-                </span>
-              )}
-            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              Answered
+            </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-100 text-stone-600 border border-stone-200">
               <Clock className="w-3.5 h-3.5 text-stone-400" />
@@ -217,57 +181,35 @@ export function QuestionCard({
         </div>
       </div>
 
-      {/* Prominent Assessment Question */}
-      <div className="my-5 p-4 bg-[#fbfaf8] border-l-4 border-stone-800 rounded-r-md">
-        <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-stone-500 block mb-1">
-          Compliance Evaluation Inquest
-        </span>
-        <p className="text-sm font-medium text-stone-900 leading-relaxed">
-          {question.assessmentQuestion}
-        </p>
-      </div>
-
-      {/* Multiple-Choice Options (Strictly 4 choices) */}
-      <div className="space-y-2.5 mb-6">
+      {/* Multiple-Choice Options (Exact 5 Canonical Choices) */}
+      <div className="space-y-2.5 my-5">
         <span className="text-[11px] uppercase tracking-wider font-semibold text-stone-600 block mb-2">
-          Select Operational Maturity Level:
+          Select Applicable Current State:
         </span>
         {question.options.map((opt) => {
-          const isSelected = selectedOption === opt.key && !isExcluded;
+          const isSelected = selectedOption === opt;
           return (
             <label
-              key={opt.key}
-              onClick={() => handleSelectOption(opt.key)}
+              key={opt}
+              onClick={() => handleSelectOption(opt)}
               className={`block p-3.5 rounded-lg border text-xs cursor-pointer transition-all ${
                 isSelected
-                  ? "bg-stone-50 border-stone-900 ring-1 ring-stone-900 text-stone-950"
+                  ? "bg-stone-50 border-stone-900 ring-1 ring-stone-900 text-stone-950 font-medium"
                   : "bg-white border-stone-200 hover:border-stone-400 text-stone-800"
               }`}
             >
-              <div className="flex items-start gap-3">
-                <div className="pt-0.5">
-                  <div
-                    className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                      isSelected
-                        ? "border-stone-900 bg-stone-900"
-                        : "border-stone-400 bg-white"
-                    }`}
-                  >
-                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                  </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                    isSelected
+                      ? "border-stone-900 bg-stone-900"
+                      : "border-stone-400 bg-white"
+                  }`}
+                >
+                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-stone-900">
-                      {opt.label}
-                    </span>
-                    <span className="font-mono text-[10px] text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200">
-                      Score: {opt.maturityScore}/5
-                    </span>
-                  </div>
-                  <p className="text-stone-600 mt-1 leading-normal">
-                    {opt.description}
-                  </p>
+                  <span className="text-stone-900 font-semibold">{opt}</span>
                 </div>
               </div>
             </label>
@@ -275,66 +217,46 @@ export function QuestionCard({
         })}
       </div>
 
-      {/* Propose Exclusion Toggle */}
-      <div className="pt-3 border-t border-stone-200">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleToggleExclusion}
-            className={`text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-              showExclusionBox ? "text-purple-700" : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>{showExclusionBox ? "Cancel Proposed Exclusion" : "Propose Control Exclusion"}</span>
-          </button>
-          <span className="text-[11px] text-stone-400 font-mono">
-            Requires Consultant Approval (DEC-01)
-          </span>
-        </div>
+      {/* Follow-up / Comment Field (Exact Canonical Follow-up Text) */}
+      <div className="pt-4 border-t border-stone-200">
+        <label className="block text-xs font-semibold text-stone-800 mb-1.5">
+          {question.followUpPrompt}
+          {isNA && (
+            <span className="text-rose-600 font-bold ml-1">* (Mandatory)</span>
+          )}
+        </label>
 
-        {showExclusionBox && (
-          <div className="mt-3 p-3.5 bg-purple-50/60 border border-purple-200 rounded-lg space-y-2 text-xs">
-            <p className="text-purple-900 text-[11px] leading-relaxed">
-              <strong>Mandatory Exemption Rationale:</strong> State the statutory basis why this control is not applicable to the entity's data processing activities. Note that proposing an exclusion does not mark the control as compliant and will be reviewed by TLI.
-            </p>
-            <textarea
-              rows={3}
-              value={exclusionText}
-              onChange={handleExclusionChange}
-              placeholder="e.g., The entity does not process personal data of children or persons with disabilities pursuant to Section 9..."
-              className="w-full p-2.5 bg-white border border-purple-300 rounded text-stone-900 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-purple-700 text-xs"
-            />
+        {isNA && (
+          <div className="mb-2 p-2.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 leading-relaxed">
+            <strong>Mandatory Justification:</strong> You have selected <em>Not applicable</em>. Under DPDP compliance governance, a specific factual or statutory justification must be documented explaining why this control does not apply to the organisation’s processing activities.
           </div>
+        )}
+
+        <textarea
+          rows={3}
+          value={commentsAndJustification}
+          onChange={handleCommentsChange}
+          placeholder="Enter assessor/respondent comments, implementation caveats, or mandatory justification if Not applicable..."
+          className={`w-full p-2.5 text-xs rounded transition-colors ${
+            isMissingNAJustification
+              ? "bg-amber-50/50 border border-amber-400 focus:bg-white focus:ring-1 focus:ring-amber-600 text-stone-900 placeholder-amber-700/60"
+              : "bg-stone-50 border border-stone-200 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-800 text-stone-900 placeholder-stone-400"
+          }`}
+        />
+        {isMissingNAJustification && (
+          <p className="text-[11px] text-amber-700 font-medium mt-1">
+            Please enter a justification before proceeding to submission.
+          </p>
         )}
       </div>
 
-      {/* Assessor Explanatory Notes */}
-      <div className="mt-4 pt-4 border-t border-stone-200">
-        <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-          Assessor Explanatory Notes & Implementation Observations:
-        </label>
-        <textarea
-          rows={2}
-          value={notesText}
-          onChange={handleNotesChange}
-          placeholder="Document technical safeguards, RoPA references, or operational caveats for consultant evaluation..."
-          className="w-full p-2.5 text-xs bg-stone-50 border border-stone-200 rounded text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-800 transition-colors"
-        />
-      </div>
-
-      {/* Real Evidence Vault Attachment Section */}
+      {/* Evidentiary Artifacts Section */}
       <div className="mt-4 pt-4 border-t border-stone-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800">
             <FileText className="w-3.5 h-3.5 text-stone-600" />
             <span>Evidentiary Artifacts ({evidenceItems.length} Attached)</span>
           </div>
-          {question.acceptableEvidence.length > 0 && (
-            <span className="text-[11px] text-stone-500 font-mono">
-              Accepted Types: {question.acceptableEvidence.join(", ")}
-            </span>
-          )}
         </div>
 
         {uploadError && (
@@ -396,7 +318,7 @@ export function QuestionCard({
               <>
                 <Upload className="w-3.5 h-3.5 text-stone-500" />
                 <span>
-                  Upload compliance evidence (PDF, DOCX, XLSX, PNG, JPG • 100B–50MB)
+                  Upload supporting evidence (PDF, DOCX, XLSX, PNG, JPG • 100B–50MB)
                 </span>
               </>
             )}
@@ -406,4 +328,3 @@ export function QuestionCard({
     </div>
   );
 }
-

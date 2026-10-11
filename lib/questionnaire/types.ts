@@ -1,88 +1,70 @@
 /**
  * TLI DPDP Compliance Gap Analysis Tool — Questionnaire Domain Types & Response Schema
  *
- * Grounded in the 13 canonical control domains and 30 canonical controls.
- * Strictly enforces that no questionnaire section contains more than 4 questions.
+ * Grounded in the authoritative 60-question questionnaire extracted from
+ * Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx.
+ *
+ * Preserves exact canonical options, follow-up prompt, and section structure.
  */
 
-export type MaturityLevel = 0 | 1 | 2 | 3 | 4 | 5;
+export type CanonicalResponseOption =
+  | "Implemented"
+  | "Partially implemented"
+  | "Not implemented"
+  | "Unknown / not verified"
+  | "Not applicable — justification required";
 
-export type ResponseOptionKey =
-  | "FULLY_IMPLEMENTED"
-  | "PARTIALLY_IMPLEMENTED"
-  | "PLANNED_AD_HOC"
-  | "ABSENT";
+export type MappingStatus = "MAPPED_PRIMARY" | "UNRESOLVED_PENDING_EXCEL_SHEET";
 
-export interface MCQOption {
-  key: ResponseOptionKey;
-  label: string;
-  description: string;
-  maturityScore: MaturityLevel;
-  provisionalWeight: number; // e.g. 1.0, 0.5, 0.25, 0.0
+export interface CanonicalQuestion {
+  code: string;
+  order: number;
+  sectionCode: string;
+  sectionTitle: string;
+  text: string;
+  options: readonly CanonicalResponseOption[];
+  followUpPrompt: string;
+  canonicalControlId: string | null;
+  mappingStatus: MappingStatus;
+  mappingNotes: string;
 }
 
-export interface QuestionControl {
-  controlId: string;
-  controlVersion: string;
+export interface CanonicalQuestionnaireSection {
+  code: string;
   title: string;
-  objective: string;
-  topic: string;
-  sourceProvision: string;
-  obligationType: string;
-  assessmentQuestion: string;
-  implementationExpectations: string;
-  acceptableEvidence: string[];
-  evidenceLimitations?: string;
-  assessmentGuidance?: string;
-  riskGuidance?: string;
-  isSdfOnly?: boolean;
-  penaltyTier?: string;
-  options: MCQOption[];
+  heading: string;
+  questions: CanonicalQuestion[];
 }
 
-export interface QuestionnaireSection {
-  domainCode: string;
-  domainTitle: string;
-  domainWeight: number; // $W_D$ (1.00 to 1.50)
-  statutoryFocus: string;
-  questions: QuestionControl[]; // STRICT INVARIANT: questions.length <= 4
-}
-
-export interface AttachedEvidenceItem {
-  id: string;
-  fileName: string;
-  fileSizeBytes: number;
-  mimeType: string;
-  sha256: string;
-  status: string;
-  uploadedAt: string;
-}
-
-export interface QuestionResponse {
-  controlId: string;
-  selectedOption?: ResponseOptionKey;
-  selfMaturityScore?: MaturityLevel;
-  notes?: string;
-  isExcluded?: boolean;
-  exclusionJustification?: string;
-  evidenceItems?: AttachedEvidenceItem[];
-}
-
-export interface QuestionnaireState {
-  assessmentId: string;
-  responses: Record<string, QuestionResponse>;
-  activeSectionIndex: number;
-  isReviewStep: boolean;
+export interface RespondentQuestionResponse {
+  questionCode: string;
+  selectedOption?: CanonicalResponseOption;
+  commentsAndJustification?: string;
+  updatedAt?: string;
 }
 
 export interface SectionProgressSummary {
-  domainCode: string;
-  domainTitle: string;
+  sectionCode: string;
+  sectionTitle: string;
   totalQuestions: number;
   answeredCount: number;
   unansweredCount: number;
-  excludedCount: number;
+  excludedCount: number; // Selected 'Not applicable' with valid justification
   isComplete: boolean;
-  hasEvidencePending: boolean;
+  missingJustificationCount: number;
 }
 
+export interface QuestionnaireProgress {
+  totalQuestions: number;
+  totalAnswered: number;
+  totalUnanswered: number;
+  totalExcluded: number;
+  completionPercentage: number;
+  hasErrors: boolean;
+  sectionSummaries: SectionProgressSummary[];
+}
+
+// Backwards-compatible aliases for existing components
+export type QuestionControl = CanonicalQuestion;
+export type QuestionnaireSection = CanonicalQuestionnaireSection;
+export type QuestionResponse = RespondentQuestionResponse;

@@ -24,118 +24,129 @@ import {
 import type { SessionUser } from "../lib/auth/types.ts";
 import { canUploadEvidence } from "../lib/auth/rbac.ts";
 
-describe("Phase 3D.UI.1: Questionnaire Structure & Domain Constraints", () => {
-  it("should verify exactly 13 canonical control domains and 30 canonical controls", () => {
+describe("Phase 3D.UI.1: Canonical Questionnaire Structure & Section Constraints", () => {
+  it("should verify exactly 8 canonical sections and 60 canonical questions", () => {
     const sections = getCanonicalQuestionnaireSections();
-    assert.equal(sections.length, 13, "Must have exactly 13 canonical domains/sections");
+    assert.equal(sections.length, 8, "Must have exactly 8 canonical sections");
 
-    const totalControls = sections.reduce((acc, s) => acc + s.questions.length, 0);
-    assert.equal(totalControls, 30, "Must have exactly 30 canonical controls across all sections");
+    const totalQuestions = sections.reduce((acc, s) => acc + s.questions.length, 0);
+    assert.equal(totalQuestions, 60, "Must have exactly 60 canonical questions across all sections");
   });
 
-  it("should strictly enforce that NO questionnaire section contains more than 4 questions", () => {
+  it("should verify the canonical 8 sections and expected question counts", () => {
     const sections = getCanonicalQuestionnaireSections();
+    const expected = [
+      { code: "GOV", count: 8 },
+      { code: "DAT", count: 8 },
+      { code: "NOT", count: 8 },
+      { code: "RGT", count: 7 },
+      { code: "SEC", count: 10 },
+      { code: "RET", count: 6 },
+      { code: "TPR", count: 6 },
+      { code: "APP", count: 7 },
+    ];
 
-    for (const section of sections) {
-      assert.ok(
-        section.questions.length <= 4,
-        `Section '${section.domainCode}' has ${section.questions.length} questions, violating the <= 4 constraint.`
-      );
-      assert.ok(
-        section.questions.length >= 1,
-        `Section '${section.domainCode}' must have at least 1 question.`
-      );
+    assert.equal(sections.length, expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      assert.equal(sections[i].code, expected[i].code);
+      assert.equal(sections[i].questions.length, expected[i].count);
     }
   });
 
-  it("should provide exactly 4 structured MCQ options per question with deterministic maturity scores", () => {
+  it("should provide exactly 5 canonical response options per question in deterministic order", () => {
     const sections = getCanonicalQuestionnaireSections();
+    const expectedOptions = [
+      "Implemented",
+      "Partially implemented",
+      "Not implemented",
+      "Unknown / not verified",
+      "Not applicable — justification required",
+    ];
 
     for (const section of sections) {
       for (const question of section.questions) {
-        assert.equal(
-          question.options.length,
-          4,
-          `Question '${question.controlId}' must have exactly 4 MCQ choices`
-        );
-
-        const keys = question.options.map((o) => o.key);
-        assert.deepEqual(keys, [
-          "FULLY_IMPLEMENTED",
-          "PARTIALLY_IMPLEMENTED",
-          "PLANNED_AD_HOC",
-          "ABSENT",
-        ]);
-
-        const scores = question.options.map((o) => o.maturityScore);
-        assert.deepEqual(scores, [4, 2, 1, 0]);
+        assert.equal(question.options.length, 5);
+        assert.deepEqual(Array.from(question.options), expectedOptions);
       }
     }
   });
 
-  it("should not treat unselected controls as answered and calculate progress deterministically", () => {
+  it("should calculate progress deterministically and enforce mandatory justification for Not applicable", () => {
     const sections = getCanonicalQuestionnaireSections();
     const responses: Record<string, QuestionResponse> = {};
 
     // Baseline: 0 answered
     let progress = calculateQuestionnaireProgress(sections, responses);
-    assert.equal(progress.totalQuestions, 30);
+    assert.equal(progress.totalQuestions, 60);
     assert.equal(progress.totalAnswered, 0);
     assert.equal(progress.totalExcluded, 0);
-    assert.equal(progress.totalUnanswered, 30);
+    assert.equal(progress.totalUnanswered, 60);
     assert.equal(progress.completionPercentage, 0);
 
-    // Answer 2 controls in Section 1
-    responses["TLI-DPDP-SCO-01"] = {
-      controlId: "TLI-DPDP-SCO-01",
-      selectedOption: "FULLY_IMPLEMENTED",
-      selfMaturityScore: 4,
+    // Answer 2 questions in GOV
+    responses["GOV-001"] = {
+      questionCode: "GOV-001",
+      selectedOption: "Implemented",
     };
-    responses["TLI-DPDP-NOT-01"] = {
-      controlId: "TLI-DPDP-NOT-01",
-      selectedOption: "PARTIALLY_IMPLEMENTED",
-      selfMaturityScore: 2,
+    responses["GOV-002"] = {
+      questionCode: "GOV-002",
+      selectedOption: "Partially implemented",
     };
 
-    // Propose exclusion for 1 control
-    responses["TLI-DPDP-NOT-02"] = {
-      controlId: "TLI-DPDP-NOT-02",
-      isExcluded: true,
-      exclusionJustification: "No marketing activities in scope",
+    // Selecting 'Not applicable — justification required' WITHOUT justification should not count as answered
+    responses["GOV-003"] = {
+      questionCode: "GOV-003",
+      selectedOption: "Not applicable — justification required",
+      commentsAndJustification: "", // empty
+    };
+
+    progress = calculateQuestionnaireProgress(sections, responses);
+    assert.equal(progress.totalAnswered, 2);
+    assert.equal(progress.totalExcluded, 0);
+    assert.equal(progress.totalUnanswered, 58);
+    assert.equal(progress.hasErrors, true);
+
+    // Now supply justification
+    responses["GOV-003"] = {
+      questionCode: "GOV-003",
+      selectedOption: "Not applicable — justification required",
+      commentsAndJustification: "Exempt under Section 17 statutory limits.",
     };
 
     progress = calculateQuestionnaireProgress(sections, responses);
     assert.equal(progress.totalAnswered, 2);
     assert.equal(progress.totalExcluded, 1);
-    assert.equal(progress.totalUnanswered, 27);
-    assert.equal(progress.completionPercentage, 10); // 3/30 = 10%
+    assert.equal(progress.totalUnanswered, 57);
+    assert.equal(progress.completionPercentage, 5); // 3/60 = 5%
+    assert.equal(progress.hasErrors, false);
   });
 
-  it("should mark section complete only when all questions are answered or excluded", () => {
+  it("should mark section complete only when all questions in that section are answered or justified", () => {
     const sections = getCanonicalQuestionnaireSections();
     const responses: Record<string, QuestionResponse> = {};
 
-    // Domain 5: PROCESSOR_OVERSIGHT has exactly 1 control (TLI-DPDP-PRO-01)
-    const procSection = sections.find((s) => s.domainCode === "PROCESSOR_OVERSIGHT");
-    assert.ok(procSection);
-    assert.equal(procSection.questions.length, 1);
+    // RET has 6 questions (RET-001 to RET-006)
+    const retSection = sections.find((s) => s.code === "RET");
+    assert.ok(retSection);
+    assert.equal(retSection.questions.length, 6);
 
     let progress = calculateQuestionnaireProgress(sections, responses);
-    let procSummary = progress.sectionSummaries.find((s) => s.domainCode === "PROCESSOR_OVERSIGHT");
-    assert.equal(procSummary?.isComplete, false);
+    let retSummary = progress.sectionSummaries.find((s) => s.sectionCode === "RET");
+    assert.equal(retSummary?.isComplete, false);
 
-    // Answer it
-    responses["TLI-DPDP-PRO-01"] = {
-      controlId: "TLI-DPDP-PRO-01",
-      selectedOption: "FULLY_IMPLEMENTED",
-      selfMaturityScore: 4,
-    };
+    // Answer all 6 questions in RET
+    for (let i = 1; i <= 6; i++) {
+      responses[`RET-00${i}`] = {
+        questionCode: `RET-00${i}`,
+        selectedOption: "Implemented",
+      };
+    }
 
     progress = calculateQuestionnaireProgress(sections, responses);
-    procSummary = progress.sectionSummaries.find((s) => s.domainCode === "PROCESSOR_OVERSIGHT");
-    assert.equal(procSummary?.isComplete, true);
-    assert.equal(procSummary?.answeredCount, 1);
-    assert.equal(procSummary?.unansweredCount, 0);
+    retSummary = progress.sectionSummaries.find((s) => s.sectionCode === "RET");
+    assert.equal(retSummary?.isComplete, true);
+    assert.equal(retSummary?.answeredCount, 6);
+    assert.equal(retSummary?.unansweredCount, 0);
   });
 });
 

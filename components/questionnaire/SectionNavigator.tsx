@@ -2,10 +2,13 @@
 
 import React from "react";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import type { QuestionnaireSection, SectionProgressSummary } from "@/lib/questionnaire/types";
+import type {
+  CanonicalQuestionnaireSection,
+  SectionProgressSummary,
+} from "@/lib/questionnaire/types";
 
 interface SectionNavigatorProps {
-  sections: QuestionnaireSection[];
+  sections: CanonicalQuestionnaireSection[];
   summaries: SectionProgressSummary[];
   activeSectionIndex: number;
   isReviewStep: boolean;
@@ -28,7 +31,7 @@ export function SectionNavigator({
           Questionnaire Sections
         </h3>
         <p className="text-[11px] text-stone-500 font-mono mt-0.5">
-          13 Domains • Max 4 Controls / Section
+          8 Canonical Sections • 60 Questions
         </p>
       </div>
 
@@ -37,16 +40,18 @@ export function SectionNavigator({
           const summary = summaries[idx];
           const isActive = activeSectionIndex === idx && !isReviewStep;
           const isComplete = summary?.isComplete;
-          const hasEvidencePending = summary?.hasEvidencePending;
+          const hasJustificationError = (summary?.missingJustificationCount || 0) > 0;
 
           return (
             <button
-              key={section.domainCode}
+              key={section.code}
               type="button"
               onClick={() => onSelectSection(idx)}
               className={`w-full text-left p-2.5 rounded-lg text-xs transition-all flex items-start justify-between gap-2 border ${
                 isActive
                   ? "bg-stone-900 text-stone-50 border-stone-900 shadow-sm"
+                  : hasJustificationError
+                  ? "bg-amber-50/60 hover:bg-amber-100 text-amber-950 border-amber-300"
                   : isComplete
                   ? "bg-stone-50/60 hover:bg-stone-100 text-stone-800 border-stone-200/80"
                   : "bg-white hover:bg-stone-50 text-stone-700 border-transparent hover:border-stone-200"
@@ -55,16 +60,16 @@ export function SectionNavigator({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <span
-                    className={`font-mono text-[10px] font-semibold px-1 rounded ${
+                    className={`font-mono text-[10px] font-bold px-1.5 py-0.2 rounded ${
                       isActive
-                        ? "bg-stone-800 text-stone-300"
-                        : "bg-stone-100 text-stone-600"
+                        ? "bg-stone-800 text-stone-200"
+                        : "bg-stone-100 text-stone-700 border border-stone-200"
                     }`}
                   >
-                    D{idx + 1}
+                    {section.code}
                   </span>
                   <span className="font-semibold truncate block">
-                    {section.domainTitle}
+                    {section.title}
                   </span>
                 </div>
                 <div
@@ -73,18 +78,21 @@ export function SectionNavigator({
                   }`}
                 >
                   <span>
-                    {summary?.answeredCount + summary?.excludedCount}/{section.questions.length} completed
+                    {(summary?.answeredCount || 0) + (summary?.excludedCount || 0)}/
+                    {section.questions.length} answered
                   </span>
-                  {hasEvidencePending && (
-                    <span className="text-amber-600 font-sans font-medium">
-                      • Evid. pending
+                  {hasJustificationError && (
+                    <span className="text-amber-600 font-sans font-semibold">
+                      • Justification req.
                     </span>
                   )}
                 </div>
               </div>
 
               <div className="flex-shrink-0 pt-0.5">
-                {isComplete ? (
+                {hasJustificationError ? (
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                ) : isComplete ? (
                   <CheckCircle2
                     className={`w-4 h-4 ${
                       isActive ? "text-emerald-400" : "text-emerald-600"
@@ -129,4 +137,3 @@ export function SectionNavigator({
     </div>
   );
 }
-

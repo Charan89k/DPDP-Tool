@@ -1,0 +1,1147 @@
+{
+  "version": "1.0.0",
+  "version_id": "TLI-DPDP-MSFORMS-60Q-V1",
+  "source_document": "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx",
+  "title": "Truth Labs International — DPDP Gap Assessment",
+  "subtitle": "60-question Microsoft Forms Quick Import source",
+  "draft_status": "For pilot build only. Legal and methodology approval is required before client use.",
+  "import_note": "In Microsoft Forms, use Quick Import to upload this Word document. After import, verify every question, answer choice, section and Required setting. Quick Import may not preserve section structure or metadata perfectly. The separate Excel build sheet retains legal references, applicability guidance, evidence expectations, weights and recommendations.",
+  "respondent_instructions": "Select the response that best describes the current state. Do not select “Not applicable” without providing a justification in the follow-up field. Evidence will be collected and validated separately by the Truth Labs assessor.",
+  "assessor_only_reference": {
+    "notice": "Do not place all legal references, evidence instructions and remediation recommendations into the public respondent form. Keep them in the restricted SharePoint DPDP_QuestionBank and assessor workspace. Use QuestionCode to map each response back to the approved question-bank record.",
+    "scoring_defaults_proposal": "Scoring defaults for MVP (subject to methodology approval): Implemented = 100; Partially implemented = 50; Not implemented = 0; Unknown / not verified = unscored pending review; Not applicable = excluded only after written justification and assessor approval. Report readiness score, evidence coverage and assessment completeness separately.",
+    "proposed_score_values": {
+      "Implemented": 100,
+      "Partially implemented": 50,
+      "Not implemented": 0,
+      "Unknown / not verified": "unscored pending review",
+      "Not applicable — justification required": "excluded only after written justification and assessor approval"
+    }
+  },
+  "total_sections": 8,
+  "total_questions": 60,
+  "sections": [
+    {
+      "code": "GOV",
+      "title": "Governance and accountability",
+      "heading": "GOV — Governance and accountability"
+    },
+    {
+      "code": "DAT",
+      "title": "Personal data inventory and processing",
+      "heading": "DAT — Personal data inventory and processing"
+    },
+    {
+      "code": "NOT",
+      "title": "Notice, consent and applicable processing grounds",
+      "heading": "NOT — Notice, consent and applicable processing grounds"
+    },
+    {
+      "code": "RGT",
+      "title": "Data principal rights and grievances",
+      "heading": "RGT — Data principal rights and grievances"
+    },
+    {
+      "code": "SEC",
+      "title": "Security safeguards and breach response",
+      "heading": "SEC — Security safeguards and breach response"
+    },
+    {
+      "code": "RET",
+      "title": "Retention and erasure",
+      "heading": "RET — Retention and erasure"
+    },
+    {
+      "code": "TPR",
+      "title": "Processors and third parties",
+      "heading": "TPR — Processors and third parties"
+    },
+    {
+      "code": "APP",
+      "title": "Applicability and special obligations",
+      "heading": "APP — Applicability and special obligations"
+    }
+  ],
+  "questions": [
+    {
+      "code": "GOV-001",
+      "order": 1,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Has the organisation assigned an accountable executive or function for privacy and personal data protection?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(1) Accountability & Non-Delegable Responsibility"
+    },
+    {
+      "code": "GOV-002",
+      "order": 2,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Are privacy and personal-data protection responsibilities documented across business, IT, security, HR, legal and procurement?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(1) Inter-departmental DPDP governance accountability"
+    },
+    {
+      "code": "GOV-003",
+      "order": 3,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Has the organisation established an inventory of applicable DPDP obligations, effective dates, exemptions and accountable owners?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SCO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 3 DPDP statutory applicability & obligations inventory"
+    },
+    {
+      "code": "GOV-004",
+      "order": 4,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Is there an approved privacy or personal-data protection policy that is reviewed periodically and communicated to relevant personnel?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(1) Approved organisational privacy policy"
+    },
+    {
+      "code": "GOV-005",
+      "order": 5,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Is there a documented process to identify and assess privacy risks before launching new products, systems, campaigns or material processing changes?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": null,
+      "mapping_status": "UNRESOLVED_PENDING_EXCEL_SHEET",
+      "mapping_notes": "Privacy by design / pre-launch risk assessment awaiting Excel build sheet mapping"
+    },
+    {
+      "code": "GOV-006",
+      "order": 6,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Does the organisation maintain a documented process for monitoring changes in privacy law and updating controls?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": null,
+      "mapping_status": "UNRESOLVED_PENDING_EXCEL_SHEET",
+      "mapping_notes": "Regulatory horizon monitoring awaiting Excel build sheet mapping"
+    },
+    {
+      "code": "GOV-007",
+      "order": 7,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Are personnel who handle personal data given role-appropriate privacy training and periodic refreshers?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4)-(5) Role-based privacy training as organisational safeguard"
+    },
+    {
+      "code": "GOV-008",
+      "order": 8,
+      "section_code": "GOV",
+      "section_title": "Governance and accountability",
+      "text": "Is there a defined process to record, approve, track and close privacy exceptions and remediation actions?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": null,
+      "mapping_status": "UNRESOLVED_PENDING_EXCEL_SHEET",
+      "mapping_notes": "Privacy exception tracking workflow awaiting Excel build sheet mapping"
+    },
+    {
+      "code": "DAT-001",
+      "order": 9,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Has the organisation identified the categories of digital personal data it processes and the individuals to whom the data relates?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SCO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 3 Digital personal data perimeter and categorization"
+    },
+    {
+      "code": "DAT-002",
+      "order": 10,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Is each material personal-data processing activity mapped to its purpose and business owner?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-LGL-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 4 Specified lawful processing purposes and business ownership"
+    },
+    {
+      "code": "DAT-003",
+      "order": 11,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Does the organisation document how personal data is collected, generated, received, used, disclosed, stored and deleted?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(3) Data processing lifecycle and flow documentation"
+    },
+    {
+      "code": "DAT-004",
+      "order": 12,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Are the systems, applications, databases, endpoints and repositories containing personal data identified and assigned owners?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Systems and repository inventory for security safeguards"
+    },
+    {
+      "code": "DAT-005",
+      "order": 13,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Does the organisation record the source of personal data and the method by which it was obtained?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(3) Provenance and source method recording"
+    },
+    {
+      "code": "DAT-006",
+      "order": 14,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Has the organisation identified routine disclosures, transfers and access by group entities, service providers and other recipients?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Routine disclosures, transfers and third-party access"
+    },
+    {
+      "code": "DAT-007",
+      "order": 15,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Are personal-data categories classified by sensitivity and risk, with handling rules communicated to relevant teams?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Data classification and handling rules as TOMs"
+    },
+    {
+      "code": "DAT-008",
+      "order": 16,
+      "section_code": "DAT",
+      "section_title": "Personal data inventory and processing",
+      "text": "Does the organisation periodically reconcile its data inventory against actual systems, integrations and business processes?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-FID-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(3) Inventory reconciliation against operational systems"
+    },
+    {
+      "code": "NOT-001",
+      "order": 17,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Where consent is relied upon, does the organisation obtain a clear affirmative action from the individual before processing begins, unless a legally applicable exception applies?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-CON-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 6(1)-(3) Clear affirmative consent prior to processing"
+    },
+    {
+      "code": "NOT-002",
+      "order": 18,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Is the notice presented to the individual clear, understandable and specific about the personal data and purpose of processing?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-NOT-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 5(1) Itemised and pre-consent notice requirements"
+    },
+    {
+      "code": "NOT-003",
+      "order": 19,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Does the organisation provide information on how an individual can withdraw consent, exercise rights and raise a grievance, where applicable?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-NOT-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 5(1) Notice of withdrawal, rights, and grievance officer"
+    },
+    {
+      "code": "NOT-004",
+      "order": 20,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Can the organisation demonstrate which processing activities rely on consent, which rely on certain legitimate uses, and the rationale for each?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-LGL-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 4 Demonstration of consent vs legitimate uses rationale"
+    },
+    {
+      "code": "NOT-005",
+      "order": 21,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Where consent is relied upon, can the organisation retrieve evidence of the notice presented, the consent action and its date/time?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-CON-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 6 Evidentiary audit trail for notice and consent timestamp"
+    },
+    {
+      "code": "NOT-006",
+      "order": 22,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Is there a process to stop or adjust processing after consent is withdrawn, unless continued processing is otherwise permitted by law?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-CON-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 6(4)-(6) Ceasing processing upon consent withdrawal"
+    },
+    {
+      "code": "NOT-007",
+      "order": 23,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Are privacy notices and consent language reviewed when purposes, data categories, recipients or collection methods materially change?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-NOT-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 5 Notice updates upon material processing changes"
+    },
+    {
+      "code": "NOT-008",
+      "order": 24,
+      "section_code": "NOT",
+      "section_title": "Notice, consent and applicable processing grounds",
+      "text": "Where data is processed for a purpose other than the original purpose, has the organisation assessed whether the new processing is permitted and communicated as required?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-LGL-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 4 / 5 New purpose authorization and communication"
+    },
+    {
+      "code": "RGT-001",
+      "order": 25,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Has the organisation established a channel through which individuals can submit applicable requests to access information about their personal data?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 11 Right to access information about personal data"
+    },
+    {
+      "code": "RGT-002",
+      "order": 26,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Is there a documented process to receive, verify, track and respond to requests for correction, completion or updating of personal data, where applicable?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 12 Right to correction, completion and updating"
+    },
+    {
+      "code": "RGT-003",
+      "order": 27,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Is there a process to handle requests for erasure of personal data when retention is no longer necessary and no legal retention requirement applies?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 12 / 8(7) Right to erasure of personal data"
+    },
+    {
+      "code": "RGT-004",
+      "order": 28,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Is there a grievance mechanism with a designated contact and a process for escalating unresolved complaints?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-03",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 13 Grievance redressal mechanism and escalation"
+    },
+    {
+      "code": "RGT-005",
+      "order": 29,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Can the organisation identify and authenticate the requester without collecting excessive additional personal data?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 11 / 12 Proportional authentication of requester"
+    },
+    {
+      "code": "RGT-006",
+      "order": 30,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Are data principal requests tracked from receipt through verification, decision, fulfilment and communication, with an auditable record?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 11 Auditable tracking of principal requests"
+    },
+    {
+      "code": "RGT-007",
+      "order": 31,
+      "section_code": "RGT",
+      "section_title": "Data principal rights and grievances",
+      "text": "Does the organisation provide a way for an individual to nominate another person where the applicable statutory right becomes effective?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-DSR-04",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 14 Right of nomination of surrogate principal"
+    },
+    {
+      "code": "SEC-001",
+      "order": 32,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Are reasonable security safeguards implemented to protect personal data against unauthorised access, use, disclosure, alteration or loss?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4)-(5) Reasonable security safeguards (TOMs)"
+    },
+    {
+      "code": "SEC-002",
+      "order": 33,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Is access to systems containing personal data restricted by role, least privilege and approved access provisioning?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Role-based access control and least privilege"
+    },
+    {
+      "code": "SEC-003",
+      "order": 34,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Are authentication controls, including stronger controls for privileged or remote access, applied to systems holding personal data?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Multi-factor and privileged authentication controls"
+    },
+    {
+      "code": "SEC-004",
+      "order": 35,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Is personal data protected by encryption or equivalent safeguards in transit and, where appropriate, at rest?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(5) Encryption in transit and at rest"
+    },
+    {
+      "code": "SEC-005",
+      "order": 36,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Are security logs and monitoring in place to detect unauthorised access or suspicious activity involving personal data?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Security logging and monitoring capabilities"
+    },
+    {
+      "code": "SEC-006",
+      "order": 37,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Are vulnerabilities and security weaknesses affecting systems that process personal data identified, prioritised and remediated?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Vulnerability management and patching"
+    },
+    {
+      "code": "SEC-007",
+      "order": 38,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Are backups of personal data protected, access-controlled and periodically tested for restoration?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SEC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(4) Backup protection and restoration testing"
+    },
+    {
+      "code": "SEC-008",
+      "order": 39,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Is there an incident response process that identifies, escalates, investigates and documents suspected personal-data breaches?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-BRC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(6) Incident response and triage workflow"
+    },
+    {
+      "code": "SEC-009",
+      "order": 40,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Can the organisation determine whether and when a personal-data breach occurred, its likely impact and the affected data principals?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-BRC-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(6) Breach impact assessment and principal identification"
+    },
+    {
+      "code": "SEC-010",
+      "order": 41,
+      "section_code": "SEC",
+      "section_title": "Security safeguards and breach response",
+      "text": "Is there a process to make required breach notifications to the Data Protection Board and affected individuals within applicable timelines and in the prescribed manner?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-BRC-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(6) Dual breach notification to DPBI and data principals"
+    },
+    {
+      "code": "RET-001",
+      "order": 42,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Does the organisation define retention periods or criteria for each material category of personal data and processing purpose?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7) Purpose completion and retention periods definition"
+    },
+    {
+      "code": "RET-002",
+      "order": 43,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Is there a process to identify when the specified purpose is no longer served and retention is no longer necessary?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7) Purpose exhaustion evaluation process"
+    },
+    {
+      "code": "RET-003",
+      "order": 44,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Can personal data be securely erased or rendered inaccessible across active systems when erasure is authorised?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7) Secure automated or systematic erasure"
+    },
+    {
+      "code": "RET-004",
+      "order": 45,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Are backup, archive and replicated copies addressed in retention and erasure procedures?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7) Backup and archive copies erasure handling"
+    },
+    {
+      "code": "RET-005",
+      "order": 46,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Are legal holds and mandatory retention requirements documented so that authorised deletion does not conflict with other applicable obligations?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7)-(8) Statutory retention exceptions and legal holds"
+    },
+    {
+      "code": "RET-006",
+      "order": 47,
+      "section_code": "RET",
+      "section_title": "Retention and erasure",
+      "text": "Are retention and deletion controls periodically tested and exceptions tracked to closure?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-RET-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(7) Testing and verification of retention controls"
+    },
+    {
+      "code": "TPR-001",
+      "order": 48,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Has the organisation identified third parties and processors that access, receive or process personal data on its behalf?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Identification of third-party processors"
+    },
+    {
+      "code": "TPR-002",
+      "order": 49,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Are contracts with relevant processors documented and do they address processing instructions, confidentiality, security and assistance with applicable obligations?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Mandatory processor contracts and terms"
+    },
+    {
+      "code": "TPR-003",
+      "order": 50,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Before engaging a material processor, does the organisation assess privacy, security and operational risks proportionate to the processing?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Pre-engagement vendor risk evaluation"
+    },
+    {
+      "code": "TPR-004",
+      "order": 51,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Are third-party access rights and ongoing processing arrangements reviewed periodically and when the service changes?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Periodic third-party access review"
+    },
+    {
+      "code": "TPR-005",
+      "order": 52,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Do processor exit and contract termination procedures address return, deletion or continued lawful retention of personal data and access revocation?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-PRO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 8(2) Processor termination, return and deletion terms"
+    },
+    {
+      "code": "TPR-006",
+      "order": 53,
+      "section_code": "TPR",
+      "section_title": "Processors and third parties",
+      "text": "Has the organisation assessed whether personal data may be transferred outside India and whether applicable government restrictions or sectoral requirements affect that transfer?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-XBD-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 16 Cross-border transfers and negative list compliance"
+    },
+    {
+      "code": "APP-001",
+      "order": 54,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Has the organisation documented whether the DPDP Act applies to its processing activities, including territorial scope and statutory exclusions?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SCO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 3 Territorial scope and statutory exclusions"
+    },
+    {
+      "code": "APP-002",
+      "order": 55,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Has the organisation assessed whether any statutory exemption applies to its processing and documented the basis and limits?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SCO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 17 Statutory exemptions evaluation"
+    },
+    {
+      "code": "APP-003",
+      "order": 56,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Has the organisation assessed whether it has been notified or designated as a Significant Data Fiduciary and whether enhanced obligations apply?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SDF-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 10 Significant Data Fiduciary classification"
+    },
+    {
+      "code": "APP-004",
+      "order": 57,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Does the organisation process personal data of children or persons with disabilities who may require a lawful guardian, and has it assessed applicable requirements?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-CHD-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 9 Children and persons with disabilities safeguards"
+    },
+    {
+      "code": "APP-005",
+      "order": 58,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Has the organisation assessed whether any processing is subject to additional sectoral privacy, cybersecurity, recordkeeping or localisation obligations?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-XBD-02",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 16(2) Sectoral localization and privacy obligations"
+    },
+    {
+      "code": "APP-006",
+      "order": 59,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Has the organisation assessed whether it processes personal data for research, archiving, statistical or other special purposes that may be subject to specific conditions or exemptions?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": null,
+      "mapping_status": "UNRESOLVED_PENDING_EXCEL_SHEET",
+      "mapping_notes": "Section 17(2)(b) Research, archiving and statistical exemptions awaiting Excel build sheet mapping"
+    },
+    {
+      "code": "APP-007",
+      "order": 60,
+      "section_code": "APP",
+      "section_title": "Applicability and special obligations",
+      "text": "Is there a process to reassess applicability, exemptions and special obligations when the organisation enters new markets, launches products or changes data uses?",
+      "options": [
+        "Implemented",
+        "Partially implemented",
+        "Not implemented",
+        "Unknown / not verified",
+        "Not applicable — justification required"
+      ],
+      "follow_up_prompt": "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.",
+      "canonical_control_id": "TLI-DPDP-SCO-01",
+      "mapping_status": "MAPPED_PRIMARY",
+      "mapping_notes": "Section 3 Reassessment process for new products and markets"
+    }
+  ]
+}

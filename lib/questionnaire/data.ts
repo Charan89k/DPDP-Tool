@@ -1,23 +1,65 @@
 /**
  * TLI DPDP Compliance Gap Analysis Tool — Canonical Questionnaire Library
  *
- * Implements the questionnaire structure strictly adhering to:
- * 1. The 30 canonical DPDP controls from data/dpdp_controls.json.
- * 2. The 13 canonical control domains from PostgreSQL Migration 003.
- * 3. STRICT INVARIANT: No questionnaire section contains more than 4 questions.
- * 4. Clearly labelled 4-choice MCQ options per question with explicit maturity mapping.
- * 5. Explanatory notes, evidence linking, and consultant-approved exclusion workflow.
+ * Grounded in the authoritative 60-question questionnaire extracted from
+ * Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx.
+ *
+ * Implements:
+ * 1. Exactly 8 canonical sections (GOV, DAT, NOT, RGT, SEC, RET, TPR, APP).
+ * 2. Exactly 60 questions with exact wording, codes, and ordering.
+ * 3. Exactly 5 response options per question.
+ * 4. Exact follow-up comment/justification field prompt.
+ * 5. Preservation of 13 statutory domains for statutory reporting.
  */
 
-import rawControls from "../../data/dpdp_controls.json" with { type: "json" };
+import manifestData from "../../data/questionnaire_v1.json" with { type: "json" };
 import type {
-  QuestionControl,
-  QuestionnaireSection,
-  MCQOption,
-  QuestionResponse,
+  CanonicalQuestion,
+  CanonicalQuestionnaireSection,
+  CanonicalResponseOption,
+  RespondentQuestionResponse,
   SectionProgressSummary,
+  QuestionnaireProgress,
 } from "./types.ts";
 
+export const QUESTIONNAIRE_METADATA = {
+  version: manifestData.version,
+  versionId: manifestData.version_id,
+  title: manifestData.title,
+  subtitle: manifestData.subtitle,
+  draftStatus: manifestData.draft_status,
+  importNote: manifestData.import_note,
+  respondentInstructions: manifestData.respondent_instructions,
+  assessorOnlyReference: manifestData.assessor_only_reference,
+  totalSections: manifestData.total_sections,
+  totalQuestions: manifestData.total_questions,
+};
+
+export const CANONICAL_OPTIONS: readonly CanonicalResponseOption[] = [
+  "Implemented",
+  "Partially implemented",
+  "Not implemented",
+  "Unknown / not verified",
+  "Not applicable — justification required",
+] as const;
+
+export const CANONICAL_FOLLOWUP_PROMPT =
+  "Follow-up field to add in Forms: Assessor / respondent comments and, if Not applicable, justification.";
+
+/**
+ * Standard MCQ Options alias for legacy test and component imports
+ */
+export const STANDARD_MCQ_OPTIONS = [
+  { key: "FULLY_IMPLEMENTED", label: "Implemented", maturityScore: 4 },
+  { key: "PARTIALLY_IMPLEMENTED", label: "Partially implemented", maturityScore: 2 },
+  { key: "PLANNED_AD_HOC", label: "Not implemented", maturityScore: 1 },
+  { key: "ABSENT", label: "Absent", maturityScore: 0 },
+];
+
+/**
+ * 13 Statutory Control Domains (from PostgreSQL Migration 003)
+ * Preserved for statutory framework analysis and executive report preview.
+ */
 export const CANONICAL_DOMAINS: Array<{
   code: string;
   title: string;
@@ -104,110 +146,57 @@ export const CANONICAL_DOMAINS: Array<{
   },
 ];
 
-export const STANDARD_MCQ_OPTIONS: MCQOption[] = [
-  {
-    key: "FULLY_IMPLEMENTED",
-    label: "Fully Implemented",
-    description: "Verified operational controls, technical safeguards, and documented RoPA procedures are actively enforced.",
-    maturityScore: 4,
-    provisionalWeight: 1.0,
-  },
-  {
-    key: "PARTIALLY_IMPLEMENTED",
-    label: "Partially Implemented",
-    description: "Controls and procedures are defined in policy, but operational gaps or inconsistent technical enforcement exist.",
-    maturityScore: 2,
-    provisionalWeight: 0.5,
-  },
-  {
-    key: "PLANNED_AD_HOC",
-    label: "Planned / Ad-Hoc",
-    description: "Initial planning or ad-hoc practices exist; formal governance and technical safeguards are not operational.",
-    maturityScore: 1,
-    provisionalWeight: 0.25,
-  },
-  {
-    key: "ABSENT",
-    label: "Absent",
-    description: "No technical safeguards, contractual clauses, or operational procedures currently exist for this requirement.",
-    maturityScore: 0,
-    provisionalWeight: 0.0,
-  },
-];
-
 /**
- * Builds the canonical 13 questionnaire sections, verifying that
- * every section satisfies the strict <= 4 questions constraint.
+ * Returns the authoritative 8 questionnaire sections containing all 60 questions.
  */
-export function getCanonicalQuestionnaireSections(): QuestionnaireSection[] {
-  // Map controls by domain code
-  const controlsByTopic = new Map<string, QuestionControl[]>();
+export function getCanonicalQuestionnaireSections(): CanonicalQuestionnaireSection[] {
+  const sectionsMap = new Map<string, CanonicalQuestion[]>();
 
-  for (const raw of rawControls) {
-    const qControl: QuestionControl = {
-      controlId: raw.control_id,
-      controlVersion: raw.control_version,
-      title: raw.title,
-      objective: raw.objective,
-      topic: raw.topic,
-      sourceProvision: raw.source_provision,
-      obligationType: raw.obligation_type,
-      assessmentQuestion: raw.assessment_question,
-      implementationExpectations: raw.implementation_expectations,
-      acceptableEvidence: raw.acceptable_evidence || [],
-      evidenceLimitations: raw.evidence_limitations,
-      assessmentGuidance: raw.assessment_guidance,
-      riskGuidance: raw.risk_guidance,
-      options: STANDARD_MCQ_OPTIONS,
-    };
-
-    const existing = controlsByTopic.get(raw.topic) || [];
-    existing.push(qControl);
-    controlsByTopic.set(raw.topic, existing);
+  for (const s of manifestData.sections) {
+    sectionsMap.set(s.code, []);
   }
 
-  const sections: QuestionnaireSection[] = [];
-
-  for (const domain of CANONICAL_DOMAINS) {
-    const questions = controlsByTopic.get(domain.code) || [];
-
-    // STRICT INVARIANT CHECK: Each section must contain no more than FOUR questions.
-    if (questions.length > 4) {
-      throw new Error(
-        `CRITICAL QUESTIONNAIRE INVARIANT VIOLATION: Section '${domain.code}' contains ${questions.length} questions, exceeding the strict maximum of 4 questions per section.`
-      );
+  for (const q of manifestData.questions) {
+    const list = sectionsMap.get(q.section_code);
+    if (!list) {
+      throw new Error(`Unknown section code '${q.section_code}' in question '${q.code}'`);
     }
 
-    sections.push({
-      domainCode: domain.code,
-      domainTitle: domain.title,
-      domainWeight: domain.weight,
-      statutoryFocus: domain.statutoryFocus,
-      questions,
-    });
+    const questionItem: CanonicalQuestion = {
+      code: q.code,
+      order: q.order,
+      sectionCode: q.section_code,
+      sectionTitle: q.section_title,
+      text: q.text,
+      options: CANONICAL_OPTIONS,
+      followUpPrompt: q.follow_up_prompt,
+      canonicalControlId: q.canonical_control_id,
+      mappingStatus: q.mapping_status as any,
+      mappingNotes: q.mapping_notes,
+    };
+    list.push(questionItem);
   }
 
-  return sections;
+  return manifestData.sections.map((s) => ({
+    code: s.code,
+    title: s.title,
+    heading: s.heading,
+    questions: sectionsMap.get(s.code) || [],
+  }));
 }
 
 /**
- * Calculates progress and completion metrics across all sections.
+ * Calculates deterministic questionnaire completion metrics.
  */
 export function calculateQuestionnaireProgress(
-  sections: QuestionnaireSection[],
-  responses: Record<string, QuestionResponse>
-): {
-  totalQuestions: number;
-  totalAnswered: number;
-  totalUnanswered: number;
-  totalExcluded: number;
-  completionPercentage: number;
-  sectionSummaries: SectionProgressSummary[];
-} {
+  sections: CanonicalQuestionnaireSection[],
+  responses: Record<string, RespondentQuestionResponse>
+): QuestionnaireProgress {
   let totalQuestions = 0;
   let totalAnswered = 0;
   let totalUnanswered = 0;
   let totalExcluded = 0;
+  let hasErrors = false;
 
   const sectionSummaries: SectionProgressSummary[] = [];
 
@@ -215,46 +204,51 @@ export function calculateQuestionnaireProgress(
     let answered = 0;
     let unanswered = 0;
     let excluded = 0;
-    let hasEvidencePending = false;
+    let missingJustification = 0;
 
     for (const q of section.questions) {
       totalQuestions += 1;
-      const resp = responses[q.controlId];
+      const resp = responses[q.code];
 
-      if (!resp) {
+      if (!resp || !resp.selectedOption) {
         unanswered += 1;
         totalUnanswered += 1;
         continue;
       }
 
-      if (resp.isExcluded) {
-        excluded += 1;
-        totalExcluded += 1;
-      } else if (resp.selectedOption) {
-        answered += 1;
-        totalAnswered += 1;
+      if (resp.selectedOption === "Not applicable — justification required") {
+        const hasJustification =
+          Boolean(resp.commentsAndJustification) &&
+          resp.commentsAndJustification!.trim().length > 0;
 
-        // If control requires mandatory evidence but none attached
-        if (q.acceptableEvidence.length > 0 && (!resp.evidenceItems || resp.evidenceItems.length === 0)) {
-          hasEvidencePending = true;
+        if (hasJustification) {
+          excluded += 1;
+          totalExcluded += 1;
+        } else {
+          // Incomplete because justification is strictly required
+          missingJustification += 1;
+          hasErrors = true;
+          unanswered += 1;
+          totalUnanswered += 1;
         }
       } else {
-        unanswered += 1;
-        totalUnanswered += 1;
+        // Any of: Implemented, Partially implemented, Not implemented, Unknown / not verified
+        answered += 1;
+        totalAnswered += 1;
       }
     }
 
-    const isComplete = answered + excluded === section.questions.length && section.questions.length > 0;
+    const isComplete = answered + excluded === section.questions.length && missingJustification === 0;
 
     sectionSummaries.push({
-      domainCode: section.domainCode,
-      domainTitle: section.domainTitle,
+      sectionCode: section.code,
+      sectionTitle: section.title,
       totalQuestions: section.questions.length,
       answeredCount: answered,
       unansweredCount: unanswered,
       excludedCount: excluded,
+      missingJustificationCount: missingJustification,
       isComplete,
-      hasEvidencePending,
     });
   }
 
@@ -268,7 +262,7 @@ export function calculateQuestionnaireProgress(
     totalUnanswered,
     totalExcluded,
     completionPercentage,
+    hasErrors,
     sectionSummaries,
   };
 }
-
