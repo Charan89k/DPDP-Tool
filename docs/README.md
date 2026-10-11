@@ -51,6 +51,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **24** | [Phase 3A.1 Live Database Verification](24_phase_3a_live_database_verification.md) | Live PostgreSQL 18.6 testing, RLS boundary tests, search-path hardening, root-cause fixes, and final PASS verdict. |
 | **25** | [Phase 3B Evidence Storage Vault](25_phase_3b_evidence_storage_vault.md) | Provider-neutral S3 storage vault, presigned POST/GET workflows, magic byte validation, fail-closed malware quarantine, and automated tests. |
 | **26** | [Phase 3B.1 Evidence Vault Security Review & Remediation](26_phase_3b_security_review_and_remediation.md) | Security audit, opaque S3 key remediation, presigned PUT disallowance, upload expiry enforcement, 39 automated tests, and canonical DEC-01..10 governance alignment. |
+| **27** | [Phase 3B.2 Pre-Commit Integrity Review](27_phase_3b_precommit_integrity_review.md) | Final pre-commit integrity audit, live migration checksum verification, presigned URL post-issuance revocation analysis, and READY TO COMMIT certification. |
 
 ---
 
