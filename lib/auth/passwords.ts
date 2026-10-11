@@ -8,13 +8,14 @@
 import bcrypt from "bcryptjs";
 
 // Canonical synthetic placeholder hash seeded in migrations/004_seed_synthetic_data.sql
-const SYNTHETIC_SEED_HASH =
+export const SYNTHETIC_SEED_HASH =
   "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
-const SYNTHETIC_SEED_PASSWORD = "SyntheticTestPassword123!";
+export const SYNTHETIC_SEED_PASSWORD = "SyntheticTestPassword123!";
 
 /**
  * Verifies a plain text password against a stored password hash.
  * Fails closed on empty strings or null values.
+ * In production environments, synthetic test hashes and credentials are unconditionally rejected.
  */
 export async function verifyPassword(
   plainText: string,
@@ -24,17 +25,25 @@ export async function verifyPassword(
     return false;
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   // 1. Synthetic development seed check
   // In local test environments seeded with Migration 004, the synthetic placeholder hash
   // corresponds to 'SyntheticTestPassword123!'.
-  if (
-    storedHash === SYNTHETIC_SEED_HASH &&
-    plainText === SYNTHETIC_SEED_PASSWORD
-  ) {
-    return true;
+  // CRITICAL SECURITY ENFORCEMENT: Synthetic fixtures are strictly rejected in production.
+  if (storedHash === SYNTHETIC_SEED_HASH) {
+    if (isProduction) {
+      return false;
+    }
+    return plainText === SYNTHETIC_SEED_PASSWORD;
   }
 
-  // 2. Standard bcrypt verification
+  // In production, synthetic credentials must never match any production hash
+  if (isProduction && plainText === SYNTHETIC_SEED_PASSWORD) {
+    return false;
+  }
+
+  // 2. Standard constant-time bcrypt verification
   try {
     return await bcrypt.compare(plainText, storedHash);
   } catch (err) {

@@ -17,13 +17,35 @@ import type { SessionUser, UserRole, TenantType } from "./types.ts";
 
 export const SESSION_COOKIE_NAME = "tli_dpdp_session";
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
+export const TOKEN_ISSUER = "tli-dpdp-platform";
+export const TOKEN_AUDIENCE = "tli-dpdp-app";
+export const DEFAULT_DEV_SECRET =
+  "tli_dpdp_local_development_secret_key_must_be_overridden_in_prod_32b";
 
-// Resolve secret key
-function getSigningKey(): Uint8Array {
-  const secret =
-    process.env.SESSION_SECRET ||
-    "tli_dpdp_local_development_secret_key_must_be_overridden_in_prod_32b";
-  return new TextEncoder().encode(secret);
+// Resolve secret key with mandatory production fail-closed security
+export function getSigningKey(): Uint8Array {
+  const isProduction = process.env.NODE_ENV === "production";
+  const secret = process.env.SESSION_SECRET;
+
+  if (isProduction) {
+    if (!secret) {
+      throw new Error(
+        "FATAL SECURITY CONFIGURATION ERROR: SESSION_SECRET is not configured. Production requires a cryptographically strong, 32+ character secret."
+      );
+    }
+    if (
+      secret === DEFAULT_DEV_SECRET ||
+      secret.includes("REPLACE_WITH") ||
+      secret.length < 32
+    ) {
+      throw new Error(
+        "FATAL SECURITY CONFIGURATION ERROR: Insecure or insufficient SESSION_SECRET in production. Minimum 32 characters required."
+      );
+    }
+    return new TextEncoder().encode(secret);
+  }
+
+  return new TextEncoder().encode(secret || DEFAULT_DEV_SECRET);
 }
 
 /**
@@ -45,6 +67,8 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     isSdf: user.isSdf,
   })
     .setProtectedHeader({ alg: "HS256" })
+    .setIssuer(TOKEN_ISSUER)
+    .setAudience(TOKEN_AUDIENCE)
     .setIssuedAt(iat)
     .setExpirationTime(exp)
     .sign(getSigningKey());
@@ -52,7 +76,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
 
 /**
  * Cryptographically verifies a JWT session token and returns the SessionUser.
- * Fails closed (returns null) on invalid signature, expiration, or missing claims.
+ * Fails closed (returns null) on invalid signature, expiration, issuer/audience mismatch, or missing claims.
  */
 export async function verifySessionToken(
   token: string | undefined | null
@@ -64,6 +88,8 @@ export async function verifySessionToken(
   try {
     const { payload } = await jwtVerify(token, getSigningKey(), {
       algorithms: ["HS256"],
+      issuer: TOKEN_ISSUER,
+      audience: TOKEN_AUDIENCE,
     });
 
     if (
@@ -87,7 +113,7 @@ export async function verifySessionToken(
       isSdf: Boolean(payload.isSdf),
     };
   } catch {
-    // Fails closed on signature mismatch, expired token, or malformed bytes
+    // Fails closed on signature mismatch, expired token, issuer/audience mismatch, or malformed bytes
     return null;
   }
 }

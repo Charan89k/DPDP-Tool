@@ -1,12 +1,22 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { verifyPassword, hashPassword } from "../lib/auth/passwords.ts";
+import {
+  verifyPassword,
+  hashPassword,
+  SYNTHETIC_SEED_HASH,
+  SYNTHETIC_SEED_PASSWORD,
+} from "../lib/auth/passwords.ts";
 import { getSafeRedirectUrl } from "../lib/auth/redirects.ts";
 import {
   createSessionToken,
   verifySessionToken,
+  getSigningKey,
+  TOKEN_ISSUER,
+  TOKEN_AUDIENCE,
+  DEFAULT_DEV_SECRET,
 } from "../lib/auth/session.ts";
+import { loginRateLimiter } from "../lib/auth/rate_limit.ts";
 import {
   ALL_ROLES,
   TLI_ROLES,
@@ -19,6 +29,7 @@ import {
   isClientRole,
 } from "../lib/auth/rbac.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
+import { SignJWT } from "jose";
 
 describe("Phase 3C: Authentication & Session Tests", () => {
   it("should verify valid bcrypt password hashes", async () => {
@@ -32,13 +43,35 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(invalid, false, "Bcrypt verification should reject incorrect password");
   });
 
-  it("should support synthetic development test fixtures safely", async () => {
-    const syntheticHash = "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
-    const valid = await verifyPassword("SyntheticTestPassword123!", syntheticHash);
-    assert.equal(valid, true, "Should recognize synthetic seed password in development");
+  it("should support synthetic development test fixtures safely in dev mode", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "development";
+    try {
+      const valid = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
+      assert.equal(valid, true, "Should recognize synthetic seed password in development");
 
-    const invalid = await verifyPassword("IncorrectPassword123!", syntheticHash);
-    assert.equal(invalid, false, "Should reject incorrect password for synthetic seed");
+      const invalid = await verifyPassword("IncorrectPassword123!", SYNTHETIC_SEED_HASH);
+      assert.equal(invalid, false, "Should reject incorrect password for synthetic seed");
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  it("should unconditionally reject synthetic development credentials in production mode", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      // 1. Synthetic hash with synthetic password must fail closed in production
+      const attempt1 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
+      assert.equal(attempt1, false, "Production mode must reject synthetic test hash");
+
+      // 2. Synthetic password with any password hash must fail closed in production
+      const realHash = await hashPassword("RealProductionPassword123!");
+      const attempt2 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, realHash);
+      assert.equal(attempt2, false, "Production mode must reject synthetic test password");
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
   });
 
   it("should fail closed on null, undefined, or empty password verification", async () => {
@@ -49,7 +82,44 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(await verifyPassword("password", null), false);
   });
 
-  it("should issue and verify cryptographically signed JWT sessions", async () => {
+  it("should enforce mandatory strong signing secret in production mode", () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalSecret = process.env.SESSION_SECRET;
+    process.env.NODE_ENV = "production";
+
+    try {
+      // Missing secret fails closed
+      delete process.env.SESSION_SECRET;
+      assert.throws(() => getSigningKey(), /FATAL SECURITY CONFIGURATION ERROR/);
+
+      // Default dev fallback secret fails closed
+      process.env.SESSION_SECRET = DEFAULT_DEV_SECRET;
+      assert.throws(() => getSigningKey(), /Insecure or insufficient SESSION_SECRET/);
+
+      // Placeholder string fails closed
+      process.env.SESSION_SECRET = "REPLACE_WITH_A_REAL_PRODUCTION_SECRET_KEY_HERE";
+      assert.throws(() => getSigningKey(), /Insecure or insufficient SESSION_SECRET/);
+
+      // Short secret (< 32 chars) fails closed
+      process.env.SESSION_SECRET = "too_short_secret_key";
+      assert.throws(() => getSigningKey(), /Insecure or insufficient SESSION_SECRET/);
+
+      // Valid strong 32+ char secret succeeds
+      process.env.SESSION_SECRET = "a_very_strong_production_secret_key_exceeding_32_characters!";
+      const key = getSigningKey();
+      assert.ok(key instanceof Uint8Array);
+      assert.ok(key.length >= 32);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalSecret !== undefined) {
+        process.env.SESSION_SECRET = originalSecret;
+      } else {
+        delete process.env.SESSION_SECRET;
+      }
+    }
+  });
+
+  it("should issue and verify cryptographically signed JWT sessions with issuer and audience", async () => {
     const sampleUser: SessionUser = {
       userId: "018f3a5b-7c8d-7e90-8000-000000000101",
       email: "admin@truthlabs.in",
@@ -74,7 +144,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(verified?.isSdf, false);
   });
 
-  it("should reject tampered or malformed JWT tokens (fail closed)", async () => {
+  it("should reject tampered, malformed, or wrongly scoped JWT tokens (fail closed)", async () => {
     const sampleUser: SessionUser = {
       userId: "018f3a5b-7c8d-7e90-8000-000000000102",
       email: "lead.consultant@truthlabs.in",
@@ -88,17 +158,56 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     };
 
     const token = await createSessionToken(sampleUser);
-    // Tamper with payload
+
+    // Tampered payload
     const tampered = token.slice(0, -6) + "xxxxxx";
+    assert.equal(await verifySessionToken(tampered), null, "Tampered token signature must fail verification");
 
-    const verified = await verifySessionToken(tampered);
-    assert.equal(verified, null, "Tampered token signature must fail verification");
-
+    // Empty or junk token
     assert.equal(await verifySessionToken(""), null);
     assert.equal(await verifySessionToken("malformed.jwt"), null);
+
+    // Token signed with wrong issuer
+    const key = getSigningKey();
+    const wrongIssuerToken = await new SignJWT({
+      sub: sampleUser.userId,
+      email: sampleUser.email,
+      role: sampleUser.role,
+      tenantId: sampleUser.tenantId,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuer("unauthorized-issuer")
+      .setAudience(TOKEN_AUDIENCE)
+      .setExpirationTime("8h")
+      .sign(key);
+
+    assert.equal(
+      await verifySessionToken(wrongIssuerToken),
+      null,
+      "Token with unexpected issuer must be rejected"
+    );
+
+    // Token signed with wrong audience
+    const wrongAudienceToken = await new SignJWT({
+      sub: sampleUser.userId,
+      email: sampleUser.email,
+      role: sampleUser.role,
+      tenantId: sampleUser.tenantId,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuer(TOKEN_ISSUER)
+      .setAudience("unauthorized-audience")
+      .setExpirationTime("8h")
+      .sign(key);
+
+    assert.equal(
+      await verifySessionToken(wrongAudienceToken),
+      null,
+      "Token with unexpected audience must be rejected"
+    );
   });
 
-  it("should prevent open redirect attacks", () => {
+  it("should prevent open redirect attacks including backslash and scheme bypasses", () => {
     // Valid relative paths
     assert.equal(getSafeRedirectUrl("/dashboard"), "/dashboard");
     assert.equal(getSafeRedirectUrl("/dashboard/assessments"), "/dashboard/assessments");
@@ -108,9 +217,33 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(getSafeRedirectUrl("http://attacker.com/steal"), "/dashboard");
     assert.equal(getSafeRedirectUrl("//evil.com"), "/dashboard");
     assert.equal(getSafeRedirectUrl("/\\evil.com"), "/dashboard");
+    assert.equal(getSafeRedirectUrl("/dashboard\\evil.com"), "/dashboard");
     assert.equal(getSafeRedirectUrl("javascript:alert(1)"), "/dashboard");
+    assert.equal(getSafeRedirectUrl("/javascript:alert(1)"), "/dashboard");
+    assert.equal(getSafeRedirectUrl("/data:text/html,evil"), "/dashboard");
     assert.equal(getSafeRedirectUrl(null), "/dashboard");
     assert.equal(getSafeRedirectUrl(""), "/dashboard");
+  });
+
+  it("should enforce sliding window rate limiting on repeated failed login attempts", () => {
+    loginRateLimiter.clearAllRateLimits();
+    const testKey = "ip:192.168.1.50";
+
+    // First 4 attempts should not be rate limited
+    for (let i = 0; i < 4; i++) {
+      loginRateLimiter.recordFailedAttempt(testKey);
+      assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
+    }
+
+    // 5th failed attempt reaches the threshold
+    loginRateLimiter.recordFailedAttempt(testKey);
+    const limitStatus = loginRateLimiter.isRateLimited(testKey);
+    assert.equal(limitStatus.limited, true, "5 failed attempts must trigger rate limiting");
+    assert.ok(limitStatus.retryAfterSeconds > 0, "Must provide retry-after seconds");
+
+    // Successful login resets the counter
+    loginRateLimiter.resetAttempts(testKey);
+    assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
   });
 });
 
@@ -119,6 +252,8 @@ describe("Phase 3C: RBAC Matrix & Role Permissions", () => {
     assert.equal(ALL_ROLES.length, 7);
     assert.equal(TLI_ROLES.length, 3);
     assert.equal(CLIENT_ROLES.length, 4);
+    assert.equal(isTliRole("TLI_LEAD_CONSULTANT"), true);
+    assert.equal(isClientRole("CLIENT_ADMIN"), true);
   });
 
   it("should enforce TLI consultant review permissions", () => {

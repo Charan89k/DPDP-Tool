@@ -6,13 +6,16 @@
  *
  * Security Guarantees:
  * 1. Executes strictly under the least-privilege role 'dpdp_app_user' (NOSUPERUSER, NOBYPASSRLS).
- * 2. Sets transaction-local context variables:
+ * 2. Operates within an isolated transaction boundary (BEGIN / COMMIT / ROLLBACK).
+ * 3. Sets transaction-local context variables (is_local = true):
  *    - app.current_tenant_id
  *    - app.current_user_id
  *    - app.current_user_role
- * 3. Systematically clears role and session context upon release, eliminating
- *    connection-reuse context bleed across requests.
- * 4. Fails closed if the caller context is missing or incomplete.
+ * 4. Validates caller identity against current database records (users & tenants)
+ *    to prevent client-side or JWT role/tenant forgery, and rejects deactivated accounts.
+ * 5. Guarantees transaction rollback on error and systematically neutralizes session GUCs
+ *    (RESET ALL, RESET ROLE, DISCARD TEMP) before pool release.
+ * 6. Discards corrupted connections on cleanup failure to eliminate connection reuse context bleed.
  */
 
 import type { PoolClient } from "pg";
@@ -47,6 +50,7 @@ export function validateSessionContext(context: SessionUser): void {
 
 /**
  * Executes a database operation within an RLS-hardened session bound to the trusted SessionUser.
+ * Strictly verifies identity against current database records within an isolated transaction.
  */
 export async function executeWithRls<T>(
   context: SessionUser,
@@ -55,33 +59,101 @@ export async function executeWithRls<T>(
   validateSessionContext(context);
 
   const client = await pool.connect();
+  let transactionActive = false;
 
   try {
-    // 1. Enter least-privilege runtime role and bind tenant context variables
-    await client.query("SET ROLE dpdp_app_user;");
-    await client.query("SELECT set_config('app.current_tenant_id', $1, false);", [
+    // 1. Begin isolated transaction
+    await client.query("BEGIN;");
+    transactionActive = true;
+
+    // 2. Switch to least-privilege runtime role strictly within this transaction
+    await client.query("SET LOCAL ROLE dpdp_app_user;");
+
+    // 3. Set transaction-local tenant context variables (is_local = true)
+    await client.query("SELECT set_config('app.current_tenant_id', $1, true);", [
       context.tenantId,
     ]);
-    await client.query("SELECT set_config('app.current_user_id', $1, false);", [
+    await client.query("SELECT set_config('app.current_user_id', $1, true);", [
       context.userId,
     ]);
-    await client.query("SELECT set_config('app.current_user_role', $1, false);", [
-      context.role,
+
+    // 4. Verify identity against current database records to prevent role or tenant forgery
+    const verifySql = `
+      SELECT u.id, u.role, u.is_active, t.status AS tenant_status, t.type AS tenant_type
+      FROM users u
+      JOIN tenants t ON t.id = u.tenant_id
+      WHERE u.id = $1 AND u.tenant_id = $2;
+    `;
+    const userCheck = await client.query(verifySql, [
+      context.userId,
+      context.tenantId,
     ]);
 
-    // 2. Execute caller's query within the RLS-filtered sandbox
-    return await operation(client);
-  } finally {
-    // 3. Systematically neutralize context variables and reset role before pool return
-    try {
-      await client.query("RESET ROLE;");
-      await client.query("SELECT set_config('app.current_tenant_id', '', false);");
-      await client.query("SELECT set_config('app.current_user_id', '', false);");
-      await client.query("SELECT set_config('app.current_user_role', '', false);");
-      await client.query("DISCARD TEMP;");
-    } catch (resetErr) {
-      console.error("Failed to clean up RLS session context on client release:", resetErr);
+    if (userCheck.rows.length === 0) {
+      throw new DatabaseAuthorizationError(
+        "Database identity verification failed: user account or tenant not found."
+      );
     }
-    client.release();
+
+    const dbUser = userCheck.rows[0];
+
+    if (!dbUser.is_active) {
+      throw new DatabaseAuthorizationError(
+        "Database identity verification failed: user account is deactivated."
+      );
+    }
+
+    if (dbUser.tenant_status !== "ACTIVE") {
+      throw new DatabaseAuthorizationError(
+        "Database identity verification failed: organization account is inactive."
+      );
+    }
+
+    if (dbUser.role !== context.role) {
+      throw new DatabaseAuthorizationError(
+        `Database identity verification failed: role mismatch. Claimed '${context.role}', actual '${dbUser.role}'.`
+      );
+    }
+
+    if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
+      throw new DatabaseAuthorizationError(
+        "Database identity verification failed: TLI_SUPER_ADMIN must belong to a TLI advisory tenant."
+      );
+    }
+
+    // 5. Bind transaction-local verified user role (is_local = true)
+    await client.query("SELECT set_config('app.current_user_role', $1, true);", [
+      dbUser.role,
+    ]);
+
+    // 6. Execute caller's query within the RLS-filtered sandbox
+    const result = await operation(client);
+
+    // 7. Commit transaction
+    await client.query("COMMIT;");
+    transactionActive = false;
+
+    return result;
+  } catch (err) {
+    if (transactionActive) {
+      try {
+        await client.query("ROLLBACK;");
+      } catch (rollbackErr) {
+        console.error("Failed to rollback transaction after error:", rollbackErr);
+      }
+    }
+    throw err;
+  } finally {
+    // 8. Systematically neutralize context variables and reset role before pool return
+    try {
+      await client.query("RESET ALL;");
+      await client.query("RESET ROLE;");
+      await client.query("DISCARD TEMP;");
+      client.release();
+    } catch (cleanErr) {
+      console.error("Failed to clean up RLS session context on client release:", cleanErr);
+      // Discard contaminated connection from the pool
+      client.release(cleanErr instanceof Error ? cleanErr : new Error(String(cleanErr)));
+    }
   }
 }

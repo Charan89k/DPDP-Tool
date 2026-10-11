@@ -53,6 +53,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **26** | [Phase 3B.1 Evidence Vault Security Review & Remediation](26_phase_3b_security_review_and_remediation.md) | Security audit, opaque S3 key remediation, presigned PUT disallowance, upload expiry enforcement, 39 automated tests, and canonical DEC-01..10 governance alignment. |
 | **27** | [Phase 3B.2 Pre-Commit Integrity Review](27_phase_3b_precommit_integrity_review.md) | Final pre-commit integrity audit, live migration checksum verification, presigned URL post-issuance revocation analysis, and READY TO COMMIT certification. |
 | **28** | [Phase 3C Application Core, Authentication & API Scaffolding](28_phase_3c_application_core_authentication_and_api.md) | Next.js 15 App Router foundation, TLI enterprise shell, jose session cookies, DEC-04 SSO alignment, 7-role RBAC, and executeWithRls pool integration. |
+| **29** | [Phase 3C.1 Authentication & RLS Security Gate Review](29_phase_3c_authentication_and_rls_security_review.md) | Security audit and remediation report: production synthetic credentials fail-closed, mandatory JWT secrets, rate limiting, and DB-verified RLS execution. |
 
 ---
 

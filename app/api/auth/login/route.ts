@@ -10,8 +10,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { pool } from "@/lib/db/pool";
-import { verifyPassword } from "@/lib/auth/passwords";
+import { verifyPassword, SYNTHETIC_SEED_HASH } from "@/lib/auth/passwords";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
+import { loginRateLimiter } from "@/lib/auth/rate_limit";
 import { SessionUser, UserRole, TenantType } from "@/lib/auth/types";
 
 const loginSchema = z.object({
@@ -36,8 +37,26 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = parseResult.data;
     const normalizedEmail = email.trim().toLowerCase();
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
 
-    // 1. Fetch user by email
+    // 1. Enforce login rate limiting (max 5 failed attempts per IP / email per 15 min)
+    const ipRateLimit = loginRateLimiter.isRateLimited(`ip:${clientIp}`);
+    const emailRateLimit = loginRateLimiter.isRateLimited(`email:${normalizedEmail}`);
+
+    if (ipRateLimit.limited || emailRateLimit.limited) {
+      const retryAfter = Math.max(ipRateLimit.retryAfterSeconds, emailRateLimit.retryAfterSeconds);
+      return NextResponse.json(
+        { error: "Too many failed login attempts. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfter),
+          },
+        }
+      );
+    }
+
+    // 2. Fetch user by email
     const query = `
       SELECT 
         u.id, u.tenant_id, u.email, u.password_hash, u.full_name, u.role, u.is_active,
@@ -54,21 +73,38 @@ export async function POST(request: NextRequest) {
     const AUTH_FAILED_MSG = "Invalid email or password.";
 
     if (!row) {
+      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
+      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
+      return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
+    }
+
+    // In production, unconditionally block synthetic seed accounts
+    if (process.env.NODE_ENV === "production" && row.password_hash === SYNTHETIC_SEED_HASH) {
+      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
+      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
     if (!row.is_active || row.tenant_status !== "ACTIVE") {
+      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
+      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
       return NextResponse.json(
         { error: "Account or organization is inactive. Please contact your administrator." },
         { status: 403 }
       );
     }
 
-    // 2. Verify password hash
+    // 3. Verify password hash (constant-time verification)
     const isValidPassword = await verifyPassword(password, row.password_hash);
     if (!isValidPassword) {
+      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
+      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
+
+    // Reset rate limiter counters on successful login
+    loginRateLimiter.resetAttempts(`ip:${clientIp}`);
+    loginRateLimiter.resetAttempts(`email:${normalizedEmail}`);
 
     // 3. Construct authenticated SessionUser
     const sessionUser: SessionUser = {

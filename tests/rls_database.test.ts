@@ -126,25 +126,126 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
     );
   });
 
-  it("should prevent connection context bleed on connection reuse", async () => {
-    // 1. First execution as Alpha user
-    await executeWithRls(ALPHA_USER, async (client) => {
-      const res = await client.query("SELECT current_setting('app.current_tenant_id', true) AS tid;");
-      assert.equal(res.rows[0].tid, ALPHA_USER.tenantId);
-    });
+  it("should reject forged role in session context against database records", async () => {
+    // Client contributor attempts to forge identity as TLI_SUPER_ADMIN
+    const forgedRoleUser: SessionUser = {
+      ...ALPHA_USER,
+      role: "TLI_SUPER_ADMIN",
+    };
 
-    // 2. Direct query on a pooled client without RLS context must find context unset
+    await assert.rejects(
+      async () => {
+        await executeWithRls(forgedRoleUser, async (client) => {
+          return await client.query("SELECT count(*) FROM assessments;");
+        });
+      },
+      DatabaseAuthorizationError,
+      "executeWithRls must verify role against DB and reject forged role"
+    );
+  });
+
+  it("should reject cross-tenant identity forgery against database records", async () => {
+    // Alpha user attempts to forge membership in Beta tenant
+    const forgedTenantUser: SessionUser = {
+      ...ALPHA_USER,
+      tenantId: BETA_USER.tenantId,
+    };
+
+    await assert.rejects(
+      async () => {
+        await executeWithRls(forgedTenantUser, async (client) => {
+          return await client.query("SELECT count(*) FROM assessments;");
+        });
+      },
+      DatabaseAuthorizationError,
+      "executeWithRls must verify tenant membership against DB and reject forgery"
+    );
+  });
+
+  it("should reject non-existent or inactive user accounts", async () => {
+    const nonExistentUser: SessionUser = {
+      userId: "018f3a5b-7c8d-7e90-8000-999999999999",
+      email: "ghost@alphahealth.example.com",
+      fullName: "Ghost User",
+      role: "CLIENT_CONTRIBUTOR",
+      tenantId: ALPHA_USER.tenantId,
+      tenantName: ALPHA_USER.tenantName,
+      tenantSlug: ALPHA_USER.tenantSlug,
+      tenantType: "CLIENT",
+      isSdf: true,
+    };
+
+    await assert.rejects(
+      async () => {
+        await executeWithRls(nonExistentUser, async (client) => {
+          return await client.query("SELECT count(*) FROM assessments;");
+        });
+      },
+      DatabaseAuthorizationError,
+      "executeWithRls must fail closed if user is not in database"
+    );
+  });
+
+  it("should safely rollback transaction and prevent context bleed on operation exception", async () => {
+    // Deliberately throw an exception inside the transaction
+    await assert.rejects(
+      async () => {
+        await executeWithRls(ALPHA_USER, async (client) => {
+          await client.query("SELECT 1;");
+          throw new Error("Intentional application error inside transaction");
+        });
+      },
+      /Intentional application error/
+    );
+
+    // Direct query on a pooled client must verify no leftover context or open transactions
     const client = await pool.connect();
     try {
-      const res = await client.query("SELECT current_setting('app.current_tenant_id', true) AS tid;");
-      const tid = res.rows[0].tid;
-      assert.ok(
-        !tid || tid === "",
-        "app.current_tenant_id must be cleared on client release to prevent context bleed"
+      const res = await client.query(
+        "SELECT current_setting('app.current_tenant_id', true) AS tid, current_setting('app.current_user_role', true) AS role;"
       );
+      assert.equal(res.rows[0].tid, "", "Tenant setting must be cleared after exception");
+      assert.equal(res.rows[0].role, "", "Role setting must be cleared after exception");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("should safely reuse pool connection across sequential multi-tenant queries without bleed", async () => {
+    // 1. Query as Alpha user
+    const alphaCount = await executeWithRls(ALPHA_USER, async (client) => {
+      const res = await client.query("SELECT count(*) FROM assessments;");
+      return Number(res.rows[0].count);
+    });
+    assert.equal(alphaCount, 1, "Alpha should see exactly 1 assessment");
+
+    // 2. Query as Beta user on same pool
+    const betaCount = await executeWithRls(BETA_USER, async (client) => {
+      const res = await client.query("SELECT count(*) FROM assessments;");
+      return Number(res.rows[0].count);
+    });
+    assert.equal(betaCount, 1, "Beta should see exactly 1 assessment");
+
+    // 3. Query as Super Admin on same pool
+    const superCount = await executeWithRls(SUPER_ADMIN, async (client) => {
+      const res = await client.query("SELECT count(*) FROM assessments;");
+      return Number(res.rows[0].count);
+    });
+    assert.ok(superCount >= 2, "Super Admin sees all assessments across tenants");
+
+    // 4. Unauthenticated raw connection check
+    const client = await pool.connect();
+    try {
+      await client.query("SET ROLE dpdp_app_user;");
+      const unauthCount = await client.query("SELECT count(*) FROM assessments;");
+      assert.equal(
+        Number(unauthCount.rows[0].count),
+        0,
+        "Connection reused without RLS context must see 0 rows (fail-closed)"
+      );
+      await client.query("RESET ROLE;");
     } finally {
       client.release();
     }
   });
 });
-

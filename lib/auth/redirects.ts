@@ -21,8 +21,13 @@ export function getSafeRedirectUrl(
     return fallback;
   }
 
-  // Reject protocol-relative URLs (e.g., //evil.com or /\evil.com)
-  if (trimmed.startsWith("//") || trimmed.startsWith("/\\")) {
+  // Reject any backslash characters anywhere in the path to defeat Windows/browser parser discrepancies
+  if (trimmed.includes("\\")) {
+    return fallback;
+  }
+
+  // Reject protocol-relative URLs (e.g., //evil.com)
+  if (trimmed.startsWith("//")) {
     return fallback;
   }
 
@@ -31,8 +36,8 @@ export function getSafeRedirectUrl(
     return fallback;
   }
 
-  // Disallow javascript: or data: URIs
-  if (/^\/[a-zA-Z0-9_-]*:(?!\/)/i.test(trimmed)) {
+  // Disallow javascript:, data:, or any custom scheme prefix
+  if (/[a-zA-Z0-9_-]+:/.test(trimmed)) {
     return fallback;
   }
 

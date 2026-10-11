@@ -152,24 +152,25 @@ function LoginForm() {
             </div>
           </form>
 
-          {/* Synthetic Test Credentials Helper (Development Only) */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setShowTestAccounts(!showTestAccounts)}
-              className="text-xs text-blue-700 hover:text-blue-900 font-medium flex items-center justify-between w-full"
-            >
-              <span>{showTestAccounts ? "Hide" : "Show"} Synthetic Test Personas</span>
-              <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
-                Dev Fixtures
-              </span>
-            </button>
+          {/* Synthetic Test Credentials Helper (Development Only - Tree-shaken in production) */}
+          {process.env.NODE_ENV !== "production" && (
+            <div className="mt-6 pt-5 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowTestAccounts(!showTestAccounts)}
+                className="text-xs text-blue-700 hover:text-blue-900 font-medium flex items-center justify-between w-full"
+              >
+                <span>{showTestAccounts ? "Hide" : "Show"} Synthetic Test Personas</span>
+                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-200">
+                  Dev Fixtures
+                </span>
+              </button>
 
-            {showTestAccounts && (
-              <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Seeded synthetic users (Password: <code className="text-slate-800 bg-white px-1 py-0.5 rounded border">SyntheticTestPassword123!</code>):
-                </p>
+              {showTestAccounts && (
+                <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Seeded synthetic users (Password: <code className="text-slate-800 bg-white px-1 py-0.5 rounded border">SyntheticTestPassword123!</code>):
+                  </p>
                 <div className="space-y-1.5 pt-1">
                   <button
                     type="button"
@@ -225,6 +226,7 @@ function LoginForm() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Advisory Legal Disclaimer Notice */}
