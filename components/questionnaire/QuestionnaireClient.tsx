@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -9,6 +10,8 @@ import {
   AlertCircle,
   Save,
   Info,
+  Circle,
+  FileCheck,
 } from "lucide-react";
 import {
   getCanonicalQuestionnaireSections,
@@ -18,6 +21,7 @@ import {
 import type {
   RespondentQuestionResponse,
   CanonicalQuestionnaireSection,
+  CanonicalQuestion,
 } from "@/lib/questionnaire/types";
 import { QuestionCard } from "./QuestionCard";
 import { SectionNavigator } from "./SectionNavigator";
@@ -27,22 +31,28 @@ interface QuestionnaireClientProps {
   assessmentId: string;
   assessmentTitle: string;
   tenantName: string;
+  isAssessor?: boolean;
 }
 
 export function QuestionnaireClient({
   assessmentId,
   assessmentTitle,
   tenantName,
+  isAssessor = true,
 }: QuestionnaireClientProps) {
   const sections = getCanonicalQuestionnaireSections();
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [isReviewStep, setIsReviewStep] = useState(false);
   const [responses, setResponses] = useState<Record<string, RespondentQuestionResponse>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const currentSection = sections[activeSectionIndex];
+  const currentSection = sections[activeSectionIndex] || sections[0];
+  const currentQuestion: CanonicalQuestion =
+    currentSection.questions[activeQuestionIndex] || currentSection.questions[0];
+
   const progress = calculateQuestionnaireProgress(sections, responses);
 
   // Storage key for client-side persistence fallback
@@ -62,9 +72,7 @@ export function QuestionnaireClient({
             setResponses(parsed);
           }
         }
-      } catch {
-        // LocalStorage access restricted or unavailable
-      }
+      } catch {}
 
       // Then fetch authoritative state from server API
       try {
@@ -107,10 +115,10 @@ export function QuestionnaireClient({
 
         if (res.ok) {
           setSaveStatus("saved");
-          setSaveMessage("Saved to server");
+          setSaveMessage("Saved");
           setTimeout(() => setSaveStatus("idle"), 2500);
         } else {
-          setSaveStatus("saved"); // Persisted locally
+          setSaveStatus("saved");
           setSaveMessage("Saved locally");
           setTimeout(() => setSaveStatus("idle"), 2500);
         }
@@ -130,12 +138,10 @@ export function QuestionnaireClient({
         [updated.questionCode]: updated,
       };
 
-      // Always save to localStorage immediately
       try {
         localStorage.setItem(storageKey, JSON.stringify(next));
       } catch {}
 
-      // Debounce server PUT
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -147,19 +153,25 @@ export function QuestionnaireClient({
     });
   };
 
-  const handlePrev = () => {
-    if (isReviewStep) {
-      setIsReviewStep(false);
-      setActiveSectionIndex(sections.length - 1);
+  const handlePrevQuestion = () => {
+    if (activeQuestionIndex > 0) {
+      setActiveQuestionIndex((prev) => prev - 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (activeSectionIndex > 0) {
-      setActiveSectionIndex((prev) => prev - 1);
+      const prevSectionIdx = activeSectionIndex - 1;
+      setActiveSectionIndex(prevSectionIdx);
+      setActiveQuestionIndex(sections[prevSectionIdx].questions.length - 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
-  const handleNext = () => {
-    if (activeSectionIndex < sections.length - 1) {
+  const handleNextQuestion = () => {
+    if (activeQuestionIndex < currentSection.questions.length - 1) {
+      setActiveQuestionIndex((prev) => prev + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (activeSectionIndex < sections.length - 1) {
       setActiveSectionIndex((prev) => prev + 1);
+      setActiveQuestionIndex(0);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       setIsReviewStep(true);
@@ -170,20 +182,20 @@ export function QuestionnaireClient({
   const handleSelectSection = (idx: number) => {
     setIsReviewStep(false);
     setActiveSectionIndex(idx);
+    setActiveQuestionIndex(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleJumpToQuestion = (sectionIdx: number, questionCode?: string) => {
     setIsReviewStep(false);
     setActiveSectionIndex(sectionIdx);
-    setTimeout(() => {
-      if (questionCode) {
-        const el = document.getElementById(`question-${questionCode}`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+    if (questionCode) {
+      const qIdx = sections[sectionIdx].questions.findIndex((q) => q.code === questionCode);
+      if (qIdx !== -1) {
+        setActiveQuestionIndex(qIdx);
       }
-    }, 100);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSelectReview = () => {
@@ -209,74 +221,85 @@ export function QuestionnaireClient({
     }
   };
 
+  // Calculate current overall question order (1 to 60)
+  let overallQuestionNumber = 1;
+  for (let i = 0; i < activeSectionIndex; i++) {
+    overallQuestionNumber += sections[i].questions.length;
+  }
+  overallQuestionNumber += activeQuestionIndex;
+
   return (
     <div className="space-y-6">
-      {/* Top Banner / Assessment Context */}
-      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-200">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-[10px] uppercase font-bold text-stone-500 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
-                {QUESTIONNAIRE_METADATA.versionId}
-              </span>
-              <span className="text-xs text-stone-500 font-mono">
-                Organization: <strong className="text-stone-800">{tenantName}</strong>
-              </span>
-            </div>
-            <h1 className="font-serif text-xl sm:text-2xl font-bold text-stone-900">
-              {assessmentTitle}
-            </h1>
-            <p className="text-xs text-stone-500 mt-0.5">
-              {QUESTIONNAIRE_METADATA.title} • {QUESTIONNAIRE_METADATA.subtitle}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {saveStatus === "saving" && (
-              <span className="text-xs font-mono text-stone-600 bg-stone-100 px-2 py-1 rounded border border-stone-200 flex items-center gap-1">
-                <span className="w-2.5 h-2.5 border-2 border-stone-400 border-t-stone-800 rounded-full animate-spin"></span>
-                <span>Saving...</span>
-              </span>
-            )}
-            {saveStatus === "saved" && saveMessage && (
-              <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{saveMessage}</span>
-              </span>
-            )}
-            <div className="text-right">
-              <span className="text-xs font-semibold text-stone-800 font-mono">
-                {progress.totalAnswered + progress.totalExcluded} / {progress.totalQuestions} Questions
-              </span>
-              <span className="block text-[11px] text-stone-500 font-mono">
-                {progress.completionPercentage}% Completed
-              </span>
-            </div>
-          </div>
+      {/* 1. Header Bar: Context Subtitle, Stepper & Save & Exit CTA */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+        <div>
+          <nav className="text-xs text-slate-500 font-medium mb-1">
+            <Link href="/dashboard/assessments" className="hover:text-blue-600">
+              Assessments
+            </Link>{" "}
+            &gt; <span className="text-slate-800">{tenantName}</span> &gt;{" "}
+            <span className="text-slate-800">Questionnaire</span>
+          </nav>
+          <p className="text-xs font-semibold text-slate-600">
+            {tenantName} | Assessment ID: <span className="font-mono text-slate-900">DPDP-2024-006</span> | Visit Date: 20 Aug 2024
+          </p>
         </div>
 
-        {/* Canonical Respondent Instructions Banner */}
-        <div className="mt-4 p-3.5 bg-[#fbfaf8] border border-stone-200 rounded-lg flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-stone-600 mt-0.5 flex-shrink-0" />
-          <div className="text-xs text-stone-700 leading-relaxed">
-            <strong className="text-stone-900 font-semibold block mb-0.5">Respondent Instructions:</strong>
-            {QUESTIONNAIRE_METADATA.respondentInstructions}
-          </div>
-        </div>
+        {/* 3-Step Stepper (matching 03_questionnaire_workspace.jpeg) */}
+        <div className="flex items-center space-x-3 self-start md:self-auto select-none">
+          {/* Step 1: Customer Details (Completed) */}
+          <Link href="/dashboard/assessments/new" className="flex items-center space-x-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
+              ✓
+            </div>
+            <span className="text-xs font-medium text-slate-600">
+              Customer Details
+            </span>
+          </Link>
 
-        {/* Global Progress Bar */}
-        <div className="w-full bg-stone-100 h-2 rounded-full mt-4 overflow-hidden border border-stone-200">
-          <div
-            className="bg-[#16191f] h-full transition-all duration-300 rounded-full"
-            style={{ width: `${progress.completionPercentage}%` }}
-          />
+          <div className="w-10 h-0.5 bg-emerald-500" />
+
+          {/* Step 2: Questionnaire (Active) */}
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 rounded-full bg-[#0066FF] text-white flex items-center justify-center text-xs font-bold">
+              2
+            </div>
+            <span className="text-xs font-semibold text-[#0066FF]">
+              Questionnaire
+            </span>
+          </div>
+
+          <div className="w-10 h-0.5 bg-slate-200" />
+
+          {/* Step 3: Review & Submit */}
+          <button
+            type="button"
+            onClick={handleSelectReview}
+            className="flex items-center space-x-2"
+          >
+            <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
+              3
+            </div>
+            <span className="text-xs font-medium text-slate-500 hover:text-slate-800">
+              Review & Submit
+            </span>
+          </button>
+
+          {/* Save & Exit Button */}
+          <Link
+            href="/dashboard/assessments"
+            className="ml-4 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+          >
+            <Save className="w-3.5 h-3.5 text-slate-500" />
+            <span>Save & Exit</span>
+          </Link>
         </div>
       </div>
 
-      {/* Main Questionnaire Grid */}
+      {/* 2. Main Content Grid (3 Columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Section Navigator Sidebar */}
-        <div className="lg:col-span-4 sticky top-6">
+        {/* Left Column (3 cols): Section Navigator */}
+        <div className="lg:col-span-3 sticky top-6">
           <SectionNavigator
             sections={sections}
             summaries={progress.sectionSummaries}
@@ -287,8 +310,8 @@ export function QuestionnaireClient({
           />
         </div>
 
-        {/* Right Column: Questions or Review Step */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* Center Column (6 cols): Active Question Workspace */}
+        <div className="lg:col-span-6 space-y-4">
           {isReviewStep ? (
             <ReviewStep
               sections={sections}
@@ -300,68 +323,157 @@ export function QuestionnaireClient({
             />
           ) : (
             <>
-              {/* Section Header Card */}
-              <div className="bg-[#f6f4ee] border border-stone-200 rounded-xl p-5 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold bg-stone-900 text-stone-50 px-2.5 py-0.5 rounded">
-                      Section {activeSectionIndex + 1} of {sections.length}
+              {/* Question Navigation Bar */}
+              <div className="flex items-center justify-between pb-1">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Question {overallQuestionNumber} of {progress.totalQuestions}
+                  </h3>
+                  {saveStatus === "saving" && (
+                    <span className="text-[11px] text-slate-400 font-mono animate-pulse">
+                      Saving...
                     </span>
-                    <span className="font-mono text-xs font-bold text-stone-700 bg-stone-200 px-2 py-0.5 rounded">
-                      {currentSection.code}
+                  )}
+                  {saveStatus === "saved" && (
+                    <span className="text-[11px] text-emerald-600 font-medium">
+                      ✓ Saved
                     </span>
-                  </div>
-
-                  <span className="text-xs font-mono text-stone-600">
-                    {currentSection.questions.length} Questions in Section
-                  </span>
+                  )}
                 </div>
 
-                <h2 className="font-serif text-xl font-bold text-stone-900">
-                  {currentSection.title}
-                </h2>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={handlePrevQuestion}
+                    disabled={activeSectionIndex === 0 && activeQuestionIndex === 0}
+                    className="px-3 py-1.5 border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 text-slate-700 text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1"
+                  >
+                    <span>&larr; Previous</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    className="px-4 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center space-x-1"
+                  >
+                    <span>
+                      {overallQuestionNumber === progress.totalQuestions
+                        ? "Review & Submit"
+                        : "Next"}
+                    </span>
+                    <span>&rarr;</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Question Cards for Current Section */}
-              <div className="space-y-6">
-                {currentSection.questions.map((q) => (
-                  <QuestionCard
-                    key={q.code}
-                    question={q}
-                    response={responses[q.code]}
-                    assessmentId={assessmentId}
-                    onUpdateResponse={handleUpdateResponse}
-                  />
-                ))}
-              </div>
-
-              {/* Prev / Next Section Navigation Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-stone-200">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  disabled={activeSectionIndex === 0 && !isReviewStep}
-                  className="px-4 py-2 border border-stone-300 bg-white hover:bg-stone-50 disabled:opacity-40 text-stone-800 text-xs font-semibold rounded-md shadow-sm transition-colors flex items-center gap-1.5"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Previous Section</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="px-5 py-2 bg-[#16191f] hover:bg-stone-800 text-stone-50 text-xs font-semibold rounded-md shadow-sm transition-colors flex items-center gap-1.5"
-                >
-                  <span>
-                    {activeSectionIndex === sections.length - 1
-                      ? "Proceed to Final Review"
-                      : "Next Section"}
-                  </span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {/* Active Question Card Component */}
+              <QuestionCard
+                question={currentQuestion}
+                response={responses[currentQuestion.code]}
+                assessmentId={assessmentId}
+                isAssessor={isAssessor}
+                onUpdateResponse={handleUpdateResponse}
+                onNextQuestion={handleNextQuestion}
+                onPrevQuestion={handlePrevQuestion}
+                questionNumber={overallQuestionNumber}
+                totalQuestions={progress.totalQuestions}
+              />
             </>
           )}
+        </div>
+
+        {/* Right Column (3 cols): Assessment Progress & Question Jump List */}
+        <div className="lg:col-span-3 space-y-4 sticky top-6">
+          {/* Progress Card */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+            <h4 className="font-bold text-xs text-slate-900">
+              Assessment Progress
+            </h4>
+
+            <div>
+              <div className="flex items-center justify-between text-xs mb-1.5 font-medium">
+                <span className="text-slate-500">
+                  {progress.totalAnswered + progress.totalExcluded} of {progress.totalQuestions} questions completed
+                </span>
+                <span className="font-bold text-[#0066FF]">
+                  {progress.completionPercentage}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-[#0066FF] h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress.completionPercentage}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Questions in Current Section List */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h4 className="font-bold text-xs text-slate-900">
+                Questions
+              </h4>
+              <span className="text-[11px] text-slate-400 font-mono">
+                {currentSection.code}
+              </span>
+            </div>
+
+            <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1">
+              {currentSection.questions.map((q, qIdx) => {
+                const resp = responses[q.code];
+                const isAnswered = Boolean(resp?.selectedOption);
+                const isCurrent = qIdx === activeQuestionIndex && !isReviewStep;
+
+                return (
+                  <button
+                    key={q.code}
+                    type="button"
+                    onClick={() => {
+                      setIsReviewStep(false);
+                      setActiveQuestionIndex(qIdx);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className={`w-full text-left p-2 rounded-lg text-xs transition-colors flex items-start space-x-2.5 ${
+                      isCurrent
+                        ? "bg-blue-50 border border-blue-200 text-blue-900"
+                        : "hover:bg-slate-50 text-slate-700 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex-shrink-0 pt-0.5">
+                      {isAnswered ? (
+                        <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                          ✓
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border-2 border-slate-300 bg-white" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono text-[11px] font-bold block text-slate-900">
+                        {q.code}
+                      </span>
+                      <p className="text-[11px] text-slate-500 truncate leading-snug">
+                        {q.text}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Navigation Helper Box */}
+          <div className="bg-[#F0F7FF] rounded-xl border border-blue-200/80 p-4 shadow-xs space-y-2">
+            <div className="flex items-center space-x-2 text-blue-900 font-bold text-xs">
+              <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />
+              <span>Question Navigation</span>
+            </div>
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Use the section list or Previous / Next buttons to navigate between questions. Your responses are saved automatically.
+            </p>
+          </div>
         </div>
       </div>
     </div>

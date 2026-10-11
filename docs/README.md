@@ -63,6 +63,9 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **36** | [Post-Login Failure Diagnosis & Recovery Report](36_post_login_failure_diagnosis_and_recovery.md) | Empirical root cause analysis of post-login server crashes, column mismatch remediation, Migration 006 RLS scoping, and 55-test verification. |
 | **37** | [Migration 006 Security Review & Policy Remediation Report](37_migration_006_security_review.md) | Security audit of Migration 006 RLS policies, discovery of High-severity `FOR ALL` write vulnerability, Migration 007 remediation, and 60-test verification. |
 | **38** | [Canonical Questionnaire Alignment & Implementation Audit](38_canonical_questionnaire_alignment.md) | Exact 60-question extraction, 8-section UI alignment, Migration 008 RLS responses, mandatory N/A justification, and 69 automated tests. |
+| **39** | [Exact Reference UI Implementation & Architectural Alignment](39_reference_ui_implementation.md) | Full faithful reproduction of six approved reference screenshots (Dashboard, New Assessment, Questionnaire, Evidence, Summary), navigation tokens, and 69-test verification. |
+| **40** | [Reference UI QA & Verification Report](40_reference_ui_qa_report.md) | Pixel-accurate visual verification, headless browser screenshot audits, 10 functional workflow tests, RLS security boundary tests, and production build gate. |
+| **41** | [Final Pre-Commit Acceptance Review](41_final_precommit_acceptance_review.md) | Comprehensive pre-commit acceptance audit across UI reproduction, canonical questionnaire parity, PostgreSQL RLS, evidence vault, and test execution. |
 
 ---
 

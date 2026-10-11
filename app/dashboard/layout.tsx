@@ -18,7 +18,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-[#faf8f6] text-stone-900">
+    <div className="h-screen flex overflow-hidden bg-[#F4F7FB] text-slate-900">
       {/* Sidebar Navigation */}
       <Sidebar user={sessionUser} />
 
@@ -27,7 +27,7 @@ export default async function DashboardLayout({
         <Topbar user={sessionUser} />
 
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-[1400px] mx-auto space-y-6">
             {children}
           </div>
         </main>

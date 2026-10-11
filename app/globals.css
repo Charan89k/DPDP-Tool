@@ -3,13 +3,35 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #F4F7FB;
+  --foreground: #0F172A;
+
+  /* TLI Enterprise Design Tokens */
+  --tli-navy: #0B192C;
+  --tli-navy-dark: #081323;
+  --tli-navy-border: #15273F;
+  --tli-blue: #0066FF;
+  --tli-blue-hover: #0052CC;
+  --tli-blue-light: #F0F7FF;
+  --tli-surface: #F4F7FB;
+  --tli-border: #E2E8F0;
+  --tli-text-primary: #0F172A;
+  --tli-text-secondary: #64748B;
+
+  /* Status Tokens */
+  --status-success: #10B981;
+  --status-success-light: #ECFDF5;
+  --status-warning: #F59E0B;
+  --status-warning-light: #FFFBEB;
+  --status-danger: #EF4444;
+  --status-danger-light: #FEF2F2;
+  --status-purple: #8B5CF6;
+  --status-purple-light: #FAF5FF;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  color: var(--tli-text-primary);
+  background: var(--tli-surface);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -17,7 +39,6 @@ body {
 
 /* Custom focus ring styling for accessible keyboard navigation */
 :focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--tli-blue);
   outline-offset: 2px;
 }
-

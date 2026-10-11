@@ -4,10 +4,13 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  FileCheck2,
+  Home,
+  CheckSquare,
+  Users,
   FileText,
+  BarChart3,
   Settings,
+  Shield,
   Building2,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
@@ -24,90 +27,94 @@ export function Sidebar({ user }: SidebarProps) {
 
   const navItems = [
     {
-      label: "Workspace Overview",
+      label: "Home",
       href: "/dashboard",
-      icon: LayoutDashboard,
+      icon: Home,
+      exact: true,
     },
     {
       label: "Assessments",
       href: "/dashboard/assessments",
-      icon: FileCheck2,
+      icon: CheckSquare,
+      exact: false,
     },
     {
-      label: "Compliance Reports",
-      href: "/dashboard/reports",
+      label: "Customers",
+      href: "/dashboard/customers",
+      icon: Users,
+      exact: false,
+    },
+    {
+      label: "Questionnaire",
+      href: "/dashboard/questionnaire",
+      icon: CheckSquare,
+      exact: false,
+    },
+    {
+      label: "Evidence",
+      href: "/dashboard/evidence",
       icon: FileText,
+      exact: false,
     },
     {
-      label: "Account & Security",
+      label: "Reports",
+      href: "/dashboard/reports",
+      icon: BarChart3,
+      exact: false,
+    },
+    {
+      label: "Settings",
       href: "/dashboard/settings",
       icon: Settings,
+      exact: false,
     },
   ];
 
   return (
-    <aside className="w-64 bg-white text-stone-800 flex flex-col flex-shrink-0 border-r border-stone-200">
+    <aside className="w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F]">
       {/* Brand Header */}
-      <div className="p-4 border-b border-stone-200 flex items-center space-x-3 bg-stone-50/50">
-        <div className="w-7 h-7 rounded border border-stone-400 bg-stone-900 flex items-center justify-center text-white font-serif font-bold text-xs tracking-tight shadow-xs flex-shrink-0">
-          TLI
-        </div>
-        <div className="overflow-hidden">
-          <h1 className="text-xs font-serif font-bold text-stone-900 tracking-tight truncate">
-            Truth Labs International
-          </h1>
-          <p className="text-[10px] text-stone-500 font-mono truncate">
-            DPDP Compliance Tool
-          </p>
-        </div>
+      <div className="p-6 pb-5">
+        <Link href="/dashboard" className="block group">
+          <div className="flex flex-col">
+            <span className="font-serif text-xl font-bold tracking-tight text-white group-hover:text-blue-200 transition-colors">
+              Truth Labs
+            </span>
+            <span className="text-[10px] tracking-[0.25em] font-semibold text-slate-400 uppercase mt-0.5">
+              International
+            </span>
+          </div>
+        </Link>
       </div>
 
-      {/* Navigation Links */}
-      <nav className="flex-1 p-3 space-y-1">
-        <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">
-          Main Modules
-        </div>
+      {/* Main Navigation */}
+      <nav className="flex-1 px-3 py-2 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const isActive = item.exact
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
+
           return (
             <Link
-              key={item.href}
+              key={item.label}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
+              className={`flex items-center space-x-3.5 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-[#16191f] text-white shadow-xs font-semibold"
-                  : "text-stone-700 hover:bg-stone-100 hover:text-stone-900"
+                  ? "bg-[#0066FF] text-white shadow-sm font-semibold"
+                  : "text-slate-300 hover:text-white hover:bg-[#162740]"
               }`}
             >
-              <Icon className="w-4 h-4 flex-shrink-0" />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
               <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Tenant Context & Role Badge Footer */}
-      <div className="p-4 border-t border-stone-200 bg-stone-50/80">
-        <div className="flex items-center space-x-2 text-xs text-stone-600 mb-2">
-          <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-stone-500" />
-          <span className="truncate font-medium">{user.tenantName}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <Badge variant={roleBadge.variant} size="sm">
-            {roleBadge.label}
-          </Badge>
-          {user.isSdf && (
-            <span
-              title="Significant Data Fiduciary"
-              className="text-[10px] font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
-            >
-              SDF
-            </span>
-          )}
-        </div>
+      {/* Brand Tagline Footer matching reference design */}
+      <div className="p-4 border-t border-[#15273F] flex items-center space-x-2 text-xs text-slate-300 font-medium">
+        <Shield className="w-4 h-4 text-slate-400 flex-shrink-0" />
+        <span className="text-[11px] text-slate-400">Privacy | Trust | Compliance</span>
       </div>
     </aside>
   );

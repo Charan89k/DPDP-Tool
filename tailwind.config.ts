@@ -9,26 +9,30 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "#f0f4f8",
-          100: "#d9e2ec",
-          200: "#bcccdc",
-          300: "#9fb3c8",
-          400: "#829ab1",
-          500: "#627d98",
-          600: "#486581",
-          700: "#334e68",
-          800: "#243b53",
-          900: "#102a43",
-          950: "#0b1b2b",
-        },
         tli: {
-          navy: "#0a192f",
-          blue: "#1e3a8a",
-          accent: "#2563eb",
-          slate: "#334155",
-          light: "#f8fafc",
-          border: "#e2e8f0",
+          navy: "#0B192C",
+          "navy-dark": "#081323",
+          "navy-border": "#15273F",
+          blue: "#0066FF",
+          "blue-hover": "#0052CC",
+          "blue-light": "#F0F7FF",
+          "blue-border": "#BFDBFE",
+          surface: "#F4F7FB",
+          border: "#E2E8F0",
+          "text-primary": "#0F172A",
+          "text-secondary": "#64748B",
+          success: "#10B981",
+          "success-light": "#ECFDF5",
+          "success-border": "#A7F3D0",
+          warning: "#F59E0B",
+          "warning-light": "#FFFBEB",
+          "warning-border": "#FDE68A",
+          danger: "#EF4444",
+          "danger-light": "#FEF2F2",
+          "danger-border": "#FECACA",
+          purple: "#8B5CF6",
+          "purple-light": "#FAF5FF",
+          "purple-border": "#DDD6FE",
         },
       },
       fontFamily: {
@@ -48,4 +52,3 @@ const config: Config = {
 };
 
 export default config;
-
