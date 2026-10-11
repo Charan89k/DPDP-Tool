@@ -5,6 +5,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
 import { getAssessmentGapAnalysis } from "@/lib/gaps";
+import { getAssessmentReportSnapshots } from "@/lib/reports";
 import { CANONICAL_DOMAINS } from "@/lib/questionnaire/data";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -83,6 +84,15 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     }
   }
 
+  let reportSnapshots: any[] = [];
+  if (assessment) {
+    try {
+      reportSnapshots = await getAssessmentReportSnapshots(sessionUser, id);
+    } catch (err) {
+      console.error("Error fetching report snapshots:", err);
+    }
+  }
+
   // Cross-tenant boundary enforcement:
   // If not found under RLS, or if customer tries to access another tenant's report
   if (!assessment) {
@@ -106,6 +116,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     );
   }
 
+  const isFinalIssued = assessment.status === "FINAL_ISSUED";
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Navigation & Actions Top Bar */}
@@ -118,7 +130,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           <span>Back to All Reports</span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link
             href={`/dashboard/assessments/${assessment.id}/gaps`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 rounded transition-colors"
@@ -127,21 +139,39 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             <span>Gap Analysis & Risk</span>
           </Link>
           <Link
-            href={`/dashboard/assessments/${assessment.id}/questionnaire`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 rounded transition-colors"
+            href={`/dashboard/assessments/${assessment.id}/remediation`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded transition-colors"
           >
-            <span>Open Inquest Questionnaire</span>
+            <Shield className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Remediation & CAPA</span>
           </Link>
+          <a
+            href={`/api/assessments/${assessment.id}/reports/download?draft=${!isFinalIssued}`}
+            download
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#16191f] hover:bg-stone-800 text-white rounded transition-colors shadow-2xs"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>{isFinalIssued ? "Download Official Report (.docx)" : "Download Draft Report (.docx)"}</span>
+          </a>
         </div>
       </div>
 
-      {/* Synthetic Preview Watermark Alert */}
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
-        <ShieldAlert className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-        <div className="leading-relaxed">
-          <strong>PROVISIONAL AUDIT PREVIEW (SYNTHETIC FIXTURE):</strong> This document is generated for evaluation and validation purposes under DPDPA 2023 guidelines. In accordance with TLI governance decisions DEC-01 and DEC-08, numeric scores are advisory and pending formal methodology ratification.
+      {/* Synthetic Preview / Watermark Notice */}
+      {!isFinalIssued ? (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
+          <ShieldAlert className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong>DRAFT EVALUATION REPORT (FOR REVIEW ONLY):</strong> This document is generated for consulting evaluation and review under DPDPA 2023 guidelines. In accordance with TLI governance decisions DEC-01 and DEC-08, numeric scores are advisory pending formal Lead Consultant approval.
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-950 flex items-start gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the TLI Lead Forensic Consultant. The dataset snapshot is sealed and permanently immutable under PostgreSQL database triggers.
+          </div>
+        </div>
+      )}
 
       {/* Formal Document Container */}
       <article className="bg-white border border-stone-300 rounded-xl p-8 sm:p-12 shadow-xs space-y-10 text-stone-900">
@@ -350,7 +380,47 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </ol>
         </section>
 
-        {/* Section 6: Consultant Sign-off & Audit Disclaimer */}
+        {/* Section 6: Issued Immutable Report Snapshots */}
+        {reportSnapshots && reportSnapshots.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between pb-1 border-b border-stone-200">
+              <h3 className="font-serif text-base font-bold text-stone-900">
+                6. Issued Immutable Report Snapshots
+              </h3>
+              <span className="font-mono text-[11px] text-stone-500">
+                {reportSnapshots.length} Formal Snapshots
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {reportSnapshots.map((snap: any) => (
+                <div
+                  key={snap.id}
+                  className="p-3.5 bg-stone-50 border border-stone-200 rounded-lg text-xs space-y-2 font-mono"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">
+                        {snap.reportType} • {snap.versionLabel}
+                      </span>
+                      <strong className="text-stone-900 font-sans text-xs">
+                        Issued on {new Date(snap.createdAt).toLocaleString("en-IN")}
+                      </strong>
+                    </div>
+                    <span className="text-stone-500 text-[10px]">
+                      Approver: {snap.leadApproverName || "Lead Consultant"}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-stone-600 space-y-0.5 break-all">
+                    <div>Dataset SHA-256: <code>{snap.datasetSha256Hash}</code></div>
+                    <div>File SHA-256: <code>{snap.fileSha256Hash}</code></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Section 7: Consultant Sign-off & Audit Disclaimer */}
         <footer className="pt-6 border-t-2 border-stone-900 space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>

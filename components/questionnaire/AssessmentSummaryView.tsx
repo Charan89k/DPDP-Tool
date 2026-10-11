@@ -17,6 +17,7 @@ import {
   Search,
   Filter,
   Shield,
+  ShieldCheck,
   AlertTriangle,
   Paperclip,
   User,
@@ -686,6 +687,13 @@ export function AssessmentSummaryView({
                 >
                   <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
                   <span>Gap Analysis & Risk Dashboard</span>
+                </Link>
+                <Link
+                  href={`/dashboard/assessments/${assessmentId}/remediation`}
+                  className="w-full text-center py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-800 transition-colors flex items-center justify-center space-x-1.5"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Remediation & CAPA Tracking</span>
                 </Link>
                 <Link
                   href={`/dashboard/assessments/${assessmentId}/questionnaire`}

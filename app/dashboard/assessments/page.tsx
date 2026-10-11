@@ -228,6 +228,14 @@ export default async function AssessmentsPage() {
                 </Link>
 
                 <Link
+                  href={`/dashboard/assessments/${assessment.id}/remediation`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-lg shadow-2xs transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Remediation</span>
+                </Link>
+
+                <Link
                   href={`/dashboard/assessments/${assessment.id}/summary`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition-colors"
                 >
