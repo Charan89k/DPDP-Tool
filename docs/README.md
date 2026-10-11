@@ -68,6 +68,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **41** | [Final Pre-Commit Acceptance Review](41_final_precommit_acceptance_review.md) | Comprehensive pre-commit acceptance audit across UI reproduction, canonical questionnaire parity, PostgreSQL RLS, evidence vault, and test execution. |
 | **42** | [Assessor Review Workspace & Clarifications Engine](42_assessor_review_workspace.md) | Phase 3D.2 Assessor Review Workspace, Migration 009 RLS evaluations, question-level clarifications, queue metrics, and 76 automated tests. |
 | **43** | [Evidence Vault & Clarification Workflows](43_evidence_and_clarification_workflows.md) | Phase 3D.3 Evidence Vault Lifecycle, Migration 010 RLS policies, VERIFIED/REJECTED assessor decisions, immutable review history, independent Evidence Coverage metrics, and 87 automated tests. |
+| **44** | [Deterministic Scoring Engine](44_deterministic_scoring_engine.md) | Phase 3D.4 Pure deterministic scoring engine, provisional methodology labeling (DEC-08/09), 4 independent metrics, non-compensatory Statutory Deficit Register, RLS snapshot persistence, and 98 automated tests. |
 
 ---
 
