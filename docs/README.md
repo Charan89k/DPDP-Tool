@@ -52,6 +52,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **25** | [Phase 3B Evidence Storage Vault](25_phase_3b_evidence_storage_vault.md) | Provider-neutral S3 storage vault, presigned POST/GET workflows, magic byte validation, fail-closed malware quarantine, and automated tests. |
 | **26** | [Phase 3B.1 Evidence Vault Security Review & Remediation](26_phase_3b_security_review_and_remediation.md) | Security audit, opaque S3 key remediation, presigned PUT disallowance, upload expiry enforcement, 39 automated tests, and canonical DEC-01..10 governance alignment. |
 | **27** | [Phase 3B.2 Pre-Commit Integrity Review](27_phase_3b_precommit_integrity_review.md) | Final pre-commit integrity audit, live migration checksum verification, presigned URL post-issuance revocation analysis, and READY TO COMMIT certification. |
+| **28** | [Phase 3C Application Core, Authentication & API Scaffolding](28_phase_3c_application_core_authentication_and_api.md) | Next.js 15 App Router foundation, TLI enterprise shell, jose session cookies, DEC-04 SSO alignment, 7-role RBAC, and executeWithRls pool integration. |
 
 ---
 
@@ -68,6 +69,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
 | **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 | **Evidence Storage Test Suite** | Test Suite | [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py) | Automated test suite verifying presigned S3 workflows, file signature checks, malware quarantine, and tenant boundaries. |
+| **Application & Auth Test Suite** | Test Suite | [`tests/`](../tests/) | Automated Node test suite verifying JWT session security, open redirects, 7-role RBAC, and live PostgreSQL RLS pool isolation. |
 
 ---
 
