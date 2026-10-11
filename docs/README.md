@@ -69,6 +69,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **42** | [Assessor Review Workspace & Clarifications Engine](42_assessor_review_workspace.md) | Phase 3D.2 Assessor Review Workspace, Migration 009 RLS evaluations, question-level clarifications, queue metrics, and 76 automated tests. |
 | **43** | [Evidence Vault & Clarification Workflows](43_evidence_and_clarification_workflows.md) | Phase 3D.3 Evidence Vault Lifecycle, Migration 010 RLS policies, VERIFIED/REJECTED assessor decisions, immutable review history, independent Evidence Coverage metrics, and 87 automated tests. |
 | **44** | [Deterministic Scoring Engine](44_deterministic_scoring_engine.md) | Phase 3D.4 Pure deterministic scoring engine, provisional methodology labeling (DEC-08/09), 4 independent metrics, non-compensatory Statutory Deficit Register, RLS snapshot persistence, and 98 automated tests. |
+| **45** | [Assessment Lifecycle & Approval Controls](45_assessment_lifecycle_and_approval_controls.md) | Phase 3D.5 Canonical 14-state lifecycle machine, role transition authority matrix, server-side precondition guards, kernel-enforced forensic immutability, re-audit cloning, and 111 automated tests. |
 
 ---
 
@@ -82,7 +83,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Evidence Catalogue** | 27 | [JSON](../data/evidence_catalogue.json) \| [CSV](../data/evidence_catalogue.csv) | Evidence types with linked controls, verification procedures, confidentiality tiers, and masking rules. |
 | **Formal JSON Schemas** | 3 Schemas | [`schemas/`](../schemas/) | Formal Draft 2020-12 schemas for controls, evidence items, and legal sources. |
 | **Automated Data Validator** | Test Suite | [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py) | Standalone, offline Python test runner enforcing 100% schema compliance and referential integrity. |
-| **PostgreSQL Migrations** | 10 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, evidence lifecycle, consultant RLS scoping, write boundary remediation, questionnaire responses, assessor review workspace, and evidence & clarification workflows. |
+| **PostgreSQL Migrations** | 11 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, evidence lifecycle, consultant RLS scoping, write boundary remediation, questionnaire responses, assessor review workspace, evidence & clarification workflows, and assessment lifecycle & immutability. |
 | **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
 | **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 | **Evidence Storage Test Suite** | Test Suite | [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py) | Automated test suite verifying presigned S3 workflows, file signature checks, malware quarantine, and tenant boundaries. |

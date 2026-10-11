@@ -65,7 +65,76 @@ CREATE POLICY rls_audit_logs_policy ON audit_logs
         )
     );
 
--- 2. KERNEL IMMUTABILITY ENFORCEMENT FUNCTIONS & TRIGGERS
+-- 2. REFINED ASSESSMENTS & REPORT SNAPSHOTS RLS POLICIES FOR CONSULTANTS
+DROP POLICY IF EXISTS rls_assessments_policy ON assessments;
+CREATE POLICY rls_assessments_policy ON assessments
+    FOR ALL
+    TO dpdp_app_user
+    USING (
+        app_current_user_role() = 'TLI_SUPER_ADMIN'
+        OR (
+            app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
+            AND (
+                is_user_assigned_to_assessment(id, app_current_user_id())
+                OR lead_consultant_id = app_current_user_id()
+            )
+        )
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND tenant_id = app_current_tenant_id()
+        )
+    )
+    WITH CHECK (
+        app_current_user_role() = 'TLI_SUPER_ADMIN'
+        OR (
+            app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
+            AND (
+                is_user_assigned_to_assessment(id, app_current_user_id())
+                OR lead_consultant_id = app_current_user_id()
+            )
+        )
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND tenant_id = app_current_tenant_id()
+        )
+    );
+
+DROP POLICY IF EXISTS rls_report_snapshots_policy ON report_snapshots;
+CREATE POLICY rls_report_snapshots_policy ON report_snapshots
+    FOR ALL
+    TO dpdp_app_user
+    USING (
+        app_current_user_role() = 'TLI_SUPER_ADMIN'
+        OR (
+            app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
+            AND (
+                is_user_assigned_to_assessment(assessment_id, app_current_user_id())
+                OR lead_approver_id = app_current_user_id()
+                OR generated_by_user_id = app_current_user_id()
+            )
+        )
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND tenant_id = app_current_tenant_id()
+        )
+    )
+    WITH CHECK (
+        app_current_user_role() = 'TLI_SUPER_ADMIN'
+        OR (
+            app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
+            AND (
+                is_user_assigned_to_assessment(assessment_id, app_current_user_id())
+                OR lead_approver_id = app_current_user_id()
+                OR generated_by_user_id = app_current_user_id()
+            )
+        )
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND tenant_id = app_current_tenant_id()
+        )
+    );
+
+-- 3. KERNEL IMMUTABILITY ENFORCEMENT FUNCTIONS & TRIGGERS
 
 CREATE OR REPLACE FUNCTION enforce_assessment_lifecycle_immutability()
 RETURNS TRIGGER AS $$
@@ -175,4 +244,38 @@ CREATE TRIGGER trg_evidence_finalized_guard
     BEFORE INSERT OR UPDATE OR DELETE ON evidence_items
     FOR EACH ROW
     EXECUTE FUNCTION enforce_assessment_lifecycle_immutability();
+
+-- 4. ADMINISTRATIVE RE-AUDIT CLONING HELPER FUNCTION
+CREATE OR REPLACE FUNCTION clone_assessment_questionnaire_responses(
+    p_source_assessment_id UUID,
+    p_target_assessment_id UUID
+)
+RETURNS INT AS $$
+DECLARE
+    inserted_count INT;
+BEGIN
+    INSERT INTO assessment_questionnaire_responses (
+        assessment_id,
+        tenant_id,
+        question_code,
+        questionnaire_version,
+        selected_option,
+        comments_and_justification
+    )
+    SELECT 
+        p_target_assessment_id,
+        tenant_id,
+        question_code,
+        questionnaire_version,
+        selected_option,
+        comments_and_justification
+    FROM assessment_questionnaire_responses
+    WHERE assessment_id = p_source_assessment_id;
+
+    GET DIAGNOSTICS inserted_count = ROW_COUNT;
+    RETURN inserted_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION clone_assessment_questionnaire_responses(UUID, UUID) TO dpdp_app_user;
 

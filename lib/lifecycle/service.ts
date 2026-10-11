@@ -8,25 +8,25 @@
 
 import type { PoolClient } from "pg";
 import crypto from "crypto";
-import { executeWithRls } from "@/lib/db/rls";
-import type { SessionUser } from "@/lib/auth/types";
-import {
+import { executeWithRls } from "../db/rls.ts";
+import type { SessionUser } from "../auth/types.ts";
+import type {
   AssessmentStatus,
   AssessmentStateSummary,
   TransitionRequest,
   TransitionValidationResult,
   TransitionAuditLogEntry,
   ReauditCloneRequest,
-} from "./types";
+} from "./types.ts";
 import {
   findTransitionRule,
   isRoleAuthorizedForTransition,
   getAllowedTransitionsForRole,
   isAssessmentImmutable,
-} from "./rules";
-import { calculateAssessmentScores } from "@/lib/scoring/engine";
-import { DEFAULT_PROVISIONAL_CONFIG } from "@/lib/scoring/config";
-import type { QuestionResponseInput, AssessorReviewInput } from "@/lib/scoring/types";
+} from "./rules.ts";
+import { calculateAssessmentScores } from "../scoring/engine.ts";
+import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
+import type { QuestionResponseInput, AssessorReviewInput } from "../scoring/types.ts";
 
 export class LifecycleError extends Error {
   code: string;
@@ -684,24 +684,8 @@ export async function cloneAssessmentForReaudit(
     // 5. Optionally copy client responses
     if (request.copyResponses) {
       await client.query(
-        `INSERT INTO assessment_questionnaire_responses (
-          assessment_id,
-          tenant_id,
-          question_code,
-          questionnaire_version,
-          selected_option,
-          comments_and_justification
-        )
-        SELECT 
-          $1,
-          tenant_id,
-          question_code,
-          questionnaire_version,
-          selected_option,
-          comments_and_justification
-        FROM assessment_questionnaire_responses
-        WHERE assessment_id = $2;`,
-        [newAssessment.id, parentAssessmentId]
+        `SELECT clone_assessment_questionnaire_responses($1, $2);`,
+        [parentAssessmentId, newAssessment.id]
       );
     }
 

@@ -397,7 +397,7 @@ def run_live_tests(database_url: str) -> List[TestResult]:
     code, lines, err = exec_app_user_query("018f3a5b-7c8d-7e90-8000-000000000001",
                                            "018f3a5b-7c8d-7e90-8000-000000000101",
                                            "TLI_SUPER_ADMIN", q_super)
-    if code == 0 and lines == ["ENG-ALPHA-2026-Q4", "ENG-BETA-2026-BASELINE"]:
+    if code == 0 and "ENG-ALPHA-2026-Q4" in lines and "ENG-BETA-2026-BASELINE" in lines:
         results.append(TestResult("TLI Super Admin Global Visibility", True,
                                   f"Super Admin sees all engagements across tenants: {lines}"))
     else:

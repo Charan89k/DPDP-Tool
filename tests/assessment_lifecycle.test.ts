@@ -21,7 +21,7 @@ import { executeWithRls } from "../lib/db/rls.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 import {
   CANONICAL_ASSESSMENT_STATUSES,
-  AssessmentStatus,
+  type AssessmentStatus,
   getAllowedTransitionsForRole,
   isAssessmentImmutable,
   findTransitionRule,
@@ -36,8 +36,8 @@ import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
 // Dedicated Test Tenant & Users (Isolated from Alpha and Beta to preserve other test suites)
 const TEST_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000088";
 const TEST_CLIENT_ADMIN_ID = "018f3a5b-7c8d-7e90-8000-000000000188";
-const TEST_CONSULTANT_ID = "018f3a5b-7c8d-7e90-8000-000000000191"; // TLI Lead Consultant Demo
-const TEST_REVIEWER_ID = "018f3a5b-7c8d-7e90-8000-000000000103"; // Vikram Malhotra (Reviewer)
+const TEST_CONSULTANT_ID = "018f3a5b-7c8d-7e90-8000-000000000189"; // Dedicated Gamma Lead Consultant
+const TEST_REVIEWER_ID = "018f3a5b-7c8d-7e90-8000-000000000187"; // Dedicated Gamma Reviewer
 const TLI_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000001"; // Truth Labs Advisory
 
 const testClientAdminSession: SessionUser = {
@@ -52,8 +52,8 @@ const testClientAdminSession: SessionUser = {
 const testLeadConsultantSession: SessionUser = {
   userId: TEST_CONSULTANT_ID,
   tenantId: TLI_TENANT_ID,
-  email: "consultant.demo@tli.local",
-  fullName: "TLI Consultant Demo",
+  email: "gamma.lead@truthlabs.in",
+  fullName: "Gamma Lead Consultant",
   role: "TLI_LEAD_CONSULTANT",
   tenantType: "TLI",
 };
@@ -61,8 +61,8 @@ const testLeadConsultantSession: SessionUser = {
 const testReviewerSession: SessionUser = {
   userId: TEST_REVIEWER_ID,
   tenantId: TLI_TENANT_ID,
-  email: "vikram.malhotra@truthlabs.in",
-  fullName: "Vikram Malhotra",
+  email: "gamma.reviewer@truthlabs.in",
+  fullName: "Gamma Reviewer",
   role: "TLI_REVIEWER",
   tenantType: "TLI",
 };
@@ -89,7 +89,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
     const smRes = await pool.query("SELECT id FROM scoring_models LIMIT 1;");
     scoringModelId = smRes.rows[0].id;
 
-    // 2. Setup isolated test tenant and user in database
+    // 2. Setup isolated test tenant and users in database
     await pool.query(
       `INSERT INTO tenants (id, type, name, slug, industry, status)
        VALUES ($1, 'CLIENT', 'Gamma Health Test Systems', 'gamma-health-test', 'HealthTech', 'ACTIVE')
@@ -98,20 +98,24 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
     );
 
     await pool.query(
-      `INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, status)
-       VALUES ($1, $2, 'admin@gammatest.local', 'synthetic_hash', 'Gamma Admin', 'CLIENT_ADMIN', 'ACTIVE')
+      `INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, is_active)
+       VALUES 
+         ($1, $2, 'admin@gammatest.local', 'synthetic_hash', 'Gamma Admin', 'CLIENT_ADMIN', TRUE),
+         ($3, $4, 'gamma.lead@truthlabs.in', 'synthetic_hash', 'Gamma Lead Consultant', 'TLI_LEAD_CONSULTANT', TRUE),
+         ($5, $4, 'gamma.reviewer@truthlabs.in', 'synthetic_hash', 'Gamma Reviewer', 'TLI_REVIEWER', TRUE)
        ON CONFLICT (id) DO NOTHING;`,
-      [TEST_CLIENT_ADMIN_ID, TEST_TENANT_ID]
+      [TEST_CLIENT_ADMIN_ID, TEST_TENANT_ID, TEST_CONSULTANT_ID, TLI_TENANT_ID, TEST_REVIEWER_ID]
     );
 
     // 3. Create test assessment in DRAFT
+    const engCode = `ENG-GAMMA-LIFECYCLE-${Date.now()}`;
     const assessRes = await pool.query(
       `INSERT INTO assessments (
         tenant_id, framework_version_id, scoring_model_id, engagement_code,
         title, status, lead_consultant_id, is_partial_assessment
-      ) VALUES ($1, $2, $3, 'ENG-GAMMA-LIFECYCLE-2026', 'Gamma Lifecycle Audit', 'DRAFT', $4, FALSE)
+      ) VALUES ($1, $2, $3, $4, 'Gamma Lifecycle Audit', 'DRAFT', $5, FALSE)
       RETURNING id;`,
-      [TEST_TENANT_ID, frameworkVersionId, scoringModelId, TEST_CONSULTANT_ID]
+      [TEST_TENANT_ID, frameworkVersionId, scoringModelId, engCode, TEST_CONSULTANT_ID]
     );
     testAssessmentId = assessRes.rows[0].id;
 
@@ -125,21 +129,6 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
   });
 
   after(async () => {
-    // Cleanup isolated test fixtures
-    try {
-      await pool.query("DELETE FROM report_snapshots WHERE assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM audit_logs WHERE entity_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM clarification_messages WHERE thread_id IN (SELECT id FROM clarification_threads WHERE assessment_id = $1);", [testAssessmentId]);
-      await pool.query("DELETE FROM clarification_threads WHERE assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM questionnaire_assessor_reviews WHERE assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM assessment_questionnaire_responses WHERE assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM assessment_assignments WHERE assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM assessments WHERE id = $1 OR parent_assessment_id = $1;", [testAssessmentId]);
-      await pool.query("DELETE FROM users WHERE id = $1;", [TEST_CLIENT_ADMIN_ID]);
-      await pool.query("DELETE FROM tenants WHERE id = $1;", [TEST_TENANT_ID]);
-    } catch (cleanErr) {
-      console.warn("Cleanup warning:", cleanErr);
-    }
     await pool.end();
   });
 
@@ -538,11 +527,12 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
   // TEST 12: Re-audit Cycle Cloning (parent_assessment_id)
   // =========================================================================
   it("12. should clone finalized assessment forward into a new versioned engagement linked via parent_assessment_id", async () => {
+    const reauditEngCode = `ENG-GAMMA-REAUDIT-${Date.now()}`;
     const cloned = await cloneAssessmentForReaudit(
       testLeadConsultantSession,
       testAssessmentId,
       {
-        engagementCode: "ENG-GAMMA-REAUDIT-2027",
+        engagementCode: reauditEngCode,
         title: "Gamma Healthcare Year 2 Follow-up Audit",
         copyResponses: true,
       }
@@ -550,7 +540,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
 
     assert.ok(cloned.id);
     assert.equal(cloned.currentStatus, "DRAFT");
-    assert.equal(cloned.engagementCode, "ENG-GAMMA-REAUDIT-2027");
+    assert.equal(cloned.engagementCode, reauditEngCode);
 
     // Verify parent relationship in DB
     const dbRes = await pool.query(
@@ -558,12 +548,6 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
       [cloned.id]
     );
     assert.equal(dbRes.rows[0].parent_assessment_id, testAssessmentId);
-
-    // Clean up cloned assessment
-    await pool.query("DELETE FROM audit_logs WHERE entity_id = $1;", [cloned.id]);
-    await pool.query("DELETE FROM assessment_questionnaire_responses WHERE assessment_id = $1;", [cloned.id]);
-    await pool.query("DELETE FROM assessment_assignments WHERE assessment_id = $1;", [cloned.id]);
-    await pool.query("DELETE FROM assessments WHERE id = $1;", [cloned.id]);
   });
 
   // =========================================================================

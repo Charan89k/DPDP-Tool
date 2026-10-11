@@ -5,12 +5,12 @@
  * and precondition rules documented in docs/03, docs/09, and docs/31.
  */
 
-import {
+import type {
   AssessmentStatus,
   LifecycleTransitionRule,
   AllowedTransitionOption,
   TransitionRole,
-} from "./types";
+} from "./types.ts";
 
 export const LIFECYCLE_TRANSITIONS: LifecycleTransitionRule[] = [
   // 1. DRAFT transitions
