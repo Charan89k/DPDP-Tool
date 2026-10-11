@@ -2,8 +2,20 @@
 
 import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, Lock, Eye, EyeOff, AlertCircle, FileText, CheckCircle2 } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
+import {
+  Shield,
+  ShieldCheck,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  LogIn,
+  FileCheck2,
+  BarChart3,
+  Users,
+} from "lucide-react";
+import { TliBrandMark } from "@/components/ui/tli-brand-mark";
 import { getSafeRedirectUrl } from "@/lib/auth/redirects";
 
 function LoginForm() {
@@ -16,7 +28,6 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showTestAccounts, setShowTestAccounts] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,280 +65,274 @@ function LoginForm() {
     }
   };
 
-  const fillTestCredentials = (testEmail: string) => {
-    setEmail(testEmail);
-    setPassword("SyntheticTestPassword123!");
-    setErrorMessage(null);
-  };
+  const features = [
+    {
+      icon: ShieldCheck,
+      title: "Structured Assessments",
+      description: "Follow a guided 60-question framework aligned with DPDP 2023 requirements.",
+    },
+    {
+      icon: FileCheck2,
+      title: "Secure Evidence Management",
+      description: "Upload, manage and track compliance evidence with enterprise-grade security.",
+    },
+    {
+      icon: BarChart3,
+      title: "Compliance Gap Analysis",
+      description: "Identify gaps, track progress and get clear recommendations for improvement.",
+    },
+    {
+      icon: Users,
+      title: "Role-Based Access",
+      description: "Separate workspaces for TLI consultants, assessors and client teams.",
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#fbfaf8] text-[#16191f] flex flex-col justify-between selection:bg-stone-200 selection:text-stone-900">
-      {/* Top Editorial Bar */}
-      <header className="border-b border-stone-200/80 bg-[#f8f6f0]/60 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center space-x-3">
-            <div className="w-7 h-7 rounded border border-stone-400 bg-stone-900 flex items-center justify-center text-stone-100 font-serif font-bold text-sm tracking-tighter shadow-sm">
-              TLI
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F4F7FB] text-[#0F172A] selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden">
+      {/* =========================================================================
+          LEFT COLUMN: Navy Brand Panel (TLI Authority, Identity & Feature Ledger)
+         ========================================================================= */}
+      <div className="w-full lg:w-[52%] xl:w-[50%] bg-[#0B192C] text-white p-6 sm:p-10 lg:p-12 xl:p-16 flex flex-col justify-between relative overflow-hidden flex-shrink-0">
+        {/* Subtle Wave Graphic Backdrop */}
+        <svg
+          className="absolute bottom-0 left-0 right-0 w-full pointer-events-none opacity-30 select-none"
+          viewBox="0 0 900 450"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M-50 360 C 180 260, 360 410, 580 320 C 720 255, 820 280, 950 230 L 950 480 L -50 480 Z"
+            fill="url(#wave-grad-1)"
+          />
+          <path
+            d="M-50 390 C 140 330, 300 400, 500 330 C 670 270, 770 320, 950 290 L 950 480 L -50 480 Z"
+            fill="url(#wave-grad-2)"
+          />
+          <path
+            d="M-50 310 C 200 210, 420 360, 620 250 C 730 195, 830 220, 950 180"
+            stroke="#0066FF"
+            strokeWidth="1.5"
+            strokeOpacity="0.45"
+          />
+          <path
+            d="M-50 345 C 190 270, 390 380, 600 290 C 720 235, 810 255, 950 220"
+            stroke="#38BDF8"
+            strokeWidth="1"
+            strokeOpacity="0.3"
+          />
+          <path
+            d="M-50 280 C 230 190, 430 330, 640 220 C 740 165, 840 190, 950 150"
+            stroke="#0066FF"
+            strokeWidth="1"
+            strokeOpacity="0.25"
+          />
+          <defs>
+            <linearGradient id="wave-grad-1" x1="0" y1="260" x2="900" y2="480" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0066FF" stopOpacity="0.18" />
+              <stop offset="1" stopColor="#0B192C" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="wave-grad-2" x1="0" y1="320" x2="900" y2="480" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#0052CC" stopOpacity="0.22" />
+              <stop offset="1" stopColor="#081323" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Top Header Row */}
+        <header className="relative z-10 flex items-center justify-between gap-4 mb-5 sm:mb-12">
+          <TliBrandMark variant="dark" size="sm" />
+          <div className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-wide">
+            Privacy &nbsp;|&nbsp; Trust &nbsp;|&nbsp; Compliance
+          </div>
+        </header>
+
+        {/* Central Brand Content & Feature Ledger */}
+        <div className="relative z-10 my-auto py-1 sm:py-6 space-y-5 sm:space-y-10">
+          <div>
+            <h1 className="text-2xl sm:text-4xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-white leading-tight">
+              DPDP Compliance{" "}
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-sky-200">
+                Gap Assessment Platform
+              </span>
+            </h1>
+            <p className="mt-2.5 sm:mt-4 text-xs sm:text-sm text-slate-300 max-w-lg leading-relaxed">
+              Structured assessments, secure evidence management and actionable compliance insights.
+            </p>
+          </div>
+
+          {/* 4 Feature Highlights (Responsive: 2-column grid on tablet, vertical stack on desktop, hidden on compact mobile) */}
+          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-1 gap-5 lg:space-y-5 lg:gap-0">
+            {features.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <div key={feature.title} className="flex items-start gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-blue-400 shadow-sm mt-0.5">
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white tracking-tight">
+                      {feature.title}
+                    </h2>
+                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                      {feature.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Brand Footer */}
+        <footer className="relative z-10 pt-6 lg:pt-8 mt-6 lg:mt-8 border-t border-white/10 hidden sm:flex items-center gap-2.5 text-xs text-slate-400">
+          <ShieldCheck className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          <span>Building a more private and trusted digital future.</span>
+        </footer>
+      </div>
+
+      {/* =========================================================================
+          RIGHT COLUMN: Authentication Card Panel (Centered, Clean Enterprise UI)
+         ========================================================================= */}
+      <div className="w-full lg:w-[48%] xl:w-[50%] flex items-center justify-center p-6 sm:p-10 lg:p-12 xl:p-16 flex-1">
+        <div className="w-full max-w-[440px] bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-7 sm:p-10 transition-all">
+          {/* Card Brand Header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <TliBrandMark variant="light" size="md" className="mb-5" />
+            <h2 className="text-2xl font-bold tracking-tight text-[#0F172A]">
+              Welcome Back
+            </h2>
+            <p className="mt-1 text-xs sm:text-sm text-slate-500">
+              Sign in to your account to continue
+            </p>
+          </div>
+
+          {/* Error Message Alert */}
+          {errorMessage && (
+            <div
+              className="mb-6 p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5"
+              role="alert"
+            >
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+              <span className="leading-relaxed font-medium">{errorMessage}</span>
             </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Field */}
             <div>
-              <span className="font-serif tracking-tight text-sm font-semibold text-stone-900">
-                Truth Labs International
-              </span>
-              <span className="hidden sm:inline-block mx-2 text-stone-300">|</span>
-              <span className="text-xs text-stone-600 block sm:inline font-mono">
-                Forensic Privacy Advisory
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 text-[11px] text-stone-500 font-mono">
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
-              SECURE KERNEL // RLS ACTIVE
-            </span>
-            <span className="hidden md:inline text-stone-400">REF: TLI-DPDP-AUDIT-PLATFORM</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content Area: Structured Editorial Layout */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex items-center justify-center">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-stretch">
-
-          {/* Left Column: Forensic Audit Engagement Metadata Panel */}
-          <div className="lg:col-span-5 flex flex-col justify-between bg-[#f6f4ee] p-6 sm:p-8 rounded-xl border border-stone-200 shadow-sm">
-            <div className="space-y-6">
-              <div>
-                <span className="text-[10px] uppercase tracking-widest font-mono text-stone-500 font-semibold block mb-1">
-                  Statutory Evaluation Portal
-                </span>
-                <h1 className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 leading-tight">
-                  DPDP Compliance Gap Analysis
-                </h1>
-                <p className="mt-2 text-xs sm:text-sm text-stone-600 leading-relaxed">
-                  Independent compliance evaluation and gap scoring platform under the India Digital Personal Data Protection Act, 2023.
-                </p>
-              </div>
-
-              {/* Audit Metadata Ledger */}
-              <div className="border-t border-b border-stone-300/80 py-4 space-y-3 font-mono text-xs">
-                <div className="flex justify-between items-center text-stone-600">
-                  <span className="text-stone-500">Statutory Base:</span>
-                  <span className="font-semibold text-stone-900">DPDPA 2023 / MeitY</span>
-                </div>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span className="text-stone-500">Canonical Controls:</span>
-                  <span className="font-semibold text-stone-900">30 Controls (13 Domains)</span>
-                </div>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span className="text-stone-500">Classification:</span>
-                  <span className="font-semibold text-rose-900 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                    RESTRICTED // FORENSIC
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-stone-600">
-                  <span className="text-stone-500">Evidence Vault:</span>
-                  <span className="font-semibold text-stone-900">Tenant-Isolated Disk Storage</span>
-                </div>
-              </div>
-
-              {/* Advisory Standard Notes */}
-              <div className="space-y-2.5 text-xs text-stone-600">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-stone-700 flex-shrink-0 mt-0.5" />
-                  <span>Immutable audit logging of assessor responses and consultant reviews.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-stone-700 flex-shrink-0 mt-0.5" />
-                  <span>Row-Level Security boundary prevents inter-tenant record leakage.</span>
-                </div>
+              <label
+                htmlFor="email"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
+              >
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                <input
+                  id="email"
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-3.5 py-2.5 text-sm bg-slate-50/60 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-transparent transition-all disabled:opacity-60"
+                />
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-stone-200 text-[11px] text-stone-500 font-mono">
-              TLI Legal Governance Register • DEC-01 through DEC-10
-            </div>
-          </div>
-
-          {/* Right Column: Sign-in Form */}
-          <div className="lg:col-span-7 flex flex-col justify-center">
-            <div className="bg-white p-6 sm:p-10 rounded-xl border border-stone-200 shadow-sm">
-              <div className="mb-6">
-                <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-stone-900">
-                  Sign in to Assessment Workspace
-                </h2>
-                <p className="mt-1 text-xs text-stone-500">
-                  Enter your authorized corporate credentials to access tenant compliance evaluations.
-                </p>
-              </div>
-
-              {errorMessage && (
-                <div className="mb-6">
-                  <Alert variant="error">
-                    <div className="flex items-center space-x-2 text-xs">
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                      <span>{errorMessage}</span>
-                    </div>
-                  </Alert>
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label htmlFor="email" className="block text-xs font-semibold text-stone-800 uppercase tracking-wider mb-1.5">
-                    Corporate Email Address
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@organization.com"
-                    disabled={isLoading}
-                    className="w-full px-3.5 py-2.5 text-sm bg-stone-50/50 border border-stone-300 rounded-md text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <label htmlFor="password" className="block text-xs font-semibold text-stone-800 uppercase tracking-wider">
-                      Account Password
-                    </label>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      disabled={isLoading}
-                      className="w-full px-3.5 py-2.5 text-sm bg-stone-50/50 border border-stone-300 rounded-md text-stone-900 placeholder-stone-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 focus:outline-none"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2.5 px-4 bg-[#16191f] hover:bg-stone-800 disabled:opacity-60 text-stone-100 text-sm font-semibold rounded-md shadow-sm transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-stone-900"
-                  >
-                    {isLoading ? (
-                      <span className="inline-block w-4 h-4 border-2 border-stone-400 border-t-white rounded-full animate-spin"></span>
-                    ) : (
-                      <>
-                        <Lock className="w-4 h-4" />
-                        <span>Authenticate to Workspace</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              {/* Synthetic Test Credentials Helper (Development Only - Tree-shaken in production) */}
-              {process.env.NODE_ENV !== "production" && (
-                <div className="mt-8 pt-6 border-t border-stone-200">
-                  <button
-                    type="button"
-                    onClick={() => setShowTestAccounts(!showTestAccounts)}
-                    className="text-xs text-stone-700 hover:text-stone-900 font-mono font-medium flex items-center justify-between w-full"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-stone-500" />
-                      <span>{showTestAccounts ? "Hide" : "Show"} Synthetic Seed Personas</span>
-                    </span>
-                    <span className="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded border border-stone-200">
-                      Dev Fixtures
-                    </span>
-                  </button>
-
-                  {showTestAccounts && (
-                    <div className="mt-3 p-3.5 bg-[#fbfaf8] rounded-md border border-stone-200 text-xs space-y-2">
-                      <p className="text-[11px] text-stone-500 font-mono">
-                        Local Demo Password: <code className="text-stone-800 bg-white px-1 py-0.5 rounded border border-stone-200">SyntheticTestPassword123!</code> (or configured via <code className="text-stone-800 bg-white px-1 py-0.5 rounded border border-stone-200">$DEMO_USER_PASSWORD</code>)
-                      </p>
-                      <div className="space-y-1.5 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => fillTestCredentials("consultant.demo@tli.local")}
-                          className="w-full text-left p-2 rounded hover:bg-white text-stone-800 flex justify-between items-center transition-colors border border-stone-200 bg-white shadow-xs"
-                        >
-                          <div>
-                            <span className="font-mono text-[11px] font-semibold text-blue-900">consultant.demo@tli.local</span>
-                            <span className="block text-[10px] text-stone-500">TLI Advisory Lead Consultant View</span>
-                          </div>
-                          <span className="text-[10px] bg-blue-50 text-blue-800 px-2 py-0.5 rounded font-semibold border border-blue-200">
-                            Consultant Demo
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fillTestCredentials("customer.demo@tli.local")}
-                          className="w-full text-left p-2 rounded hover:bg-white text-stone-800 flex justify-between items-center transition-colors border border-stone-200 bg-white shadow-xs"
-                        >
-                          <div>
-                            <span className="font-mono text-[11px] font-semibold text-emerald-900">customer.demo@tli.local</span>
-                            <span className="block text-[10px] text-stone-500">Alpha Healthcare Client Admin View</span>
-                          </div>
-                          <span className="text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold border border-emerald-200">
-                            Customer Demo
-                          </span>
-                        </button>
-                        <div className="pt-2 border-t border-stone-200/80">
-                          <span className="text-[10px] uppercase font-mono text-stone-400 block mb-1">Additional Seed Personas:</span>
-                          <div className="grid grid-cols-2 gap-1">
-                            <button
-                              type="button"
-                              onClick={() => fillTestCredentials("admin@truthlabs.in")}
-                              className="text-left p-1.5 rounded hover:bg-white text-stone-700 text-[11px] font-mono truncate"
-                            >
-                              admin@truthlabs.in
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => fillTestCredentials("admin@alphahealth.example.com")}
-                              className="text-left p-1.5 rounded hover:bg-white text-stone-700 text-[11px] font-mono truncate"
-                            >
-                              admin@alphahealth...
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+            {/* Password Field */}
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold text-slate-700 mb-1.5"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50/60 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-transparent transition-all disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] rounded p-0.5 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
                   )}
-                </div>
-              )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 px-4 bg-[#0066FF] hover:bg-[#0052CC] active:bg-[#0047B3] disabled:opacity-60 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0066FF]"
+              >
+                {isLoading ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Authorized Users Only Notice */}
+          <div className="mt-6 p-3.5 bg-blue-50/70 border border-blue-100 rounded-xl flex items-start gap-3">
+            <Shield className="w-5 h-5 text-[#0066FF] flex-shrink-0 mt-0.5" />
+            <div className="text-left">
+              <span className="text-xs font-semibold text-[#0B192C] block">
+                Authorized users only
+              </span>
+              <span className="text-[11px] text-slate-600 mt-0.5 block leading-normal">
+                This system is for TLI staff and invited customers.
+              </span>
             </div>
           </div>
         </div>
-      </main>
-
-      {/* Editorial Footer */}
-      <footer className="border-t border-stone-200/80 bg-[#f8f6f0]/60 px-6 py-4 text-center">
-        <p className="text-[11px] text-stone-500 font-serif leading-relaxed max-w-3xl mx-auto">
-          Truth Labs International (TLI) • Digital Personal Data Protection Act, 2023 Technical Compliance Evaluation System.
-          Access is monitored and restricted to authorized enterprise evaluators and forensic consultants.
-        </p>
-      </footer>
+      </div>
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center text-stone-500 font-mono text-xs">Initializing audit workspace...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center text-slate-500 font-medium text-xs">
+          Loading workspace...
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );
