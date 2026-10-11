@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
+import { canReviewAssessment } from "@/lib/auth/rbac";
 import { AssessorReviewClient } from "@/components/review/AssessorReviewClient";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,11 @@ export default async function AssessorReviewPage({ params }: AssessorReviewPageP
 
   if (!sessionUser) {
     redirect(`/login?redirect=/dashboard/assessments/${id}/review`);
+  }
+
+  // Role boundary: Only TLI assessors and super admins can access the review workspace
+  if (!canReviewAssessment(sessionUser.role)) {
+    redirect(`/dashboard/assessments/${id}/summary`);
   }
 
   return <AssessorReviewClient assessmentId={id} />;

@@ -33,6 +33,8 @@ export default async function DefaultEvidencePage() {
         assessmentId={assessmentId}
         tenantName={tenantName}
         assessmentCode={assessmentCode}
+        userRole={sessionUser.role}
+        userName={sessionUser.fullName || sessionUser.email}
       />
     </div>
   );

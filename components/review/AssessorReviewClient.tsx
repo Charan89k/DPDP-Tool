@@ -877,6 +877,16 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                       </div>
                     </div>
 
+                    {/* Internal Assessor Notes Header Badge */}
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        Internal Assessor Notes (Confidential TLI Advisory)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Segregated from client view
+                      </span>
+                    </div>
+
                     {/* Review Findings Textarea */}
                     <div>
                       <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-700 block mb-1">

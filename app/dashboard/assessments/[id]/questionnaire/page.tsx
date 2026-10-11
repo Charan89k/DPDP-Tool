@@ -2,6 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { isTliRole, canEditQuestionnaire } from "@/lib/auth/rbac";
 import { QuestionnaireClient } from "@/components/questionnaire/QuestionnaireClient";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +21,15 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
 
   let assessmentTitle = "India DPDP Comprehensive Compliance Gap Evaluation";
   let tenantName = "Client Organization";
+  let assessmentStatus = "DATA_GATHERING";
 
   try {
     const assessment = await executeWithRls(sessionUser, async (client) => {
       const sql = `
         SELECT 
-          a.id,
-          a.title,
+          a.id, 
+          a.title, 
+          a.status,
           t.name AS tenant_name
         FROM assessments a
         LEFT JOIN tenants t ON t.id = a.tenant_id
@@ -40,6 +43,7 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
     if (assessment) {
       assessmentTitle = assessment.title;
       tenantName = assessment.tenant_name;
+      assessmentStatus = assessment.status;
     }
   } catch {
     // Graceful fallback for offline / development environments
@@ -51,8 +55,11 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
         assessmentId={id}
         assessmentTitle={assessmentTitle}
         tenantName={tenantName}
+        isAssessor={isTliRole(sessionUser.role)}
+        canEdit={canEditQuestionnaire(sessionUser.role)}
+        userRole={sessionUser.role}
+        assessmentStatus={assessmentStatus}
       />
     </div>
   );
 }
-

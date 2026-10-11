@@ -32,13 +32,19 @@ interface QuestionnaireClientProps {
   assessmentTitle: string;
   tenantName: string;
   isAssessor?: boolean;
+  canEdit?: boolean;
+  userRole?: string;
+  assessmentStatus?: string;
 }
 
 export function QuestionnaireClient({
   assessmentId,
   assessmentTitle,
   tenantName,
-  isAssessor = true,
+  isAssessor = false,
+  canEdit = true,
+  userRole,
+  assessmentStatus,
 }: QuestionnaireClientProps) {
   const sections = getCanonicalQuestionnaireSections();
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
@@ -118,14 +124,15 @@ export function QuestionnaireClient({
           setSaveMessage("Saved");
           setTimeout(() => setSaveStatus("idle"), 2500);
         } else {
-          setSaveStatus("saved");
-          setSaveMessage("Saved locally");
-          setTimeout(() => setSaveStatus("idle"), 2500);
+          const errData = await res.json().catch(() => ({}));
+          setSaveStatus("error");
+          setSaveMessage(errData.error || "Failed to save response to server");
+          setTimeout(() => setSaveStatus("idle"), 4000);
         }
-      } catch {
-        setSaveStatus("saved");
-        setSaveMessage("Saved locally");
-        setTimeout(() => setSaveStatus("idle"), 2500);
+      } catch (err: any) {
+        setSaveStatus("error");
+        setSaveMessage(err.message || "Network error while saving response");
+        setTimeout(() => setSaveStatus("idle"), 4000);
       }
     },
     [assessmentId]
@@ -372,6 +379,8 @@ export function QuestionnaireClient({
                 response={responses[currentQuestion.code]}
                 assessmentId={assessmentId}
                 isAssessor={isAssessor}
+                canEdit={canEdit && !["FINAL_ISSUED", "ARCHIVED", "REMEDIATION_ACTIVE"].includes(assessmentStatus || "")}
+                userRole={userRole}
                 onUpdateResponse={handleUpdateResponse}
                 onNextQuestion={handleNextQuestion}
                 onPrevQuestion={handlePrevQuestion}

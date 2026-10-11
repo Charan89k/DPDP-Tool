@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { isTliRole } from "@/lib/auth/rbac";
 import {
   Plus,
   ClipboardList,
@@ -611,12 +612,21 @@ export default async function DashboardPage() {
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
-                            <Link
-                              href={`/dashboard/assessments/${item.id}/review`}
-                              className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded shadow-2xs transition-colors"
-                            >
-                              Review
-                            </Link>
+                            {isTliRole(sessionUser.role) ? (
+                              <Link
+                                href={`/dashboard/assessments/${item.id}/review`}
+                                className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded shadow-2xs transition-colors"
+                              >
+                                Review
+                              </Link>
+                            ) : (
+                              <Link
+                                href={`/dashboard/assessments/${item.id}/summary`}
+                                className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded shadow-2xs transition-colors"
+                              >
+                                Summary
+                              </Link>
+                            )}
                             <Link
                               href={`/dashboard/assessments/${item.id}/questionnaire`}
                               className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 rounded shadow-2xs transition-colors"
@@ -666,26 +676,28 @@ export default async function DashboardPage() {
               <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
-            {/* 2. Manage Customers */}
-            <Link
-              href="/dashboard/customers"
-              className="p-3.5 rounded-xl border border-emerald-100 bg-[#F0FDF4] hover:bg-[#DCFCE7] flex items-center justify-between group transition-colors"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                  <Users className="w-5 h-5" />
+            {/* 2. Manage Customers (TLI Roles) */}
+            {isTliRole(sessionUser.role) && (
+              <Link
+                href="/dashboard/customers"
+                className="p-3.5 rounded-xl border border-emerald-100 bg-[#F0FDF4] hover:bg-[#DCFCE7] flex items-center justify-between group transition-colors"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                      Manage Customers
+                    </h4>
+                    <p className="text-[11px] text-slate-500">
+                      View and manage customer information
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
-                    Manage Customers
-                  </h4>
-                  <p className="text-[11px] text-slate-500">
-                    View and manage customer information
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+                <ChevronRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            )}
 
             {/* 3. Questionnaire */}
             <Link

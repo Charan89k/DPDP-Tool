@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { isTliRole } from "@/lib/auth/rbac";
 import { Badge } from "@/components/ui/badge";
 import {
   FileCheck2,
@@ -208,13 +209,15 @@ export default async function AssessmentsPage() {
                   <span>Evidence</span>
                 </Link>
 
-                <Link
-                  href={`/dashboard/assessments/${assessment.id}/review`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-lg shadow-2xs transition-colors"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Assessor Review</span>
-                </Link>
+                {isTliRole(sessionUser.role) && (
+                  <Link
+                    href={`/dashboard/assessments/${assessment.id}/review`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-lg shadow-2xs transition-colors"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Assessor Review</span>
+                  </Link>
+                )}
 
                 <Link
                   href={`/dashboard/assessments/${assessment.id}/summary`}

@@ -14,7 +14,7 @@ import {
   Building2,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
-import { getRoleBadgeLabel } from "@/lib/auth/rbac";
+import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
 import { Badge } from "@/components/ui/badge";
 
 interface SidebarProps {
@@ -38,12 +38,16 @@ export function Sidebar({ user }: SidebarProps) {
       icon: CheckSquare,
       exact: false,
     },
-    {
-      label: "Customers",
-      href: "/dashboard/customers",
-      icon: Users,
-      exact: false,
-    },
+    ...(isTliRole(user.role)
+      ? [
+          {
+            label: "Customers",
+            href: "/dashboard/customers",
+            icon: Users,
+            exact: false,
+          },
+        ]
+      : []),
     {
       label: "Questionnaire",
       href: "/dashboard/questionnaire",

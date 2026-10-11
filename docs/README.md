@@ -70,6 +70,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **43** | [Evidence Vault & Clarification Workflows](43_evidence_and_clarification_workflows.md) | Phase 3D.3 Evidence Vault Lifecycle, Migration 010 RLS policies, VERIFIED/REJECTED assessor decisions, immutable review history, independent Evidence Coverage metrics, and 87 automated tests. |
 | **44** | [Deterministic Scoring Engine](44_deterministic_scoring_engine.md) | Phase 3D.4 Pure deterministic scoring engine, provisional methodology labeling (DEC-08/09), 4 independent metrics, non-compensatory Statutory Deficit Register, RLS snapshot persistence, and 98 automated tests. |
 | **45** | [Assessment Lifecycle & Approval Controls](45_assessment_lifecycle_and_approval_controls.md) | Phase 3D.5 Canonical 14-state lifecycle machine, role transition authority matrix, server-side precondition guards, kernel-enforced forensic immutability, re-audit cloning, and 111 automated tests. |
+| **46** | [Frontend Workspaces Completion](46_frontend_workspaces_completion.md) | Phase 3D.6 Role-specific assessment workspaces (Assessor, Client, Lead Consultant), live data integration, RLS data segregation, zero-mock cleanup, and 111 automated tests. |
 
 ---
 

@@ -58,6 +58,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     );
   }
 
+  if (!canReviewAssessment(sessionUser.role)) {
+    return NextResponse.json(
+      { error: "Client roles do not have permission to access internal assessor review workspace." },
+      { status: 403 }
+    );
+  }
+
   try {
     const data = await executeWithRls(sessionUser, async (client) => {
       // 1. Verify assessment exists & accessible under RLS

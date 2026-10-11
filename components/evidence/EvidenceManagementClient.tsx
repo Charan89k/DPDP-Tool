@@ -64,51 +64,11 @@ export function EvidenceManagementClient({
     ? ["TLI_LEAD_CONSULTANT", "TLI_REVIEWER", "TLI_SUPER_ADMIN"].includes(userRole)
     : false;
 
-  // Sample initial evidence rows matching reference screenshot 04_evidence_management.jpeg
-  const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([
-    {
-      id: "ev-1",
-      fileName: "Data_Protection_Policy.pdf",
-      fileSizeBytes: 842000,
-      mimeType: "application/pdf",
-      questionCode: "GOV-01",
-      category: "Policy / Procedure",
-      description: "Data protection policy v1.0",
-      uploadedOn: "20 Aug 2024",
-      uploadedBy: "Anita Sharma",
-      status: "Reviewed",
-      rawStatus: "VERIFIED",
-    },
-    {
-      id: "ev-2",
-      fileName: "Org_Structure.docx",
-      fileSizeBytes: 425000,
-      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      questionCode: "GOV-01",
-      category: "Organisational Document",
-      description: "Organisation structure showing DPO",
-      uploadedOn: "20 Aug 2024",
-      uploadedBy: "Anita Sharma",
-      status: "Received",
-      rawStatus: "ACTIVE",
-    },
-    {
-      id: "ev-3",
-      fileName: "Data_Inventory.xlsx",
-      fileSizeBytes: 620000,
-      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      questionCode: "DAT-01",
-      category: "Record / Log",
-      description: "Personal data inventory (2023-24)",
-      uploadedOn: "20 Aug 2024",
-      uploadedBy: "Anita Sharma",
-      status: "Not Received",
-      rawStatus: "PENDING_UPLOAD",
-    },
-  ]);
+  // Real evidence records from database
+  const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([]);
 
   // Selected Evidence for Right Preview Panel
-  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem>(evidenceList[0]);
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [selectedPage, setSelectedPage] = useState(1);
   const totalPages = 12;
 
@@ -153,7 +113,7 @@ export function EvidenceManagementClient({
       const res = await fetch(`/api/assessments/${assessmentId}/evidence`);
       if (!res.ok) return;
       const data = await res.json();
-      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      if (data.items && Array.isArray(data.items)) {
         const mapped: EvidenceItem[] = data.items.map((it: any) => ({
           id: it.id,
           fileName: it.fileName,
@@ -182,15 +142,16 @@ export function EvidenceManagementClient({
         }));
         setEvidenceList(mapped);
         setSelectedEvidence((prev) => {
+          if (!prev) return mapped.length > 0 ? mapped[0] : null;
           const found = mapped.find((m) => m.id === prev.id);
-          return found || mapped[0];
+          return found || (mapped.length > 0 ? mapped[0] : null);
         });
       }
       if (data.metrics) {
         setCoverage(data.metrics);
       }
     } catch {
-      // Graceful fallback to initial seed fixtures
+      // Graceful fallback
     }
   };
 
@@ -271,9 +232,11 @@ export function EvidenceManagementClient({
       await fetch(`/api/evidence/${id}`, { method: "DELETE" });
     } catch {}
     setEvidenceList((prev) => prev.filter((item) => item.id !== id));
-    if (selectedEvidence.id === id && evidenceList.length > 1) {
+    if (selectedEvidence?.id === id && evidenceList.length > 1) {
       const remaining = evidenceList.filter((item) => item.id !== id);
-      setSelectedEvidence(remaining[0]);
+      setSelectedEvidence(remaining[0] || null);
+    } else if (selectedEvidence?.id === id) {
+      setSelectedEvidence(null);
     }
     fetchEvidence();
   };
@@ -668,35 +631,44 @@ export function EvidenceManagementClient({
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                  <tr>
-                    <th className="py-2.5 px-3">File Name</th>
-                    <th className="py-2.5 px-3">Question Code</th>
-                    <th className="py-2.5 px-3">Category</th>
-                    <th className="py-2.5 px-3">Description</th>
-                    <th className="py-2.5 px-3">Uploaded On</th>
-                    <th className="py-2.5 px-3">Uploaded By</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {evidenceList.map((item) => (
-                    <tr
-                      key={item.id}
-                      onClick={() => {
-                        setSelectedEvidence(item);
-                        setVerificationNotes(item.verificationNotes || "");
-                        setReviewFeedback(null);
-                      }}
-                      className={`cursor-pointer transition-colors ${
-                        selectedEvidence.id === item.id
-                          ? "bg-blue-50/60"
-                          : "hover:bg-slate-50/70"
-                      }`}
-                    >
+            {evidenceList.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="font-semibold text-slate-700">No Evidence Records</p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  No compliance artifacts have been uploaded for this assessment yet. Use the upload zone above to attach files.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">File Name</th>
+                      <th className="py-2.5 px-3">Question Code</th>
+                      <th className="py-2.5 px-3">Category</th>
+                      <th className="py-2.5 px-3">Description</th>
+                      <th className="py-2.5 px-3">Uploaded On</th>
+                      <th className="py-2.5 px-3">Uploaded By</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {evidenceList.map((item) => (
+                      <tr
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedEvidence(item);
+                          setVerificationNotes(item.verificationNotes || "");
+                          setReviewFeedback(null);
+                        }}
+                        className={`cursor-pointer transition-colors ${
+                          selectedEvidence?.id === item.id
+                            ? "bg-blue-50/60"
+                            : "hover:bg-slate-50/70"
+                        }`}
+                      >
                       <td className="py-3 px-3 font-semibold text-slate-900">
                         <div className="flex items-center space-x-2">
                           {getFileIcon(item.fileName)}
@@ -773,13 +745,16 @@ export function EvidenceManagementClient({
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
         </div>
+      </div>
 
         {/* Right Column (4 cols): Selected Evidence Preview & Details */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Panel 1: Selected Evidence Preview */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+          {selectedEvidence ? (
+            <>
+              {/* Panel 1: Selected Evidence Preview */}
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center space-x-2 min-w-0">
                 {getFileIcon(selectedEvidence.fileName)}
@@ -906,7 +881,7 @@ export function EvidenceManagementClient({
                       item.id === selectedEvidence.id ? { ...item, status: newStatus } : item
                     )
                   );
-                  setSelectedEvidence((prev) => ({ ...prev, status: newStatus }));
+                  setSelectedEvidence((prev) => (prev ? { ...prev, status: newStatus } : null));
                 }}
                 className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white font-medium"
               >
@@ -930,7 +905,7 @@ export function EvidenceManagementClient({
                 value={selectedEvidence.description}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setSelectedEvidence((prev) => ({ ...prev, description: val }));
+                  setSelectedEvidence((prev) => (prev ? { ...prev, description: val } : null));
                   setEvidenceList((prev) =>
                     prev.map((item) =>
                       item.id === selectedEvidence.id ? { ...item, description: val } : item
@@ -999,6 +974,16 @@ export function EvidenceManagementClient({
               </div>
             )}
           </div>
+          </>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-xs text-slate-500 shadow-xs space-y-2">
+              <Paperclip className="w-8 h-8 text-slate-300 mx-auto" />
+              <h4 className="font-bold text-slate-700 text-xs">No Artifact Selected</h4>
+              <p className="text-[11px] text-slate-400">
+                Select an evidence item from the list to preview details or record assessor validation.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
