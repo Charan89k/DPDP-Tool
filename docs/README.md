@@ -43,6 +43,14 @@ The platform is purpose-built to enable TLI consultants and client organisations
 
 ---
 
+## Phase 3: Core Platform Architecture & Implementation
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **23** | [Phase 3A Database Implementation](23_phase_3a_database_implementation.md) | Relational schema (23 tables), PostgreSQL RLS isolation, migration runner, synthetic multi-tenant seed fixtures, and test suite. |
+
+---
+
 ## Machine-Readable Data Assets & Schemas
 
 | Asset | Records / Specs | Location & Formats | Description |
@@ -52,6 +60,9 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Evidence Catalogue** | 27 | [JSON](../data/evidence_catalogue.json) \| [CSV](../data/evidence_catalogue.csv) | Evidence types with linked controls, verification procedures, confidentiality tiers, and masking rules. |
 | **Formal JSON Schemas** | 3 Schemas | [`schemas/`](../schemas/) | Formal Draft 2020-12 schemas for controls, evidence items, and legal sources. |
 | **Automated Data Validator** | Test Suite | [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py) | Standalone, offline Python test runner enforcing 100% schema compliance and referential integrity. |
+| **PostgreSQL Migrations** | 4 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library seed, and synthetic development fixtures. |
+| **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
+| **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 
 ---
 
