@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
+import { getAssessmentGapAnalysis } from "@/lib/gaps";
 import { CANONICAL_DOMAINS } from "@/lib/questionnaire/data";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -73,6 +74,15 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     console.error("Error fetching report under RLS:", err);
   }
 
+  let gapData: any = null;
+  if (assessment) {
+    try {
+      gapData = await getAssessmentGapAnalysis(sessionUser, id);
+    } catch (err) {
+      console.error("Error fetching gap analysis for report:", err);
+    }
+  }
+
   // Cross-tenant boundary enforcement:
   // If not found under RLS, or if customer tries to access another tenant's report
   if (!assessment) {
@@ -109,6 +119,13 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
         </Link>
 
         <div className="flex items-center gap-2">
+          <Link
+            href={`/dashboard/assessments/${assessment.id}/gaps`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 rounded transition-colors"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+            <span>Gap Analysis & Risk</span>
+          </Link>
           <Link
             href={`/dashboard/assessments/${assessment.id}/questionnaire`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 rounded transition-colors"
@@ -201,44 +218,106 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           <p className="text-xs text-stone-700 leading-relaxed">
             The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable obligations for entities processing digital personal data. In accordance with TLI forensic methodology, statutory compliance is evaluated on a <strong>non-compensatory standard</strong>: high operational maturity in administrative areas (e.g., privacy policies) does not cure or mitigate material technical deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notifications).
           </p>
-          <div className="p-3 bg-stone-50 rounded border border-stone-200 text-xs text-stone-700 font-mono">
-            Evaluated Scope: 30 Canonical Controls across 13 Statutory Domains • Evidence Vault Verified
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+            <div className="p-3 bg-stone-50 rounded border border-stone-200">
+              <span className="text-stone-500 block text-[10px]">Indicative Readiness:</span>
+              <strong className="text-stone-900 text-sm">
+                {gapData ? `${gapData.summary.provisionalReadinessPct}%` : "Pending"}
+              </strong>
+            </div>
+            <div className="p-3 bg-stone-50 rounded border border-stone-200">
+              <span className="text-stone-500 block text-[10px]">Maturity Score:</span>
+              <strong className="text-stone-900 text-sm">
+                {gapData ? `${gapData.summary.provisionalMaturityScore.toFixed(2)} / 5.00` : "Pending"}
+              </strong>
+            </div>
+            <div className="p-3 bg-rose-50 rounded border border-rose-200">
+              <span className="text-rose-700 block text-[10px]">Critical Gaps:</span>
+              <strong className="text-rose-900 text-sm">
+                {gapData ? `${gapData.summary.criticalGapsCount} Deficits` : "0 Deficits"}
+              </strong>
+            </div>
+            <div className="p-3 bg-stone-50 rounded border border-stone-200">
+              <span className="text-stone-500 block text-[10px]">Completeness:</span>
+              <strong className="text-stone-900 text-sm">
+                {gapData ? `${gapData.summary.completenessPct}%` : "Pending"}
+              </strong>
+            </div>
+          </div>
+          <div className="p-3 bg-stone-50 rounded border border-stone-200 text-xs text-stone-700 font-mono flex items-center justify-between">
+            <span>Evaluated Scope: 60 Canonical Questions across 8 Sections & 13 Statutory Domains</span>
+            <span className="text-stone-500">{gapData ? `${gapData.summary.totalGapsCount} Total Gaps Identified` : ""}</span>
           </div>
         </section>
 
         {/* Section 3: Domain-by-Domain Compliance Findings */}
         <section className="space-y-4">
-          <h3 className="font-serif text-base font-bold text-stone-900 pb-1 border-b border-stone-200">
-            3. Domain Findings & Statutory Breakdown
-          </h3>
+          <div className="flex items-center justify-between pb-1 border-b border-stone-200">
+            <h3 className="font-serif text-base font-bold text-stone-900">
+              3. Domain Findings & Statutory Breakdown
+            </h3>
+            <span className="font-mono text-[11px] text-stone-500">
+              {gapData ? `${gapData.domainSummaries.length} Statutory Domains` : "13 Domains"}
+            </span>
+          </div>
           <div className="space-y-3">
-            {CANONICAL_DOMAINS.map((domain, index) => (
-              <div
-                key={domain.code}
-                className="p-3.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1.5"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-bold bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded border border-stone-300">
-                      Domain {index + 1}
+            {gapData && gapData.domainSummaries.length > 0 ? (
+              gapData.domainSummaries.map((domain: any, index: number) => (
+                <div
+                  key={domain.domainCode}
+                  className="p-3.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1.5"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded border border-stone-300">
+                        Domain {index + 1}
+                      </span>
+                      <h4 className="font-serif font-bold text-stone-900 text-xs">
+                        {domain.domainTitle}
+                      </h4>
+                    </div>
+                    <span className="font-mono text-[10px] text-stone-500">
+                      Domain Weight: {domain.domainWeight.toFixed(2)}x
                     </span>
-                    <h4 className="font-serif font-bold text-stone-900 text-xs">
-                      {domain.title}
-                    </h4>
                   </div>
-                  <span className="font-mono text-[10px] text-stone-500">
-                    Domain Weight: {domain.weight.toFixed(2)}x
-                  </span>
+                  <p className="text-stone-600 text-[11px] leading-relaxed">
+                    <strong>Statutory Provision:</strong> {domain.statutoryProvision}
+                  </p>
+                  <div className="text-[11px] text-stone-500 flex items-center justify-between pt-1 border-t border-stone-100 font-mono">
+                    <span>
+                      Impl: <strong className="text-emerald-700">{domain.implementedCount}</strong> • Part: <strong className="text-amber-700">{domain.partiallyImplementedCount}</strong> • Not Impl: <strong className="text-rose-700">{domain.notImplementedCount}</strong>
+                    </span>
+                    <span className="font-sans font-semibold text-stone-900">
+                      Readiness: {domain.readinessPct}%
+                    </span>
+                  </div>
                 </div>
-                <p className="text-stone-600 text-[11px] leading-relaxed">
-                  <strong>Statutory Provision:</strong> {domain.statutoryFocus}
-                </p>
-                <div className="text-[11px] text-stone-500 flex items-center justify-between pt-1 border-t border-stone-100 font-mono">
-                  <span>Evaluation: Controls Scoped and Operational</span>
-                  <span className="text-emerald-700 font-sans font-semibold">Active Inquest Scope</span>
+              ))
+            ) : (
+              CANONICAL_DOMAINS.map((domain, index) => (
+                <div
+                  key={domain.code}
+                  className="p-3.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1.5"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold bg-stone-100 text-stone-800 px-1.5 py-0.5 rounded border border-stone-300">
+                        Domain {index + 1}
+                      </span>
+                      <h4 className="font-serif font-bold text-stone-900 text-xs">
+                        {domain.title}
+                      </h4>
+                    </div>
+                    <span className="font-mono text-[10px] text-stone-500">
+                      Domain Weight: {domain.weight.toFixed(2)}x
+                    </span>
+                  </div>
+                  <p className="text-stone-600 text-[11px] leading-relaxed">
+                    <strong>Statutory Provision:</strong> {domain.statutoryFocus}
+                  </p>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 

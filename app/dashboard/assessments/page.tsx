@@ -220,6 +220,14 @@ export default async function AssessmentsPage() {
                 )}
 
                 <Link
+                  href={`/dashboard/assessments/${assessment.id}/gaps`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 rounded-lg shadow-2xs transition-colors"
+                >
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Gap Analysis</span>
+                </Link>
+
+                <Link
                   href={`/dashboard/assessments/${assessment.id}/summary`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition-colors"
                 >

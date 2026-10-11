@@ -74,6 +74,14 @@ The platform is purpose-built to enable TLI consultants and client organisations
 
 ---
 
+## Phase 4: Gap Analysis, Risk Prioritization & Analytical Dashboards
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **47** | [Gap Analysis Engine, Risk Prioritization & Dashboards](47_gap_analysis_and_risk_dashboards.md) | Pure deterministic gap calculation engine, 4 independent metrics, explainable risk prioritization, Section 33(1) penalty tiers, 13-domain matrix, client/consultant note segregation, and 120 automated tests. |
+
+---
+
 ## Machine-Readable Data Assets & Schemas
 
 | Asset | Records / Specs | Location & Formats | Description |
