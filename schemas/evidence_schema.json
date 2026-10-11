@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://truthlabs.org/schemas/tli-dpdp-evidence-v1.json",
+  "title": "TLIDPDPEvidenceDefinition",
+  "type": "object",
+  "required": [
+    "evidence_type_id",
+    "title",
+    "description",
+    "linked_controls",
+    "status",
+    "confidentiality_tier",
+    "recommended_freshness",
+    "acceptable_examples",
+    "alternative_evidence",
+    "verification_procedure",
+    "limitations_and_weaknesses",
+    "masking_and_redaction_requirements",
+    "retention_considerations",
+    "reviewer_guidance"
+  ],
+  "properties": {
+    "evidence_type_id": {
+      "type": "string",
+      "pattern": "^EVID-[A-Z]{3,4}-\\d{2}$"
+    },
+    "title": { "type": "string", "minLength": 5, "maxLength": 200 },
+    "description": { "type": "string", "minLength": 20, "maxLength": 1000 },
+    "linked_controls": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^TLI-DPDP-[A-Z]{3}-\\d{2}$" },
+      "minItems": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["MANDATORY", "CONDITIONAL"]
+    },
+    "confidentiality_tier": {
+      "type": "string",
+      "enum": [
+        "TIER-1 (Public Governance)",
+        "TIER-2 (Internal Confidential)",
+        "TIER-2 (Commercial Confidential)",
+        "TIER-2 (Restricted Security)",
+        "TIER-2 (Corporate Governance)",
+        "TIER-2 (Regulatory Audit)",
+        "TIER-2 (Corporate Risk)"
+      ]
+    },
+    "recommended_freshness": { "type": "string", "minLength": 5 },
+    "acceptable_examples": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "alternative_evidence": { "type": "string", "minLength": 10 },
+    "verification_procedure": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "limitations_and_weaknesses": { "type": "string", "minLength": 10 },
+    "masking_and_redaction_requirements": { "type": "string", "minLength": 5 },
+    "retention_considerations": { "type": "string", "minLength": 5 },
+    "reviewer_guidance": { "type": "string", "minLength": 10 }
+  }
+}
+

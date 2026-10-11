@@ -1,0 +1,87 @@
+[
+  {
+    "source_id": "SRC-01",
+    "title": "Digital Personal Data Protection Act, 2023",
+    "citation": "Act No. 22 of 2023",
+    "issuing_authority": "Parliament of India / Ministry of Law and Justice",
+    "publication_date": "2023-08-11",
+    "gazette_reference": "Gazette of India (Extraordinary), Part II, Section 1, No. 26",
+    "source_type": "ENACTED_STATUTE",
+    "commencement_status": "PHASED_COMMENCEMENT",
+    "url": "https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-02",
+    "title": "DPDPA 2023 Commencement Notification",
+    "citation": "S.O. 4930(E)",
+    "issuing_authority": "Ministry of Electronics and Information Technology (MeitY)",
+    "publication_date": "2025-11-13",
+    "gazette_reference": "Gazette of India (Extraordinary), Part II, Section 3(ii)",
+    "source_type": "COMMENCEMENT_NOTIFICATION",
+    "commencement_status": "IN_FORCE",
+    "url": "https://egazette.gov.in/WriteReadData/2025/258941.pdf",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-03",
+    "title": "Digital Personal Data Protection Rules, 2025",
+    "citation": "G.S.R. 846(E)",
+    "issuing_authority": "Ministry of Electronics and Information Technology (MeitY)",
+    "publication_date": "2025-11-13",
+    "gazette_reference": "Gazette of India (Extraordinary), Part II, Section 3(i)",
+    "source_type": "NOTIFIED_RULES",
+    "commencement_status": "PHASED_COMMENCEMENT",
+    "url": "https://www.meity.gov.in/writereaddata/files/DPDP_Rules_2025_GSR846E.pdf",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-04",
+    "title": "DPDP (Removal of Difficulties) Order, 2026",
+    "citation": "S.O. 4120(E)",
+    "issuing_authority": "Ministry of Electronics and Information Technology (MeitY)",
+    "publication_date": "2026-10-07",
+    "gazette_reference": "Gazette of India (Extraordinary), Part II, Section 3(ii)",
+    "source_type": "OFFICIAL_ORDER",
+    "commencement_status": "IN_FORCE",
+    "url": "https://egazette.gov.in/WriteReadData/2026/269102.pdf",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-05",
+    "title": "Constitution of India, Eighth Schedule (Languages)",
+    "citation": "Eighth Schedule, Articles 344(1) and 351",
+    "issuing_authority": "Constituent Assembly of India / Ministry of Law and Justice",
+    "publication_date": "1950-01-26",
+    "gazette_reference": "Constitution of India",
+    "source_type": "CONSTITUTIONAL_REFERENCE",
+    "commencement_status": "IN_FORCE",
+    "url": "https://legislative.gov.in/constitution-of-india/",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-06",
+    "title": "RBI Directive on Storage of Payment System Data",
+    "citation": "DPSS.CO.OD.No.2785/06.08.005/2017-18",
+    "issuing_authority": "Reserve Bank of India (Payment and Settlement Systems)",
+    "publication_date": "2018-04-06",
+    "gazette_reference": "RBI Notification",
+    "source_type": "SECTORAL_REGULATION",
+    "commencement_status": "IN_FORCE",
+    "url": "https://www.rbi.org.in/scripts/FS_Notification.aspx?Id=11244",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  },
+  {
+    "source_id": "SRC-07",
+    "title": "CERT-In Cyber Security Directions, 2022",
+    "citation": "No. 20(3)/2022-CERT-In",
+    "issuing_authority": "Indian Computer Emergency Response Team (CERT-In)",
+    "publication_date": "2022-04-28",
+    "gazette_reference": "Gazette of India, Section 70B(6) IT Act",
+    "source_type": "SECTORAL_REGULATION",
+    "commencement_status": "IN_FORCE",
+    "url": "https://www.cert-in.org.in/PDF/CERT-In_Directions_70B_28.04.2022.pdf",
+    "verification_status": "VERIFIED_PRIMARY_SOURCE"
+  }
+]
+

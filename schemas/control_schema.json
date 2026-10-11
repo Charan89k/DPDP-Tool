@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://truthlabs.org/schemas/tli-dpdp-control-v1.json",
+  "title": "TLIDPDPControlDefinition",
+  "type": "object",
+  "required": [
+    "control_id",
+    "control_version",
+    "title",
+    "objective",
+    "topic",
+    "subcategory",
+    "source_id",
+    "source_provision",
+    "source_status",
+    "commencement_status",
+    "obligation_type",
+    "legal_reference_summary",
+    "applicability_conditions",
+    "applicability_rationale",
+    "assessment_question",
+    "implementation_expectations",
+    "acceptable_evidence",
+    "evidence_limitations",
+    "assessment_guidance",
+    "risk_guidance",
+    "suggested_remediation",
+    "legal_review_status",
+    "methodology_review_status"
+  ],
+  "properties": {
+    "control_id": { "type": "string", "pattern": "^TLI-DPDP-[A-Z]{3}-\\d{2}$" },
+    "control_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "title": { "type": "string", "minLength": 10, "maxLength": 200 },
+    "objective": { "type": "string", "minLength": 20, "maxLength": 1000 },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "NOTICE_TRANSPARENCY", "CONSENT_MANAGEMENT", "LEGITIMATE_USES",
+        "FIDUCIARY_DUTIES", "PROCESSOR_OVERSIGHT", "SECURITY_SAFEGUARDS",
+        "BREACH_READINESS", "RETENTION_ERASURE", "CHILDREN_DISABLED_DATA",
+        "SDF_GOVERNANCE", "DATA_PRINCIPAL_RIGHTS", "CROSS_BORDER_TRANSFERS",
+        "PENALTY_READINESS"
+      ]
+    },
+    "subcategory": { "type": "string", "minLength": 3, "maxLength": 100 },
+    "source_id": { "type": "string", "pattern": "^SRC-\\d{2}$" },
+    "source_provision": { "type": "string", "minLength": 3, "maxLength": 150 },
+    "source_status": {
+      "type": "string",
+      "enum": [
+        "ENACTED_STATUTE", "NOTIFIED_RULES", "OFFICIAL_ORDER",
+        "OFFICIAL_GUIDANCE", "DRAFT_CONSULTATION", "TLI_METHODOLOGY",
+        "SECTORAL_REGULATION"
+      ]
+    },
+    "commencement_status": {
+      "type": "string",
+      "enum": [
+        "IN_FORCE", "SCHEDULED_COMMENCEMENT_13_NOV_2026",
+        "SCHEDULED_COMMENCEMENT_13_MAY_2027", "AWAITING_COMMENCEMENT_NOTIFICATION"
+      ]
+    },
+    "obligation_type": {
+      "type": "string",
+      "enum": [
+        "MANDATORY_STATUTORY", "STATUTORY_EXCEPTION_CONDITIONAL",
+        "SDF_MANDATORY_CONDITIONAL", "TLI_RECOMMENDED_PRACTICE"
+      ]
+    },
+    "legal_reference_summary": { "type": "string", "minLength": 10 },
+    "applicability_conditions": { "type": "string", "minLength": 10 },
+    "applicability_rationale": { "type": "string", "minLength": 10 },
+    "assessment_question": { "type": "string", "minLength": 20, "maxLength": 500 },
+    "implementation_expectations": { "type": "string", "minLength": 20 },
+    "acceptable_evidence": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^EVID-[A-Z]{3,4}-\\d{2}$" },
+      "minItems": 1
+    },
+    "evidence_limitations": { "type": "string", "minLength": 10 },
+    "assessment_guidance": { "type": "string", "minLength": 10 },
+    "risk_guidance": { "type": "string", "minLength": 10 },
+    "suggested_remediation": { "type": "string", "minLength": 10 },
+    "related_control_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^TLI-DPDP-[A-Z]{3}-\\d{2}$" }
+    },
+    "legal_review_status": {
+      "type": "string",
+      "enum": [
+        "LEGAL_VERIFICATION_REQUIRED", "PROVISIONAL_RESEARCH_COMPLETE",
+        "PENDING_TLI_LEGAL_COUNSEL_SIGN_OFF", "APPROVED_BY_TLI_LEGAL"
+      ]
+    },
+    "methodology_review_status": {
+      "type": "string",
+      "enum": [
+        "DRAFT", "METHODOLOGY_REVIEW_PENDING", "APPROVED_BY_TLI_METHODOLOGY_LEAD"
+      ]
+    },
+    "review_notes": { "type": "string" },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  }
+}
+

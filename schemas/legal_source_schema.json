@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://truthlabs.org/schemas/tli-dpdp-legal-source-v1.json",
+  "title": "TLIDPDPLegalSourceDefinition",
+  "type": "object",
+  "required": [
+    "source_id",
+    "title",
+    "citation",
+    "issuing_authority",
+    "publication_date",
+    "gazette_reference",
+    "source_type",
+    "commencement_status",
+    "url",
+    "verification_status"
+  ],
+  "properties": {
+    "source_id": {
+      "type": "string",
+      "pattern": "^SRC-\\d{2}$"
+    },
+    "title": { "type": "string", "minLength": 5, "maxLength": 200 },
+    "citation": { "type": "string", "minLength": 3, "maxLength": 150 },
+    "issuing_authority": { "type": "string", "minLength": 3, "maxLength": 150 },
+    "publication_date": { "type": "string", "minLength": 4, "maxLength": 50 },
+    "gazette_reference": { "type": "string", "minLength": 5, "maxLength": 200 },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "ENACTED_STATUTE", "COMMENCEMENT_NOTIFICATION", "NOTIFIED_RULES",
+        "OFFICIAL_ORDER", "CONSTITUTIONAL_REFERENCE", "SECTORAL_REGULATION"
+      ]
+    },
+    "commencement_status": {
+      "type": "string",
+      "enum": [
+        "IN_FORCE", "PHASED_COMMENCEMENT", "SCHEDULED_COMMENCEMENT_13_NOV_2026",
+        "SCHEDULED_COMMENCEMENT_13_MAY_2027", "AWAITING_COMMENCEMENT_NOTIFICATION"
+      ]
+    },
+    "url": { "type": "string", "minLength": 10 },
+    "verification_status": {
+      "type": "string",
+      "enum": ["VERIFIED_PRIMARY_SOURCE", "LEGAL_VERIFICATION_REQUIRED"]
+    }
+  }
+}
+

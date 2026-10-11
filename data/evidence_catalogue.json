@@ -1,0 +1,716 @@
+[
+  {
+    "evidence_type_id": "EVID-ROPA-01",
+    "title": "Data Processing Activities Inventory (RoPA)",
+    "description": "Comprehensive structured inventory mapping personal data flows, processing purposes, legal grounds, storage repositories, processors, and retention periods.",
+    "linked_controls": [
+      "TLI-DPDP-SCO-01",
+      "TLI-DPDP-LGL-01",
+      "TLI-DPDP-LEG-01",
+      "TLI-DPDP-LEG-02",
+      "TLI-DPDP-XBD-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual / Major Architecture Change",
+    "acceptable_examples": [
+      "Enterprise data inventory spreadsheet",
+      "Privacy management software export (e.g. OneTrust, TrustArc)",
+      "Internal RoPA database report"
+    ],
+    "alternative_evidence": "Enterprise Data Flow Diagrams (DFDs) paired with systems integration matrices.",
+    "verification_procedure": [
+      "Inspect whether each business unit (HR, IT, Marketing, FinTech) has contributed data flows.",
+      "Verify that each activity lists a specific statutory ground (Section 6 Consent or Section 7 clause).",
+      "Confirm that personal data categories (Identity, Financial, Device) are itemised."
+    ],
+    "limitations_and_weaknesses": "High-level network topology diagrams that do not identify personal data elements or processing purposes fail this requirement.",
+    "masking_and_redaction_requirements": "Sanitize internal database IP addresses and credentials; ensure no live employee or customer records are present.",
+    "retention_considerations": "Retain with assessment working papers for statutory audit lifecycle.",
+    "reviewer_guidance": "Cross-check RoPA entries against the controls evaluated in the assessment to ensure scope completeness."
+  },
+  {
+    "evidence_type_id": "EVID-NOT-01",
+    "title": "Pre-Consent Itemised Notice Artifacts",
+    "description": "Verifiable copies and UI screenshots of standalone pre-consent privacy notices presented to Data Principals at collection touchpoints.",
+    "linked_controls": [
+      "TLI-DPDP-NOT-01",
+      "TLI-DPDP-DSR-03"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-1 (Public Governance)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "High-resolution screenshots of live mobile app registration screens",
+      "Web signup forms with standalone notice text",
+      "Scanned paper onboarding consent sheets"
+    ],
+    "alternative_evidence": "Staging/UAT environment walk-through video recordings with code commit hash tags.",
+    "verification_procedure": [
+      "Check that notice is presented before or at the time of consent capture.",
+      "Verify presence of: (a) itemised personal data list, (b) specified purpose, (c) Section 11 rights description, (d) DPBI complaint procedure, (e) Grievance Officer details."
+    ],
+    "limitations_and_weaknesses": "Submitting a general website footer link to a 20-page legal policy does not satisfy pre-consent notice requirements.",
+    "masking_and_redaction_requirements": "Ensure sample screenshots use dummy/synthetic user inputs (e.g., testuser@example.com).",
+    "retention_considerations": "Historical screenshots must be version-linked to the corresponding notice revision.",
+    "reviewer_guidance": "Scrutinize the notice for bundled marketing consent or coercive language."
+  },
+  {
+    "evidence_type_id": "EVID-NOT-02",
+    "title": "Multilingual Notice Mechanism Proof",
+    "description": "Proof of technical capability allowing Data Principals to access notice contents in English or any of the 22 Eighth Schedule languages.",
+    "linked_controls": [
+      "TLI-DPDP-NOT-03"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-1 (Public Governance)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "Screenshots of live language selector toggle displaying regional languages (Hindi, Tamil, Telugu, Bengali, etc.)",
+      "Certified translation files integrated into CMS repository"
+    ],
+    "alternative_evidence": "API documentation and UI walkthrough of localized CMS delivering regional language content based on browser preference.",
+    "verification_procedure": [
+      "Verify the language toggle provides accessibility across Eighth Schedule languages.",
+      "Review sample regional translations to confirm they convey statutory notices accurately."
+    ],
+    "limitations_and_weaknesses": "Relying on unconfigured generic third-party browser translation plugins without native platform support fails Section 5(3).",
+    "masking_and_redaction_requirements": "None (public UI artifacts).",
+    "retention_considerations": "Maintain records of certified translations alongside release version numbers.",
+    "reviewer_guidance": "Test the toggle mechanism in consumer workflows."
+  },
+  {
+    "evidence_type_id": "EVID-NOT-03",
+    "title": "Legacy User Grandfathering Notice Plan",
+    "description": "Documented implementation plan and communication artifacts demonstrating delivery of post-enactment notices to data principals whose consent was acquired prior to commencement.",
+    "linked_controls": [
+      "TLI-DPDP-NOT-02"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "One-time Campaign Record",
+    "acceptable_examples": [
+      "Grandfathering notice campaign execution plan",
+      "Draft email/SMS notification copy",
+      "Email service provider dispatch telemetry logs (aggregated counts)",
+      "Customer portal in-app notice push banners"
+    ],
+    "alternative_evidence": "Staged communication rollout schedule approved by legal with pilot cohort delivery proof.",
+    "verification_procedure": [
+      "Inspect notice content for itemised categories, specified purposes, rights, and grievance contact.",
+      "Confirm that delivery does not alter underlying service access pending principal review.",
+      "Verify delivery tracking telemetry (aggregated counts, delivery success rates)."
+    ],
+    "limitations_and_weaknesses": "Merely publishing a notice on a static website without dispatching notice directly to legacy users fails Section 5(2).",
+    "masking_and_redaction_requirements": "Mask individual recipient email addresses and telephone numbers; use synthetic dispatch samples.",
+    "retention_considerations": "Retain campaign records for statutory audit and enforcement defense lifecycle.",
+    "reviewer_guidance": "Verify whether inactive or dormant user accounts are covered by the grandfathering notice campaign or targeted for erasure."
+  },
+  {
+    "evidence_type_id": "EVID-CON-01",
+    "title": "Affirmative Consent Capture UI Flow & Logs",
+    "description": "Visual proof of unbundled, unticked consent UI and technical schema of immutable consent log receipts.",
+    "linked_controls": [
+      "TLI-DPDP-CON-01",
+      "TLI-DPDP-CON-03"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "UI screenshots showing unticked checkboxes alongside granular purpose toggles",
+      "Database schema and sample JSON payload of a consent audit record (with timestamp, notice version, user ID, IP address)"
+    ],
+    "alternative_evidence": "Automated Playwright/Cypress end-to-end consent test execution logs.",
+    "verification_procedure": [
+      "Verify that checkboxes are unchecked by default (zero dark patterns).",
+      "Confirm that service provision is not conditioned upon consent for optional secondary purposes.",
+      "Inspect consent log schema for timestamp, notice version ID, and affirmative action indicator."
+    ],
+    "limitations_and_weaknesses": "Pre-ticked boxes or bundled 'I agree to all' single checkboxes fail Section 6(1).",
+    "masking_and_redaction_requirements": "Sample database records must use synthetic user IDs (user_synthetic_001) and masked IP addresses (192.0.2.1).",
+    "retention_considerations": "Consent records must be retained for the life of the processing activity plus statutory limitation periods.",
+    "reviewer_guidance": "Check whether consent can be proven in an adversarial DPBI dispute."
+  },
+  {
+    "evidence_type_id": "EVID-CON-02",
+    "title": "Consent Withdrawal Interface & Workflow",
+    "description": "Evidence of self-service consent revocation interfaces and backend workflows halting data processing upon withdrawal.",
+    "linked_controls": [
+      "TLI-DPDP-CON-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "Screenshots of user account privacy settings showing 1-click consent toggle off",
+      "Backend webhook documentation triggering data de-indexing and processing cessation"
+    ],
+    "alternative_evidence": "Video recording of a test user revoking consent in a mobile application with immediate notification receipt.",
+    "verification_procedure": [
+      "Count clicks/actions required to grant consent vs clicks/actions required to revoke.",
+      "Verify that withdrawal triggers automated message to downstream processors."
+    ],
+    "limitations_and_weaknesses": "Forcing users to email support or call a contact center to withdraw consent given digitally violates the 'comparable ease' test.",
+    "masking_and_redaction_requirements": "Use test accounts with synthetic profile data.",
+    "retention_considerations": "Retain withdrawal audit logs for statutory compliance verification.",
+    "reviewer_guidance": "Test the withdrawal path in standard consumer accounts."
+  },
+  {
+    "evidence_type_id": "EVID-DPA-01",
+    "title": "Executed Data Processing Agreements (DPA)",
+    "description": "Redacted copies of legally executed data processing contracts with key IT vendors, cloud hosts, and sub-processors.",
+    "linked_controls": [
+      "TLI-DPDP-FID-01",
+      "TLI-DPDP-PRO-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Commercial Confidential)",
+    "recommended_freshness": "Valid Active Contract Term",
+    "acceptable_examples": [
+      "Fully executed DPA addenda with cloud infrastructure providers (AWS, Azure, GCP)",
+      "SaaS vendor DPAs (Salesforce, Workday)",
+      "Third-party outsourcing processor contracts"
+    ],
+    "alternative_evidence": "Standard Enterprise Service Agreements containing incorporated data protection schedules.",
+    "verification_procedure": [
+      "Inspect signature blocks for authorized client and vendor execution.",
+      "Verify mandatory Rule 7 clauses: processing scope, confidentiality, technical security, breach notice SLA, audit rights, and sub-processor authorization."
+    ],
+    "limitations_and_weaknesses": "Unsigned draft templates or standard clickwrap terms that lack breach notification commitments fail Section 8(2).",
+    "masking_and_redaction_requirements": "Redact commercial fee schedules and pricing terms. Maintain legal entity names and data protection clauses unredacted.",
+    "retention_considerations": "Retain for the contract duration plus 3 years.",
+    "reviewer_guidance": "Ensure all processors identified in RoPA are covered by executed DPAs."
+  },
+  {
+    "evidence_type_id": "EVID-SEC-01",
+    "title": "Information Security Policy & TOMs Architecture",
+    "description": "Formal board-approved information security policies detailing Technical and Organisational Measures (TOMs) deployed across enterprise assets.",
+    "linked_controls": [
+      "TLI-DPDP-LGL-01",
+      "TLI-DPDP-LEG-02",
+      "TLI-DPDP-FID-01",
+      "TLI-DPDP-SEC-01",
+      "TLI-DPDP-PEN-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Approved Information Security Management System (ISMS) policy document",
+      "Access control policy",
+      "Network security architecture diagrams",
+      "Patch management SOPs"
+    ],
+    "alternative_evidence": "ISO/IEC 27001:2022 Statement of Applicability (SoA) and audit reports.",
+    "verification_procedure": [
+      "Verify executive sign-off and approval date.",
+      "Review coverage of access control, vulnerability management, employee offboarding, and physical security."
+    ],
+    "limitations_and_weaknesses": "Unapproved draft policy documents or policies that exist only on paper without technical enforcement fail this control.",
+    "masking_and_redaction_requirements": "Sanitize internal IP schemes, server hostnames, and specific perimeter firewall configurations.",
+    "retention_considerations": "Maintain current version plus immediate preceding baseline.",
+    "reviewer_guidance": "Evaluate whether policies specifically address protection of personal data repositories."
+  },
+  {
+    "evidence_type_id": "EVID-SEC-02",
+    "title": "Cryptographic Architecture & Key Governance",
+    "description": "Technical architectural specifications documenting encryption at rest, encryption in transit, key lifecycle management, and HSM/KMS configurations.",
+    "linked_controls": [
+      "TLI-DPDP-SEC-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Restricted Security)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Cloud KMS / HSM key rotation configuration screenshots",
+      "TLS 1.3 enforcement policies and cipher suite configurations",
+      "Database column-level encryption configurations"
+    ],
+    "alternative_evidence": "SOC 2 Type II report detailing Trust Services Criteria CC6.1, CC6.6, and CC6.7 controls.",
+    "verification_procedure": [
+      "Verify algorithm strength (e.g., AES-256 for rest, TLS 1.2/1.3 with PFS for transit).",
+      "Inspect automated key rotation schedules (annual or bi-annual).",
+      "Confirm segregation of duties between cryptographic key custodians and database administrators."
+    ],
+    "limitations_and_weaknesses": "Hardcoded keys in source code repositories or unrotated static master keys invalidate cryptographic assurance.",
+    "masking_and_redaction_requirements": "Redact master key IDs, secret material, and cloud account credentials. Retain configuration parameters and cipher names.",
+    "retention_considerations": "Maintain architecture specs for current and immediately preceding baseline.",
+    "reviewer_guidance": "Verify whether cryptographic protections extend to off-site backups, snapshots, and disaster recovery replication targets."
+  },
+  {
+    "evidence_type_id": "EVID-VAPT-01",
+    "title": "Independent VAPT Audit Executive Summary",
+    "description": "Executive summary and attestation letter from an independent cybersecurity auditing firm detailing annual VAPT results and vulnerability remediation status.",
+    "linked_controls": [
+      "TLI-DPDP-SEC-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Restricted Security)",
+    "recommended_freshness": "Within Last 12 Months",
+    "acceptable_examples": [
+      "Executive summary of external network and web application penetration test conducted by a CERT-In empaneled or CREST accredited auditor",
+      "Remediation verification letter from external security testing firm"
+    ],
+    "alternative_evidence": "Comprehensive automated Dynamic Application Security Testing (DAST) and infrastructure vulnerability scanning summaries paired with internal security review.",
+    "verification_procedure": [
+      "Check testing scope to ensure personal data applications and databases are covered.",
+      "Verify that all critical and high-severity vulnerabilities have been remediated or have documented mitigations."
+    ],
+    "limitations_and_weaknesses": "Self-run automated vulnerability scans with unresolved critical CVEs do not satisfy independent verification.",
+    "masking_and_redaction_requirements": "Redact exploitable proof-of-concept payload strings and sensitive server credentials. Retain vulnerability counts, severity ratings, and auditor sign-off.",
+    "retention_considerations": "Retain for 3 years to demonstrate continuous security governance.",
+    "reviewer_guidance": "Check specifically whether database exfiltration and unauthorized API access vulnerabilities were tested."
+  },
+  {
+    "evidence_type_id": "EVID-BRC-01",
+    "title": "Personal Data Breach Incident Response Plan",
+    "description": "Formal incident response plan establishing 24/7 detection, escalation, containment, and root-cause analysis for personal data security incidents.",
+    "linked_controls": [
+      "TLI-DPDP-BRC-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "CSIRT charter",
+      "Incident classification matrix",
+      "Step-by-step breach containment playbooks",
+      "Breach escalation contact trees"
+    ],
+    "alternative_evidence": "Enterprise Cyber Incident Response Plan containing a discrete Personal Data Breach Annex.",
+    "verification_procedure": [
+      "Verify inclusion of specific criteria defining a personal data breach under DPDPA Section 2(u).",
+      "Check escalation path to legal, executive management, and DPO."
+    ],
+    "limitations_and_weaknesses": "Generic IT disaster recovery plans that focus solely on system uptime without privacy triage fail this control.",
+    "masking_and_redaction_requirements": "Sanitize personal mobile numbers of crisis team members (retain titles and role designations).",
+    "retention_considerations": "Maintain active version.",
+    "reviewer_guidance": "Verify whether the plan distinguishes between standard operational glitches and personal data breaches."
+  },
+  {
+    "evidence_type_id": "EVID-BRC-02",
+    "title": "Dual Breach Notification Playbook & Templates",
+    "description": "Pre-drafted statutory breach notification templates and transmission protocols for intimating the Data Protection Board of India and affected Data Principals.",
+    "linked_controls": [
+      "TLI-DPDP-BRC-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Current Ready State",
+    "acceptable_examples": [
+      "Bilingual notification templates (English + Hindi)",
+      "Bulk notification pipeline architectural specs",
+      "DPBI digital portal dispatch SOP"
+    ],
+    "alternative_evidence": "Incident ticketing system workflow configured with pre-populated regulatory notification forms.",
+    "verification_procedure": [
+      "Confirm templates contain mandatory statutory details: nature of breach, data categories compromised, potential consequences, mitigation steps, and DPO contact.",
+      "Confirm existence of communication channels (bulk email, SMS, postal, portal banner) to reach Data Principals."
+    ],
+    "limitations_and_weaknesses": "Planning to notify only the regulator while having no mechanism to notify individual Data Principals fails Section 8(6).",
+    "masking_and_redaction_requirements": "Fictional/template placeholder text only.",
+    "retention_considerations": "Active document.",
+    "reviewer_guidance": "Check that the notification language is clear, non-technical, and provides actionable mitigation advice to Data Principals."
+  },
+  {
+    "evidence_type_id": "EVID-RET-01",
+    "title": "Data Retention Schedule & Automated Purging Proof",
+    "description": "Enterprise retention schedule defining maximum storage duration per personal data category, supported by automated technical purging configurations.",
+    "linked_controls": [
+      "TLI-DPDP-RET-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual policy review; purging logs within last 3 months",
+    "acceptable_examples": [
+      "Data Retention Policy matrix",
+      "Database TTL (Time-To-Live) scripts",
+      "Cloud lifecycle rule configuration screenshots (e.g. S3 expiration policies)",
+      "Automated purging execution logs"
+    ],
+    "alternative_evidence": "Third-party certified data destruction certificates paired with quarterly purge review logs.",
+    "verification_procedure": [
+      "Match retention periods against purposes declared in pre-consent notices.",
+      "Inspect technical configuration (database triggers, cron jobs) proving automated erasure occurs."
+    ],
+    "limitations_and_weaknesses": "Having a written policy that says 'data will be kept for 3 years' while database records from 8 years ago remain active and unpurged fails Section 8(7).",
+    "masking_and_redaction_requirements": "Sanitize internal database connection strings.",
+    "retention_considerations": "Maintain audit records of purged record counts.",
+    "reviewer_guidance": "Test whether data deletion applies to backups, read-replicas, and development environments."
+  },
+  {
+    "evidence_type_id": "EVID-RET-02",
+    "title": "Statutory Retention Exceptions Register",
+    "description": "Documented register identifying specific statutory enactments requiring retention beyond operational purpose fulfillment, alongside formal legal hold procedures.",
+    "linked_controls": [
+      "TLI-DPDP-RET-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Legal hold policy",
+      "Cross-statutory retention schedule citing specific Indian enactments (Companies Act 2013 Sec 128, Income-tax Act 1961 Sec 44AA, PMLA 2002 Sec 12)",
+      "Active legal hold case registers"
+    ],
+    "alternative_evidence": "General counsel legal opinion memorandum detailing sector-specific mandatory record retention statutes.",
+    "verification_procedure": [
+      "Verify each listed retention period cites an explicit primary statutory section, not generic business need.",
+      "Confirm segregation and restricted access controls for data placed under legal hold.",
+      "Verify release workflows triggering immediate erasure once statutory retention expires."
+    ],
+    "limitations_and_weaknesses": "Citing vague operational convenience or undefined tax audit possibility without specific statutory citations fails Section 8(7).",
+    "masking_and_redaction_requirements": "Redact sensitive litigation matter names or privileged dispute details. Retain statutory citations and category mappings.",
+    "retention_considerations": "Retain with legal department records.",
+    "reviewer_guidance": "Cross-check exception register against actual database records flagged for preservation."
+  },
+  {
+    "evidence_type_id": "EVID-DSR-01",
+    "title": "Data Principal Rights (DSAR) Portal & Logs",
+    "description": "Operational intake portal, identity verification protocol, and request fulfillment tracking system for processing Data Principal rights.",
+    "linked_controls": [
+      "TLI-DPDP-DSR-01",
+      "TLI-DPDP-DSR-02",
+      "TLI-DPDP-DSR-04"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "Public web intake form screenshots",
+      "Privacy ticketing portal (e.g. Jira Service Management, Zendesk) configured with DSAR categories",
+      "Anonymized completed request tickets"
+    ],
+    "alternative_evidence": "Dedicated monitored email intake SOP paired with SLA tracking spreadsheet.",
+    "verification_procedure": [
+      "Test request intake channels across access, correction, erasure, and nomination.",
+      "Confirm identity verification procedures do not demand excessive additional personal data.",
+      "Verify statutory SLA tracking (resolution within statutory window)."
+    ],
+    "limitations_and_weaknesses": "Having an email address listed in a privacy policy without any internal ticketing queue or backend fulfillment mechanism fails Section 11.",
+    "masking_and_redaction_requirements": "Anonymize all applicant names, emails, and ticket details in submitted operational samples.",
+    "retention_considerations": "Retain DSAR audit records for 3 years to defend against DPBI complaint proceedings.",
+    "reviewer_guidance": "Verify that erasures approved through DSARs propagate downstream to Data Processors."
+  },
+  {
+    "evidence_type_id": "EVID-SOP-01",
+    "title": "Standard Operating Procedure (SOP) Collection",
+    "description": "Suite of approved departmental standard operating procedures governing day-to-day personal data handling across business units.",
+    "linked_controls": [
+      "TLI-DPDP-NOT-02",
+      "TLI-DPDP-LEG-01"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Within Last 24 Months",
+    "acceptable_examples": [
+      "Approved SOPs for HR data intake",
+      "Marketing lead acquisition SOPs",
+      "Customer support data access procedures",
+      "Vendor data sharing workflows"
+    ],
+    "alternative_evidence": "Centralized corporate policy portal with mandatory employee acknowledgment and reading completion tracking.",
+    "verification_procedure": [
+      "Confirm documented workflow steps, responsible roles, and escalation thresholds.",
+      "Verify evidence of operational distribution and employee access."
+    ],
+    "limitations_and_weaknesses": "High-level abstract policies without step-by-step operational workflows do not qualify as SOPs.",
+    "masking_and_redaction_requirements": "None beyond internal department codes if proprietary.",
+    "retention_considerations": "Maintain current active revisions.",
+    "reviewer_guidance": "Sample check employee adherence through interviews or audit records during on-site reviews."
+  },
+  {
+    "evidence_type_id": "EVID-SOP-02",
+    "title": "Data Quality & Deduplication SOP",
+    "description": "Documented standard operating procedures and data validation rules ensuring personal data processed is accurate, complete, and consistent.",
+    "linked_controls": [
+      "TLI-DPDP-FID-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Within Last 24 Months",
+    "acceptable_examples": [
+      "ETL data cleansing pipeline documentation",
+      "Master data management (MDM) deduplication rules",
+      "Schema field validation scripts",
+      "Data correction workflows"
+    ],
+    "alternative_evidence": "Data governance quality dashboard reports displaying automated data integrity metrics.",
+    "verification_procedure": [
+      "Inspect data entry validation rules (e.g., regex checks, checksum validation).",
+      "Verify automated deduplication routines across disparate database repositories.",
+      "Confirm that data corrections submitted by Data Principals synchronize across all operational stores."
+    ],
+    "limitations_and_weaknesses": "Absence of schema validation leading to truncated or corrupted customer profiles violates Section 8(3).",
+    "masking_and_redaction_requirements": "Sanitize database field names containing internal secrets; use synthetic record samples.",
+    "retention_considerations": "Active document.",
+    "reviewer_guidance": "Check whether data shared with third-party processors is updated upon principal correction."
+  },
+  {
+    "evidence_type_id": "EVID-SOP-03",
+    "title": "Breach Escalation & Triage Protocol",
+    "description": "Operational SOP defining specific technical criteria, severity matrices, and rapid escalation protocols for potential personal data breaches.",
+    "linked_controls": [
+      "TLI-DPDP-BRC-02"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "SOC tier-1 to tier-3 escalation playbooks",
+      "Severity classification matrix (P1\u2013P4)",
+      "24/7 on-call rotation schedules"
+    ],
+    "alternative_evidence": "PagerDuty/Opsgenie incident escalation policies configured for data privacy security triggers.",
+    "verification_procedure": [
+      "Verify criteria distinguishing privacy incidents from routine infrastructure alerts.",
+      "Check automated alerting mechanisms to the Data Protection Officer and Legal Counsel.",
+      "Confirm timeline milestones designed to achieve regulatory intimations without undue delay."
+    ],
+    "limitations_and_weaknesses": "Escalation paths requiring multi-layer bureaucratic approvals before security notification commences violate statutory urgency.",
+    "masking_and_redaction_requirements": "Mask personal contact numbers; retain operational role titles.",
+    "retention_considerations": "Active operational procedure.",
+    "reviewer_guidance": "Review tabletop exercise records to verify protocol execution fidelity."
+  },
+  {
+    "evidence_type_id": "EVID-SOP-04",
+    "title": "DSAR Fulfillment & Identity Verification SOP",
+    "description": "Step-by-step operating procedure for intake, identity verification, scope determination, data retrieval, redaction, and transmission of Data Principal rights responses.",
+    "linked_controls": [
+      "TLI-DPDP-DSR-01",
+      "TLI-DPDP-DSR-04"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Detailed DSAR handling manual",
+      "Identity verification decision matrix (knowledge-based, OTP, existing session)",
+      "Response letter templates",
+      "Refusal justification procedures"
+    ],
+    "alternative_evidence": "Privacy management platform workflow diagram and configuration manual.",
+    "verification_procedure": [
+      "Confirm that identity verification requires only proportionate information necessary to authenticate the applicant.",
+      "Verify third-party redaction steps ensuring one applicant does not receive another person's personal data.",
+      "Confirm documentation of grounds and communication workflows when a request is refused."
+    ],
+    "limitations_and_weaknesses": "Demanding notarized affidavits or physical document submission for online digital users creates an impermissible barrier.",
+    "masking_and_redaction_requirements": "Blank templates and sanitized process flows only.",
+    "retention_considerations": "Active operational procedure.",
+    "reviewer_guidance": "Test whether the procedure addresses requests submitted on behalf of deceased or incapacitated principals by lawful nominees under Section 14."
+  },
+  {
+    "evidence_type_id": "EVID-SOP-05",
+    "title": "Grievance Redressal Ticketing SLA & Escalation",
+    "description": "Standard operating procedure governing receipt, investigation, resolution, and escalation of complaints submitted under Section 13.",
+    "linked_controls": [
+      "TLI-DPDP-DSR-03"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Customer grievance handling policy",
+      "Ticketing workflow with automated SLA timers",
+      "Grievance escalation hierarchy",
+      "DPBI referral advisory templates"
+    ],
+    "alternative_evidence": "CRM customer support ticketing system SLA configuration and reporting metrics.",
+    "verification_procedure": [
+      "Verify maximum turnaround time aligns with statutory requirements (prescribed period under Rule 14).",
+      "Confirm inclusion of mandatory statutory advisory informing complainant of their right to escalate unresolved grievances to the DPBI.",
+      "Verify independent review capability for contested complaints."
+    ],
+    "limitations_and_weaknesses": "Routing privacy complaints to general sales or unmonitored general email queues without tracking or statutory advisory fails Section 13.",
+    "masking_and_redaction_requirements": "Template workflows and anonymized aggregate SLA metrics only.",
+    "retention_considerations": "Retain dispute logs for 3 years following resolution.",
+    "reviewer_guidance": "Scrutinize whether resolved complaint notifications clearly inform the Data Principal of their right to appeal to the Board."
+  },
+  {
+    "evidence_type_id": "EVID-CHD-01",
+    "title": "Verifiable Parental Consent Architecture Flow",
+    "description": "Architectural documentation, flowcharts, and live screenshots demonstrating verified parental or guardian consent before processing children's data.",
+    "linked_controls": [
+      "TLI-DPDP-CHD-01"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "UI flowchart showing neutral age-screen",
+      "Integration documentation with approved parental verification methods (e.g. DigiLocker parental relationship tokenization, dual-factor parent OTP)",
+      "Sample synthetic verification records"
+    ],
+    "alternative_evidence": "Third-party age assurance provider certification (e.g., Yoti, Veratad) integrated into onboarding.",
+    "verification_procedure": [
+      "Inspect the age-gating mechanism to confirm it cannot be bypassed by merely refreshing the page.",
+      "Verify that consent request is routed to a verifiable parent/guardian before child account activation."
+    ],
+    "limitations_and_weaknesses": "Relying on an unverified self-declaration checkbox ('I am 18 or older') without technical verification fails Section 9(1).",
+    "masking_and_redaction_requirements": "Use synthetic minor and parent test accounts exclusively. Zero real children's data.",
+    "retention_considerations": "Retain parental verification tokens for the life of the child account.",
+    "reviewer_guidance": "Scrutinize the age-gating logic for vulnerabilities and dark patterns."
+  },
+  {
+    "evidence_type_id": "EVID-CHD-02",
+    "title": "Child Tracking Suppression Technical Proof",
+    "description": "Technical architectural specifications, code inspection records, and ad-tech configuration proofs demonstrating suppression of tracking, behavioural profiling, and targeted ads for minor accounts.",
+    "linked_controls": [
+      "TLI-DPDP-CHD-02"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Restricted Security)",
+    "recommended_freshness": "Current Live Production",
+    "acceptable_examples": [
+      "Ad-server configuration files disabling retargeting pixel injection for accounts flagged as minors",
+      "SDK initialization logs suppressing analytics tracking",
+      "Database feature flags disabling recommendation algorithms for minor user segments"
+    ],
+    "alternative_evidence": "Independent ad-tech audit report certifying zero behavioural tracking on minor account tiers.",
+    "verification_procedure": [
+      "Inspect frontend source code and network requests for minor accounts to verify absence of third-party tracking pixels.",
+      "Verify ad server bidding request payloads confirm omission of behavioural segments.",
+      "Inspect recommendation engine algorithms to ensure purely contextual, non-profiling logic."
+    ],
+    "limitations_and_weaknesses": "Disabling ads on mobile apps while continuing behavioural tracking on web platforms violates Section 9(3).",
+    "masking_and_redaction_requirements": "Sanitize API keys and internal microservice endpoint URLs.",
+    "retention_considerations": "Architecture baselines maintained per release.",
+    "reviewer_guidance": "Conduct dynamic traffic inspection using developer tools on synthetic minor user profiles."
+  },
+  {
+    "evidence_type_id": "EVID-SDF-01",
+    "title": "DPO Appointment Resolution & Reporting Charter",
+    "description": "Certified copy of the Board of Directors resolution formally appointing an India-resident Data Protection Officer, accompanied by the DPO Governance Charter.",
+    "linked_controls": [
+      "TLI-DPDP-SDF-01"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Corporate Governance)",
+    "recommended_freshness": "Active Appointment Term",
+    "acceptable_examples": [
+      "Extract of Board Meeting Minutes signed by Company Secretary",
+      "DPO Job Charter establishing independent reporting to the Board",
+      "Proof of India residency (e.g. resident employment contract extract)"
+    ],
+    "alternative_evidence": "Executive appointment letter signed by CEO and Board Chairman.",
+    "verification_procedure": [
+      "Verify that the appointed DPO is resident in India.",
+      "Confirm reporting hierarchy connects directly to the Board or governing body, not mid-level IT management.",
+      "Verify that the DPO is empowered with independent authority and access to all processing streams."
+    ],
+    "limitations_and_weaknesses": "Naming an overseas executive or assigning DPO duties to a marketing lead with conflicting business targets violates Section 10(2)(a).",
+    "masking_and_redaction_requirements": "Redact remuneration and personal compensation terms.",
+    "retention_considerations": "Retain for the duration of the appointment plus 5 years.",
+    "reviewer_guidance": "Verify that contact details of the DPO match those published in the public privacy notice under Section 8(8)."
+  },
+  {
+    "evidence_type_id": "EVID-SDF-02",
+    "title": "DPIA Methodology & Completed Assessments",
+    "description": "Formal DPIA framework methodology, assessment questionnaires, risk scoring rubrics, and copies of completed DPIA reports for high-risk processing activities.",
+    "linked_controls": [
+      "TLI-DPDP-SDF-02"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Within Last 12 Months",
+    "acceptable_examples": [
+      "Approved DPIA Policy and Procedure",
+      "Risk scoring matrix",
+      "Completed DPIA reports for major automated processing, AI deployment, or biometrics initiatives",
+      "Documented risk mitigation sign-offs"
+    ],
+    "alternative_evidence": "ISO/IEC 27701 privacy risk assessments paired with executive DPIA summary.",
+    "verification_procedure": [
+      "Confirm DPIA assesses necessity, proportionality, data principal harm, and mitigation measures.",
+      "Verify involvement and formal sign-off of the Data Protection Officer.",
+      "Inspect implementation tracking of mitigation actions identified during the DPIA."
+    ],
+    "limitations_and_weaknesses": "High-level checklists completed in minutes without technical architecture analysis or risk evaluation fail statutory DPIA requirements.",
+    "masking_and_redaction_requirements": "Redact trade secrets or unannounced proprietary product features; retain privacy impact analysis and risk ratings.",
+    "retention_considerations": "Retain for the lifespan of the processing activity plus 5 years.",
+    "reviewer_guidance": "Evaluate whether DPIAs are initiated during design phases (Privacy by Design) or only retrospectively."
+  },
+  {
+    "evidence_type_id": "EVID-XBD-01",
+    "title": "Cross-Border Data Transfer Inventory",
+    "description": "Comprehensive technical register detailing all outbound transfers of personal data outside India, including destination countries, transfer mechanisms, cloud hosting regions, and third-party recipients.",
+    "linked_controls": [
+      "TLI-DPDP-SCO-01",
+      "TLI-DPDP-XBD-01"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Internal Confidential)",
+    "recommended_freshness": "Annual Review",
+    "acceptable_examples": [
+      "Cross-border data mapping table",
+      "Cloud region configuration reports (e.g., AWS global infrastructure inventory)",
+      "SaaS vendor data residency matrices",
+      "Network routing configurations"
+    ],
+    "alternative_evidence": "Enterprise data flow diagrams explicitly labelling geographic boundaries and transit routes.",
+    "verification_procedure": [
+      "Match destination countries against Central Government notified negative list / restricted jurisdictions.",
+      "Verify that transfers comply with applicable bilateral or sectoral transfer restrictions.",
+      "Confirm that contractually bound foreign sub-processors adhere to DPDPA equivalent safeguards."
+    ],
+    "limitations_and_weaknesses": "Assuming data stays in India without verifying actual backup, CDN cache, or analytics processing locations fails this control.",
+    "masking_and_redaction_requirements": "Sanitize internal server IPs and subnets; preserve country names and cloud regions.",
+    "retention_considerations": "Active document.",
+    "reviewer_guidance": "Check where database backups, analytics logs, and customer support portal data reside."
+  },
+  {
+    "evidence_type_id": "EVID-XBD-02",
+    "title": "Sectoral Data Localization System Audit Report",
+    "description": "Formal compliance audit report or regulatory filing attesting to strict domestic data localization mandated by sector-specific regulators (e.g., RBI payment system data directive, IRDAI insurance guidelines).",
+    "linked_controls": [
+      "TLI-DPDP-XBD-02"
+    ],
+    "status": "CONDITIONAL",
+    "confidentiality_tier": "TIER-2 (Regulatory Audit)",
+    "recommended_freshness": "Within Last 12 Months",
+    "acceptable_examples": [
+      "CERT-In empaneled System Audit Report (SAR) on RBI Storage of Payment System Data",
+      "IRDAI data storage compliance certificate",
+      "TRAI telecom data storage attestation"
+    ],
+    "alternative_evidence": "Internal audit report signed by Chief Information Security Officer (CISO) and statutory auditors verifying domestic storage.",
+    "verification_procedure": [
+      "Confirm end-to-end data processing and storage resides strictly on servers physically located in India.",
+      "Verify that cross-border processing for fraud detection or settlement adheres strictly to sectoral turnaround and deletion windows.",
+      "Inspect auditor opinion and attestation signature blocks."
+    ],
+    "limitations_and_weaknesses": "Claiming DPDPA Section 16 allows unrestricted transfers while ignoring strict RBI/IRDAI domestic storage mandates is legally invalid.",
+    "masking_and_redaction_requirements": "Redact commercial audit fee figures. Retain audit scope, findings, and auditor attestation.",
+    "retention_considerations": "Retain for statutory regulatory retention period (minimum 5 years).",
+    "reviewer_guidance": "Cross-check with sectoral regulatory requirements applicable to the client's industry."
+  },
+  {
+    "evidence_type_id": "EVID-RSK-01",
+    "title": "Enterprise Statutory Penalty Deficit Exposure Risk",
+    "description": "Executive-level risk exposure register quantifying organizational financial liability across the five Schedule penalty brackets based on identified compliance gaps.",
+    "linked_controls": [
+      "TLI-DPDP-PEN-01"
+    ],
+    "status": "MANDATORY",
+    "confidentiality_tier": "TIER-2 (Corporate Risk)",
+    "recommended_freshness": "Bi-annual Executive Review",
+    "acceptable_examples": [
+      "Enterprise risk register privacy addendum",
+      "Board Audit Committee compliance presentation",
+      "Executive gap analysis exposure dashboard",
+      "TLI Gap Analysis Report executive briefing"
+    ],
+    "alternative_evidence": "Chief Risk Officer (CRO) quarterly regulatory liability assessment memo.",
+    "verification_procedure": [
+      "Verify quantification of maximum exposure across statutory penalty brackets (\u20b9250 Cr, \u20b9200 Cr, \u20b9150 Cr, \u20b950 Cr, \u20b910,000).",
+      "Confirm linkage between unmitigated operational deficits and statutory exposure tiers.",
+      "Verify reporting to Board Audit Committee or Chief Executive Officer."
+    ],
+    "limitations_and_weaknesses": "Highlighting operational risks without quantifying statutory financial liability fails to drive board-level remediation.",
+    "masking_and_redaction_requirements": "Redact unapproved future budget allocations. Retain risk scores and exposure figures.",
+    "retention_considerations": "Retain for 3 years.",
+    "reviewer_guidance": "Cross-reference the exposure model with the output of the TLI Provisional Scoring and Risk Engine."
+  }
+]
