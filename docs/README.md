@@ -90,6 +90,15 @@ The platform is purpose-built to enable TLI consultants and client organisations
 
 ---
 
+## Phase 6: Pilot Validation & Production Readiness
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **49** | [End-to-End Acceptance Report](49_end_to_end_acceptance_report.md) | Full 12-stage workflow verification matrix across all personas, edge cases, error recovery, and 141 automated tests. |
+| **50** | [Security Audit & Production Readiness Assessment](50_security_and_production_readiness.md) | Comprehensive security review, PostgreSQL RLS kernel isolation, infrastructure operations, decision register audit (DEC-01..10), legal register review, and READY FOR PILOT release recommendation. |
+
+---
+
 ## Machine-Readable Data Assets & Schemas
 
 | Asset | Records / Specs | Location & Formats | Description |
@@ -104,7 +113,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
 | **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 | **Evidence Storage Test Suite** | Test Suite | [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py) | Automated test suite verifying presigned S3 workflows, file signature checks, malware quarantine, and tenant boundaries. |
-| **Application & Auth Test Suite** | Test Suite | [`tests/`](../tests/) | Automated Node test suite verifying JWT session security, open redirects, 7-role RBAC, and live PostgreSQL RLS pool isolation. |
+| **Application & Auth Test Suite** | Test Suite | [`tests/`](../tests/) | Automated Node test suite verifying JWT session security, open redirects, 7-role RBAC, live PostgreSQL RLS pool isolation, and end-to-end pilot validation (17 suites, 141 tests). |
 
 ---
 
