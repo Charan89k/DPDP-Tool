@@ -209,6 +209,14 @@ export default async function AssessmentsPage() {
                 </Link>
 
                 <Link
+                  href={`/dashboard/assessments/${assessment.id}/review`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-lg shadow-2xs transition-colors"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Assessor Review</span>
+                </Link>
+
+                <Link
                   href={`/dashboard/assessments/${assessment.id}/summary`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition-colors"
                 >

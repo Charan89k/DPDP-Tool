@@ -612,6 +612,12 @@ export default async function DashboardPage() {
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end space-x-1.5">
                             <Link
+                              href={`/dashboard/assessments/${item.id}/review`}
+                              className="px-2.5 py-1 text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded shadow-2xs transition-colors"
+                            >
+                              Review
+                            </Link>
+                            <Link
                               href={`/dashboard/assessments/${item.id}/questionnaire`}
                               className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 rounded shadow-2xs transition-colors"
                             >
