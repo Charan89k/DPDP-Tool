@@ -48,6 +48,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | Ref | Document | Authoritative Topic |
 |---|---|---|
 | **23** | [Phase 3A Database Implementation](23_phase_3a_database_implementation.md) | Relational schema (23 tables), PostgreSQL RLS isolation, migration runner, synthetic multi-tenant seed fixtures, and test suite. |
+| **24** | [Phase 3A.1 Live Database Verification](24_phase_3a_live_database_verification.md) | Live PostgreSQL 18.6 testing, RLS boundary tests, search-path hardening, root-cause fixes, and final PASS verdict. |
 
 ---
 

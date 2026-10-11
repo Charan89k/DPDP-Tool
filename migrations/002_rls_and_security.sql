@@ -76,7 +76,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public;
 
 -- Extracts transaction-local 'app.current_user_id' safely as UUID
 CREATE OR REPLACE FUNCTION app_current_user_id() RETURNS UUID AS $$
@@ -85,7 +85,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public;
 
 -- Extracts transaction-local 'app.current_user_role' safely as TEXT
 CREATE OR REPLACE FUNCTION app_current_user_role() RETURNS TEXT AS $$
@@ -94,11 +94,41 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN '';
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public;
+
+-- Checks if a specific user is assigned to an assessment (breaks RLS recursion)
+CREATE OR REPLACE FUNCTION is_user_assigned_to_assessment(p_assessment_id UUID, p_user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+    IF p_assessment_id IS NULL OR p_user_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    RETURN EXISTS (
+        SELECT 1 FROM assessment_assignments
+        WHERE assessment_id = p_assessment_id AND user_id = p_user_id
+    );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public;
+
+-- Looks up an assessment's tenant_id (breaks RLS recursion between assignments and assessments)
+CREATE OR REPLACE FUNCTION get_assessment_tenant_id(p_assessment_id UUID)
+RETURNS UUID AS $$
+DECLARE
+    v_tenant_id UUID;
+BEGIN
+    IF p_assessment_id IS NULL THEN
+        RETURN NULL;
+    END IF;
+    SELECT tenant_id INTO v_tenant_id FROM assessments WHERE id = p_assessment_id;
+    RETURN v_tenant_id;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public;
 
 GRANT EXECUTE ON FUNCTION app_current_tenant_id() TO dpdp_app_user;
 GRANT EXECUTE ON FUNCTION app_current_user_id() TO dpdp_app_user;
 GRANT EXECUTE ON FUNCTION app_current_user_role() TO dpdp_app_user;
+GRANT EXECUTE ON FUNCTION is_user_assigned_to_assessment(UUID, UUID) TO dpdp_app_user;
+GRANT EXECUTE ON FUNCTION get_assessment_tenant_id(UUID) TO dpdp_app_user;
 
 -- ============================================================================
 -- 4. FORCE ROW-LEVEL SECURITY ON ALL TENANT-SCOPED TABLES
@@ -234,11 +264,7 @@ CREATE POLICY rls_assessments_policy ON assessments
         app_current_user_role() = 'TLI_SUPER_ADMIN'
         OR (
             app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
-            AND id IN (
-                SELECT aa.assessment_id
-                FROM assessment_assignments aa
-                WHERE aa.user_id = app_current_user_id()
-            )
+            AND is_user_assigned_to_assessment(id, app_current_user_id())
         )
         OR (
             app_current_tenant_id() IS NOT NULL
@@ -249,11 +275,7 @@ CREATE POLICY rls_assessments_policy ON assessments
         app_current_user_role() = 'TLI_SUPER_ADMIN'
         OR (
             app_current_user_role() IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')
-            AND id IN (
-                SELECT aa.assessment_id
-                FROM assessment_assignments aa
-                WHERE aa.user_id = app_current_user_id()
-            )
+            AND is_user_assigned_to_assessment(id, app_current_user_id())
         )
         OR (
             app_current_tenant_id() IS NOT NULL
@@ -270,11 +292,18 @@ CREATE POLICY rls_assessment_assignments_policy ON assessment_assignments
     TO dpdp_app_user
     USING (
         app_current_user_role() = 'TLI_SUPER_ADMIN'
-        OR assessment_id IN (SELECT a.id FROM assessments a)
+        OR user_id = app_current_user_id()
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND get_assessment_tenant_id(assessment_id) = app_current_tenant_id()
+        )
     )
     WITH CHECK (
         app_current_user_role() IN ('TLI_SUPER_ADMIN', 'TLI_LEAD_CONSULTANT')
-        AND assessment_id IN (SELECT a.id FROM assessments a)
+        OR (
+            app_current_tenant_id() IS NOT NULL
+            AND get_assessment_tenant_id(assessment_id) = app_current_tenant_id()
+        )
     );
 
 -- ----------------------------------------------------------------------------

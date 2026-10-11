@@ -199,24 +199,31 @@ def run_live_tests(database_url: str) -> List[TestResult]:
     results = []
 
     # Helper to execute test as dpdp_app_user inside a transaction
-    def exec_app_user_query(tenant_id: str, user_id: str, role: str, query: str) -> Tuple[int, str, str]:
-        setup = ""
+    def exec_app_user_query(tenant_id: str, user_id: str, role: str, query: str) -> Tuple[int, List[str], str]:
+        setup_lines = []
         if tenant_id:
-            setup += f"SELECT set_config('app.current_tenant_id', '{tenant_id}', true);\n"
+            setup_lines.append(f"    PERFORM set_config('app.current_tenant_id', '{tenant_id}', true);")
         if user_id:
-            setup += f"SELECT set_config('app.current_user_id', '{user_id}', true);\n"
+            setup_lines.append(f"    PERFORM set_config('app.current_user_id', '{user_id}', true);")
         if role:
-            setup += f"SELECT set_config('app.current_user_role', '{role}', true);\n"
+            setup_lines.append(f"    PERFORM set_config('app.current_user_role', '{role}', true);")
+
+        setup_block = ""
+        if setup_lines:
+            setup_block = "DO $$ BEGIN\n" + "\n".join(setup_lines) + "\nEND $$;\n"
 
         full_sql = f"""
         SET ROLE dpdp_app_user;
         BEGIN;
-        {setup}
+        {setup_block}
         {query}
         COMMIT;
         RESET ROLE;
         """
-        return run_psql(database_url, full_sql)
+        code, out, err = run_psql(database_url, full_sql)
+        ignored = {"SET", "BEGIN", "DO", "COMMIT", "RESET", "ROLLBACK"}
+        clean_lines = [l.strip() for l in out.splitlines() if l.strip() and l.strip() not in ignored]
+        return code, clean_lines, err
 
     # Test L1: Fresh schema migrations check
     code, out, err = run_psql(database_url, "SELECT COUNT(*) FROM schema_migrations;")
@@ -227,16 +234,15 @@ def run_live_tests(database_url: str) -> List[TestResult]:
 
     # Test L2: Fail-Closed Check (Unset context returns zero rows)
     q = "SELECT COUNT(*) FROM assessments;"
-    code, out, err = exec_app_user_query("", "", "", q)
-    if code == 0 and out.strip() == "0":
+    code, lines, err = exec_app_user_query("", "", "", q)
+    if code == 0 and lines == ["0"]:
         results.append(TestResult("RLS Fail-Closed (Unset Context)", True, "Unset context returned 0 rows (fail-closed)"))
     else:
-        results.append(TestResult("RLS Fail-Closed (Unset Context)", False, f"Expected 0 rows, got: {out} (err: {err})"))
+        results.append(TestResult("RLS Fail-Closed (Unset Context)", False, f"Expected ['0'], got: {lines} (err: {err})"))
 
     # Test L3: Tenant Alpha Isolation (Can see own assessment, cannot see Beta)
     q = "SELECT engagement_code FROM assessments ORDER BY engagement_code;"
-    code, out, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
-    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
     if code == 0 and lines == ["ENG-ALPHA-2026-Q4"]:
         results.append(TestResult("RLS Tenant Isolation (Alpha Read)", True, f"Alpha sees strictly own assessment: {lines}"))
     else:
@@ -244,77 +250,152 @@ def run_live_tests(database_url: str) -> List[TestResult]:
 
     # Test L4: Cross-Tenant Direct Query (Alpha attempts to SELECT Beta assessment by ID)
     q = f"SELECT COUNT(*) FROM assessments WHERE id = '{ASSESSMENT_BETA_ID}';"
-    code, out, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
-    if code == 0 and out.strip() == "0":
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
+    if code == 0 and lines == ["0"]:
         results.append(TestResult("RLS Cross-Tenant Read Block", True, "Alpha query for Beta assessment ID returned 0 rows"))
     else:
-        results.append(TestResult("RLS Cross-Tenant Read Block", False, f"Alpha accessed Beta assessment: {out} (err: {err})"))
+        results.append(TestResult("RLS Cross-Tenant Read Block", False, f"Alpha accessed Beta assessment: {lines} (err: {err})"))
 
     # Test L5: Cross-Tenant Update Prevention (Alpha attempts to modify Beta assessment)
-    q = f"UPDATE assessments SET title = 'Hacked' WHERE id = '{ASSESSMENT_BETA_ID}'; SELECT COUNT(*) FROM assessments WHERE title = 'Hacked';"
-    code, out, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
-    if code == 0 and "0" in out:
-        results.append(TestResult("RLS Cross-Tenant Update Block", True, "Alpha cannot UPDATE Beta Express assessment"))
+    q = f"UPDATE assessments SET title = 'Hacked' WHERE id = '{ASSESSMENT_BETA_ID}';"
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
+    if code == 0 and (not lines or lines == ["UPDATE 0"]):
+        results.append(TestResult("RLS Cross-Tenant Update Block", True, "Alpha cannot UPDATE Beta Express assessment (0 rows affected)"))
     else:
-        results.append(TestResult("RLS Cross-Tenant Update Block", False, f"Alpha updated Beta assessment: {out} (err: {err})"))
+        results.append(TestResult("RLS Cross-Tenant Update Block", False, f"Alpha updated Beta assessment: {lines} (err: {err})"))
 
     # Test L6: Cross-Tenant Insert Prevention (Alpha attempts to INSERT row for Beta tenant)
     q = f"""
     INSERT INTO assessments (tenant_id, framework_version_id, scoring_model_id, engagement_code, title, lead_consultant_id)
     VALUES ('{TENANT_BETA_ID}', 'ab68a890-9932-5775-bd04-d18bffdb0415', 'c9ddba7f-8954-5d37-a92f-cf5a1f27e68b',
-            'ROGUE-ENGAGEMENT', 'Rogue Title', '{USER_TLI_LEAD_ID}');
+            'ROGUE-ENGAGEMENT-1', 'Rogue Title', '{USER_TLI_LEAD_ID}');
     """
-    code, out, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
-    if code != 0 and "new row violates row-level security policy" in (err + out):
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q)
+    if code != 0 and "violates row-level security policy" in (err + "".join(lines)):
         results.append(TestResult("RLS Cross-Tenant Insert Block", True, "Cross-tenant INSERT rejected by RLS WITH CHECK policy"))
     else:
-        results.append(TestResult("RLS Cross-Tenant Insert Block", False, f"Cross-tenant insert succeeded or unexpected error: {err}"))
+        results.append(TestResult("RLS Cross-Tenant Insert Block", False, f"Cross-tenant insert succeeded or unexpected error: {err} {lines}"))
 
     # Test L7: Connection Reuse & Session Bleed Prevention (is_local=true scope check)
     session_bleed_sql = f"""
     SET ROLE dpdp_app_user;
     BEGIN;
-    SELECT set_config('app.current_tenant_id', '{TENANT_ALPHA_ID}', true);
+    DO $$ BEGIN PERFORM set_config('app.current_tenant_id', '{TENANT_ALPHA_ID}', true); END $$;
     SELECT count(*) FROM assessments;
     COMMIT;
-    -- Query in next transaction without setting context (simulating connection pool reuse)
+    -- Reused connection without setting context in subsequent transaction
     BEGIN;
     SELECT count(*) FROM assessments;
     COMMIT;
     RESET ROLE;
     """
     code, out, err = run_psql(database_url, session_bleed_sql)
-    out_lines = [l.strip() for l in out.splitlines() if l.strip().isdigit()]
-    if code == 0 and len(out_lines) >= 2 and out_lines[0] == "1" and out_lines[1] == "0":
+    ignored = {"SET", "BEGIN", "DO", "COMMIT", "RESET", "ROLLBACK"}
+    clean_lines = [l.strip() for l in out.splitlines() if l.strip() and l.strip() not in ignored]
+    if code == 0 and len(clean_lines) >= 2 and clean_lines[0] == "1" and clean_lines[1] == "0":
         results.append(TestResult("Connection Reuse Bleed Prevention", True,
                                   "Tx 1 saw 1 assessment; subsequent reused connection without context saw 0 (no bleed)"))
     else:
         results.append(TestResult("Connection Reuse Bleed Prevention", False,
-                                  f"Session bleed detected! Output: {out} (err: {err})"))
+                                  f"Session bleed detected! Output: {clean_lines} (err: {err})"))
 
-    # Test L8: Immutability Enforcement on Audit Logs
-    q_audit_update = "UPDATE audit_logs SET action = 'ALTERED' WHERE id = '018f3a5b-7c8d-7e90-8000-0000000601';"
+    # Test L8: Immutability Enforcement on Audit Logs (UPDATE)
+    q_audit_update = "UPDATE audit_logs SET action = 'ALTERED' WHERE id = '018f3a5b-7c8d-7e90-8000-000000000601';"
     code, out, err = run_psql(database_url, q_audit_update)
     if code != 0 and "FORENSIC_INTEGRITY_VIOLATION" in (err + out):
         results.append(TestResult("Audit Log Immutability (UPDATE)", True, "Trigger trg_audit_logs_immutable blocked UPDATE"))
     else:
         results.append(TestResult("Audit Log Immutability (UPDATE)", False, f"Audit log update was permitted! {out} {err}"))
 
-    # Test L9: Immutability Enforcement on Response History
-    q_hist_delete = "DELETE FROM control_response_history WHERE id = '018f3a5b-7c8d-7e90-8000-0000000301';"
+    # Test L9: Immutability Enforcement on Audit Logs (DELETE)
+    q_audit_delete = "DELETE FROM audit_logs WHERE id = '018f3a5b-7c8d-7e90-8000-000000000601';"
+    code, out, err = run_psql(database_url, q_audit_delete)
+    if code != 0 and "FORENSIC_INTEGRITY_VIOLATION" in (err + out):
+        results.append(TestResult("Audit Log Immutability (DELETE)", True, "Trigger trg_audit_logs_immutable blocked DELETE"))
+    else:
+        results.append(TestResult("Audit Log Immutability (DELETE)", False, f"Audit log delete was permitted! {out} {err}"))
+
+    # Test L10: Immutability Enforcement on Response History (DELETE)
+    q_hist_delete = "DELETE FROM control_response_history WHERE id = '018f3a5b-7c8d-7e90-8000-000000000301';"
     code, out, err = run_psql(database_url, q_hist_delete)
     if code != 0 and "FORENSIC_INTEGRITY_VIOLATION" in (err + out):
         results.append(TestResult("Response History Immutability (DELETE)", True, "Trigger trg_response_history_immutable blocked DELETE"))
     else:
         results.append(TestResult("Response History Immutability (DELETE)", False, f"History delete was permitted! {out} {err}"))
 
-    # Test L10: Canonical Library Immutability (dpdp_app_user cannot modify controls)
+    # Test L11: Canonical Library Immutability (dpdp_app_user cannot modify controls)
     q_mod_ctrl = "UPDATE controls SET title = 'Altered Title' WHERE code = 'TLI-DPDP-SCO-01';"
-    code, out, err = exec_app_user_query("", "", "", q_mod_ctrl)
-    if code != 0 and "permission denied for table controls" in (err + out):
+    code, lines, err = exec_app_user_query("", "", "", q_mod_ctrl)
+    if code != 0 and "permission denied for table controls" in (err + "".join(lines)):
         results.append(TestResult("Canonical Library App User Immutability", True, "dpdp_app_user has SELECT-only permission on controls"))
     else:
-        results.append(TestResult("Canonical Library App User Immutability", False, f"App user modified canonical control! {out} {err}"))
+        results.append(TestResult("Canonical Library App User Immutability", False, f"App user modified canonical control! {lines} {err}"))
+
+    # Test L12: Consultant Scoping Isolation (Assigned to Alpha, not Beta)
+    q_consultant = "SELECT engagement_code FROM assessments ORDER BY engagement_code;"
+    code, lines, err = exec_app_user_query("", USER_TLI_LEAD_ID, "TLI_LEAD_CONSULTANT", q_consultant)
+    # Lead consultant is assigned to both Alpha and Beta in seed
+    # Let's test Reviewer Karan Verma who is assigned ONLY to Alpha!
+    q_reviewer = "SELECT engagement_code FROM assessments ORDER BY engagement_code;"
+    code, lines, err = exec_app_user_query("", "018f3a5b-7c8d-7e90-8000-000000000103", "TLI_REVIEWER", q_reviewer)
+    if code == 0 and lines == ["ENG-ALPHA-2026-Q4"]:
+        results.append(TestResult("Consultant Scoping Isolation (Assignment Gate)", True,
+                                  f"Reviewer sees strictly assigned assessment: {lines}"))
+    else:
+        results.append(TestResult("Consultant Scoping Isolation (Assignment Gate)", False,
+                                  f"Reviewer saw unexpected assessments: {lines} (err: {err})"))
+
+    # Test L13: Referential Integrity - ON DELETE RESTRICT enforcement
+    q_del_tenant = f"DELETE FROM tenants WHERE id = '{TENANT_ALPHA_ID}';"
+    code, out, err = run_psql(database_url, q_del_tenant)
+    if code != 0 and "foreign key constraint" in (err + out).lower():
+        results.append(TestResult("Referential Audit Safety (ON DELETE RESTRICT)", True,
+                                  "Database blocked tenant deletion with active child records"))
+    else:
+        results.append(TestResult("Referential Audit Safety (ON DELETE RESTRICT)", False,
+                                  f"Tenant deletion was allowed or unexpected error: {out} {err}"))
+
+    # Test L14: Business Units Isolation (Alpha user cannot view Beta BUs)
+    q_bu = "SELECT code FROM business_units ORDER BY code;"
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q_bu)
+    if code == 0 and lines == ["BU-CLINICAL", "BU-CORP", "BU-ENG"]:
+        results.append(TestResult("Business Units Tenant Isolation", True,
+                                  f"Alpha sees strictly own business units: {lines}"))
+    else:
+        results.append(TestResult("Business Units Tenant Isolation", False,
+                                  f"Alpha saw unexpected business units: {lines} (err: {err})"))
+
+    # Test L15: Processing Activities (RoPA) Tenant Isolation
+    q_ropa = "SELECT statutory_ground FROM processing_activities ORDER BY statutory_ground;"
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q_ropa)
+    if code == 0 and lines == ["CONSENT_SECTION_6", "EMPLOYMENT_SECTION_7_G"]:
+        results.append(TestResult("Processing Activities (RoPA) Tenant Isolation", True,
+                                  f"Alpha sees strictly own RoPA activities: {lines}"))
+    else:
+        results.append(TestResult("Processing Activities (RoPA) Tenant Isolation", False,
+                                  f"Alpha saw unexpected RoPA activities: {lines} (err: {err})"))
+
+    # Test L16: Evidence Vault Tenant Read Isolation
+    q_evid = "SELECT file_name FROM evidence_items ORDER BY file_name;"
+    code, lines, err = exec_app_user_query(TENANT_ALPHA_ID, USER_ALPHA_CONTRIBUTOR_ID, "CLIENT_CONTRIBUTOR", q_evid)
+    if code == 0 and len(lines) == 2 and all("AlphaHealth" in f for f in lines):
+        results.append(TestResult("Evidence Vault Tenant Isolation", True,
+                                  f"Alpha sees strictly own evidence records: {lines}"))
+    else:
+        results.append(TestResult("Evidence Vault Tenant Isolation", False,
+                                  f"Alpha saw unexpected evidence records: {lines} (err: {err})"))
+
+    # Test L17: TLI Super Admin Global Cross-Tenant Visibility
+    q_super = "SELECT engagement_code FROM assessments ORDER BY engagement_code;"
+    code, lines, err = exec_app_user_query("018f3a5b-7c8d-7e90-8000-000000000001",
+                                           "018f3a5b-7c8d-7e90-8000-000000000101",
+                                           "TLI_SUPER_ADMIN", q_super)
+    if code == 0 and lines == ["ENG-ALPHA-2026-Q4", "ENG-BETA-2026-BASELINE"]:
+        results.append(TestResult("TLI Super Admin Global Visibility", True,
+                                  f"Super Admin sees all engagements across tenants: {lines}"))
+    else:
+        results.append(TestResult("TLI Super Admin Global Visibility", False,
+                                  f"Super Admin did not see all engagements: {lines} (err: {err})"))
 
     return results
 
