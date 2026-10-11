@@ -161,7 +161,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         FROM evidence_items ei
         LEFT JOIN assessment_controls ac ON ac.id = ei.assessment_control_id
         LEFT JOIN controls c ON c.id = ac.control_id
-        WHERE ei.assessment_id = $1 OR ac.assessment_id = $1
+        WHERE (ei.assessment_id = $1 OR ac.assessment_id = $1) AND ei.status != 'DELETED'
         ORDER BY ei.created_at DESC;`,
         [assessmentId]
       );

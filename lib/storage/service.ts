@@ -10,21 +10,27 @@ import { FileValidator, ValidationError } from "./validation.ts";
 import { getLocalStorageAdapter, LocalStorageAdapter } from "./local_adapter.ts";
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
-import { canAccessAllTenants, isTliRole } from "../auth/rbac.ts";
+import { canAccessAllTenants, isTliRole, canReviewAssessment } from "../auth/rbac.ts";
 
 export interface EvidenceRecord {
   id: string;
   tenantId: string;
   assessmentId: string;
   controlCode: string;
+  questionCode?: string | null;
+  evidenceCategory?: string | null;
+  description?: string | null;
   fileName: string;
   fileSizeBytes: number;
   mimeType: string;
   storageKey: string;
   sha256: string;
-  status: "PENDING_UPLOAD" | "PENDING_SCAN" | "ACTIVE" | "QUARANTINED" | "SUPERSEDED" | "DELETED";
+  status: "PENDING_UPLOAD" | "PENDING_SCAN" | "ACTIVE" | "VERIFIED" | "REJECTED" | "QUARANTINED" | "SUPERSEDED" | "DELETED";
   quarantineReason?: string | null;
   uploadedByUserId: string;
+  verifiedByReviewerId?: string | null;
+  verificationNotes?: string | null;
+  verifiedAt?: string | null;
   createdAt: string;
 }
 
@@ -47,12 +53,25 @@ export class EvidenceVaultService {
   public async uploadEvidence(params: {
     sessionUser: SessionUser;
     assessmentId: string;
-    controlCode: string;
+    controlCode?: string;
+    questionCode?: string;
+    evidenceCategory?: string;
+    description?: string;
     filename: string;
     mimeType: string;
     content: Buffer;
   }): Promise<EvidenceRecord> {
-    const { sessionUser, assessmentId, controlCode, filename, mimeType, content } = params;
+    const {
+      sessionUser,
+      assessmentId,
+      controlCode = "GENERIC",
+      questionCode,
+      evidenceCategory,
+      description,
+      filename,
+      mimeType,
+      content,
+    } = params;
 
     // 1. Validate file metadata (size, MIME type allowlist, extension matching, filename sanitization)
     const { sanitizedFilename, normalizedMime } = this.validator.validateMetadata(
@@ -69,7 +88,7 @@ export class EvidenceVaultService {
     const storageKey = FileValidator.generateStorageKey(
       sessionUser.tenantId,
       assessmentId,
-      controlCode,
+      questionCode || controlCode || "GENERIC",
       evidenceId
     );
 
@@ -80,7 +99,10 @@ export class EvidenceVaultService {
       id: evidenceId,
       tenantId: sessionUser.tenantId,
       assessmentId,
-      controlCode,
+      controlCode: controlCode || questionCode || "GENERIC",
+      questionCode: questionCode || null,
+      evidenceCategory: evidenceCategory || null,
+      description: description || null,
       fileName: sanitizedFilename,
       fileSizeBytes: saveResult.bytesWritten,
       mimeType: normalizedMime,
@@ -94,7 +116,17 @@ export class EvidenceVaultService {
     // 5. Try persisting to PostgreSQL evidence_items table under RLS if DB pool is accessible
     try {
       await executeWithRls(sessionUser, async (client) => {
-        // Find or check assessment control ID
+        // First verify caller has authorization to access target assessment
+        const assessRes = await client.query(
+          "SELECT id, tenant_id FROM assessments WHERE id = $1 LIMIT 1;",
+          [assessmentId]
+        );
+        if (assessRes.rowCount === 0) {
+          throw new ValidationError("Access denied: Target assessment not found or not accessible under your security profile.");
+        }
+        const assessment = assessRes.rows[0];
+
+        // Find or check assessment control ID if controlCode matches a statutory control
         const ctrlRes = await client.query(
           `SELECT ac.id 
            FROM assessment_controls ac
@@ -103,37 +135,42 @@ export class EvidenceVaultService {
            LIMIT 1`,
           [assessmentId, controlCode]
         );
-
         const assessmentControlId = ctrlRes.rows[0]?.id || null;
 
-        if (assessmentControlId) {
-          await client.query(
-            `INSERT INTO evidence_items (
-              id, tenant_id, assessment_control_id, uploaded_by_user_id,
-              file_name, file_size_bytes, mime_type, s3_key, s3_bucket,
-              sha256_hash, status, scan_provider, scan_result, scanned_at
-            ) VALUES (
-              $1, $2, $3, $4,
-              $5, $6, $7, $8, 'local-vault',
-              $9, 'ACTIVE', 'LOCAL_VALIDATOR', 'CLEAN', CURRENT_TIMESTAMP
-            )`,
-            [
-              evidenceId,
-              sessionUser.tenantId,
-              assessmentControlId,
-              sessionUser.userId,
-              sanitizedFilename,
-              saveResult.bytesWritten,
-              normalizedMime,
-              storageKey,
-              saveResult.sha256,
-            ]
-          );
-        }
+        await client.query(
+          `INSERT INTO evidence_items (
+            id, tenant_id, assessment_id, assessment_control_id, question_code,
+            evidence_category, description, uploaded_by_user_id,
+            file_name, file_size_bytes, mime_type, s3_key, s3_bucket,
+            sha256_hash, status, scan_provider, scan_result, scanned_at
+          ) VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8,
+            $9, $10, $11, $12, 'local-vault',
+            $13, 'ACTIVE', 'LOCAL_VALIDATOR', 'CLEAN', CURRENT_TIMESTAMP
+          )`,
+          [
+            evidenceId,
+            assessment.tenant_id,
+            assessmentId,
+            assessmentControlId,
+            questionCode || controlCode,
+            evidenceCategory || null,
+            description || null,
+            sessionUser.userId,
+            sanitizedFilename,
+            saveResult.bytesWritten,
+            normalizedMime,
+            storageKey,
+            saveResult.sha256,
+          ]
+        );
       });
-    } catch (dbErr) {
+    } catch (dbErr: any) {
+      if (dbErr instanceof ValidationError) {
+        throw dbErr;
+      }
       // In offline/test mode without active DB, fallback registry guarantees deterministic testability
-      // Log DB notice without exposing internal paths
     }
 
     // Retain in memory registry
@@ -159,8 +196,10 @@ export class EvidenceVaultService {
             ei.id, ei.tenant_id, ei.file_name, ei.file_size_bytes, ei.mime_type,
             ei.s3_key, ei.sha256_hash, ei.status, ei.quarantine_reason,
             ei.uploaded_by_user_id, ei.created_at,
+            ei.question_code, ei.evidence_category, ei.description,
+            ei.verified_by_reviewer_id, ei.verification_notes, ei.verified_at,
             c.code AS control_code,
-            ac.assessment_id
+            COALESCE(ei.assessment_id, ac.assessment_id) AS assessment_id
            FROM evidence_items ei
            LEFT JOIN assessment_controls ac ON ac.id = ei.assessment_control_id
            LEFT JOIN controls c ON c.id = ac.control_id
@@ -174,7 +213,10 @@ export class EvidenceVaultService {
           id: row.id,
           tenantId: row.tenant_id,
           assessmentId: row.assessment_id || "default",
-          controlCode: row.control_code || "GENERIC",
+          controlCode: row.control_code || row.question_code || "GENERIC",
+          questionCode: row.question_code || null,
+          evidenceCategory: row.evidence_category || null,
+          description: row.description || null,
           fileName: row.file_name,
           fileSizeBytes: Number(row.file_size_bytes),
           mimeType: row.mime_type,
@@ -183,6 +225,9 @@ export class EvidenceVaultService {
           status: row.status,
           quarantineReason: row.quarantine_reason,
           uploadedByUserId: row.uploaded_by_user_id,
+          verifiedByReviewerId: row.verified_by_reviewer_id,
+          verificationNotes: row.verification_notes,
+          verifiedAt: row.verified_at ? row.verified_at.toISOString() : null,
           createdAt: row.created_at.toISOString(),
         } as EvidenceRecord;
       });
@@ -209,14 +254,15 @@ export class EvidenceVaultService {
     }
 
     // Fail-closed scan status check:
-    // Must be ACTIVE or SUPERSEDED. PENDING_SCAN, PENDING_UPLOAD, and QUARANTINED are strictly blocked.
+    // Must be ACTIVE, VERIFIED, or SUPERSEDED. PENDING_SCAN, PENDING_UPLOAD, QUARANTINED, and DELETED are strictly blocked.
     if (
       record.status === "QUARANTINED" ||
       record.status === "PENDING_SCAN" ||
-      record.status === "PENDING_UPLOAD"
+      record.status === "PENDING_UPLOAD" ||
+      record.status === "DELETED"
     ) {
       throw new ValidationError(
-        `Access denied: File cannot be downloaded while in status '${record.status}'. Quarantined or unverified payloads are blocked for security.`
+        `Access denied: File cannot be downloaded while in status '${record.status}'. Quarantined, deleted, or unverified payloads are blocked for security.`
       );
     }
 
@@ -224,6 +270,126 @@ export class EvidenceVaultService {
     const content = await this.adapter.readFile(record.storageKey);
 
     return { record, content };
+  }
+
+  /**
+   * Records an assessor review decision on an evidence item with audit tracking.
+   */
+  public async reviewEvidence(params: {
+    sessionUser: SessionUser;
+    evidenceId: string;
+    status: "VERIFIED" | "REJECTED" | "ACTIVE" | "SUPERSEDED" | "QUARANTINED";
+    verificationNotes?: string;
+  }): Promise<EvidenceRecord> {
+    const { sessionUser, evidenceId, status, verificationNotes } = params;
+
+    if (!canReviewAssessment(sessionUser.role)) {
+      throw new ValidationError("Access denied: Only authorized TLI assessors can record evidence review decisions.");
+    }
+
+    return await executeWithRls(sessionUser, async (client) => {
+      const prevRes = await client.query(
+        "SELECT id, status, tenant_id, assessment_id, question_code, file_name, file_size_bytes, mime_type, s3_key, sha256_hash, uploaded_by_user_id, created_at FROM evidence_items WHERE id = $1 LIMIT 1;",
+        [evidenceId]
+      );
+      if (prevRes.rowCount === 0) {
+        throw new ValidationError("Evidence record not found or access denied under RLS.");
+      }
+      const prev = prevRes.rows[0];
+
+      await client.query(
+        `UPDATE evidence_items
+         SET status = $1,
+             verification_notes = $2,
+             verified_by_reviewer_id = $3,
+             verified_at = CURRENT_TIMESTAMP
+         WHERE id = $4;`,
+        [status, verificationNotes || null, sessionUser.userId, evidenceId]
+      );
+
+      // Record immutable audit history
+      await client.query(
+        `INSERT INTO evidence_review_history (
+          evidence_item_id,
+          previous_status,
+          new_status,
+          verification_notes,
+          reviewed_by_user_id
+        ) VALUES ($1, $2, $3, $4, $5);`,
+        [evidenceId, prev.status, status, verificationNotes || null, sessionUser.userId]
+      );
+
+      const updatedRecord: EvidenceRecord = {
+        id: prev.id,
+        tenantId: prev.tenant_id,
+        assessmentId: prev.assessment_id || "default",
+        controlCode: prev.question_code || "GENERIC",
+        questionCode: prev.question_code,
+        fileName: prev.file_name,
+        fileSizeBytes: Number(prev.file_size_bytes),
+        mimeType: prev.mime_type,
+        storageKey: prev.s3_key,
+        sha256: prev.sha256_hash,
+        status,
+        verificationNotes: verificationNotes || null,
+        verifiedByReviewerId: sessionUser.userId,
+        verifiedAt: new Date().toISOString(),
+        uploadedByUserId: prev.uploaded_by_user_id,
+        createdAt: prev.created_at.toISOString(),
+      };
+
+      if (fallbackEvidenceRegistry.has(evidenceId)) {
+        fallbackEvidenceRegistry.set(evidenceId, updatedRecord);
+      }
+
+      return updatedRecord;
+    });
+  }
+
+  /**
+   * Soft-deletes an evidence item following retention rules and recording audit info.
+   */
+  public async deleteEvidence(params: {
+    sessionUser: SessionUser;
+    evidenceId: string;
+  }): Promise<{ deleted: boolean }> {
+    const { sessionUser, evidenceId } = params;
+
+    return await executeWithRls(sessionUser, async (client) => {
+      const res = await client.query(
+        "SELECT id, tenant_id, uploaded_by_user_id, status FROM evidence_items WHERE id = $1 LIMIT 1;",
+        [evidenceId]
+      );
+      if (res.rowCount === 0) {
+        throw new ValidationError("Evidence record not found or access denied.");
+      }
+      const item = res.rows[0];
+
+      const isOwner = item.uploaded_by_user_id === sessionUser.userId;
+      const isAdminOfTenant = sessionUser.role === "CLIENT_ADMIN" && item.tenant_id === sessionUser.tenantId;
+      const isSuperAdmin = sessionUser.role === "TLI_SUPER_ADMIN";
+
+      if (!isOwner && !isAdminOfTenant && !isSuperAdmin) {
+        throw new ValidationError("Access denied: You do not have permission to delete this evidence item.");
+      }
+
+      await client.query(
+        `UPDATE evidence_items
+         SET status = 'DELETED',
+             deleted_at = CURRENT_TIMESTAMP,
+             deleted_by_user_id = $1
+         WHERE id = $2;`,
+        [sessionUser.userId, evidenceId]
+      );
+
+      const mem = fallbackEvidenceRegistry.get(evidenceId);
+      if (mem) {
+        mem.status = "DELETED";
+        fallbackEvidenceRegistry.set(evidenceId, mem);
+      }
+
+      return { deleted: true };
+    });
   }
 
   /**

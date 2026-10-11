@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Paperclip,
@@ -22,7 +22,10 @@ import {
   AlertCircle,
   Clock,
   ChevronRight,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
+import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
 
 interface EvidenceItem {
   id: string;
@@ -35,6 +38,9 @@ interface EvidenceItem {
   uploadedOn: string;
   uploadedBy: string;
   status: "Reviewed" | "Received" | "Not Received";
+  rawStatus?: string;
+  verificationNotes?: string | null;
+  verifiedByName?: string | null;
 }
 
 interface EvidenceManagementClientProps {
@@ -42,6 +48,8 @@ interface EvidenceManagementClientProps {
   tenantName: string;
   assessmentCode?: string;
   visitDate?: string;
+  userRole?: string;
+  userName?: string;
 }
 
 export function EvidenceManagementClient({
@@ -49,7 +57,13 @@ export function EvidenceManagementClient({
   tenantName,
   assessmentCode = "DPDP-2024-006",
   visitDate = "20 Aug 2024",
+  userRole,
+  userName = "Anita Sharma",
 }: EvidenceManagementClientProps) {
+  const isAssessor = userRole
+    ? ["TLI_LEAD_CONSULTANT", "TLI_REVIEWER", "TLI_SUPER_ADMIN"].includes(userRole)
+    : false;
+
   // Sample initial evidence rows matching reference screenshot 04_evidence_management.jpeg
   const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([
     {
@@ -63,6 +77,7 @@ export function EvidenceManagementClient({
       uploadedOn: "20 Aug 2024",
       uploadedBy: "Anita Sharma",
       status: "Reviewed",
+      rawStatus: "VERIFIED",
     },
     {
       id: "ev-2",
@@ -75,6 +90,7 @@ export function EvidenceManagementClient({
       uploadedOn: "20 Aug 2024",
       uploadedBy: "Anita Sharma",
       status: "Received",
+      rawStatus: "ACTIVE",
     },
     {
       id: "ev-3",
@@ -87,6 +103,7 @@ export function EvidenceManagementClient({
       uploadedOn: "20 Aug 2024",
       uploadedBy: "Anita Sharma",
       status: "Not Received",
+      rawStatus: "PENDING_UPLOAD",
     },
   ]);
 
@@ -102,23 +119,116 @@ export function EvidenceManagementClient({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // Assessor Review State
+  const [verificationNotes, setVerificationNotes] = useState("");
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewFeedback, setReviewFeedback] = useState<string | null>(null);
+
+  // Independent Evidence Coverage State
+  const [coverage, setCoverage] = useState<{
+    totalQuestions: number;
+    questionsWithEvidence: number;
+    coveragePercentage: number;
+    totalEvidence: number;
+    verifiedCount: number;
+    activeCount: number;
+    rejectedCount: number;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load authoritative canonical 60 questions for selector
+  const canonicalQuestions = useMemo(() => {
+    try {
+      const sections = getCanonicalQuestionnaireSections();
+      return sections.flatMap((s) => s.questions);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Fetch real evidence and coverage from database on mount
+  const fetchEvidence = async () => {
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/evidence`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        const mapped: EvidenceItem[] = data.items.map((it: any) => ({
+          id: it.id,
+          fileName: it.fileName,
+          fileSizeBytes: it.fileSizeBytes,
+          mimeType: it.mimeType,
+          questionCode: it.questionCode,
+          category: it.category || "Policy / Procedure",
+          description: it.description || "",
+          uploadedOn: it.createdAt
+            ? new Date(it.createdAt).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Today",
+          uploadedBy: it.uploadedByName || userName,
+          status:
+            it.status === "VERIFIED"
+              ? "Reviewed"
+              : it.status === "ACTIVE"
+              ? "Received"
+              : "Not Received",
+          rawStatus: it.status,
+          verificationNotes: it.verificationNotes,
+          verifiedByName: it.verifiedByName,
+        }));
+        setEvidenceList(mapped);
+        setSelectedEvidence((prev) => {
+          const found = mapped.find((m) => m.id === prev.id);
+          return found || mapped[0];
+        });
+      }
+      if (data.metrics) {
+        setCoverage(data.metrics);
+      }
+    } catch {
+      // Graceful fallback to initial seed fixtures
+    }
+  };
+
+  useEffect(() => {
+    fetchEvidence();
+  }, [assessmentId]);
+
   // Status Counts
-  const reviewedCount = evidenceList.filter((e) => e.status === "Reviewed").length;
-  const receivedCount = evidenceList.filter((e) => e.status === "Received").length;
+  const reviewedCount = coverage?.verifiedCount ?? evidenceList.filter((e) => e.status === "Reviewed").length;
+  const receivedCount = coverage?.activeCount ?? evidenceList.filter((e) => e.status === "Received").length;
   const notReceivedCount = evidenceList.filter((e) => e.status === "Not Received").length;
 
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
     setUploadError(null);
 
+    // Client-side file bounds verification (100B - 50MB)
+    if (file.size > 52_428_800) {
+      setUploadError("File exceeds maximum permitted size of 50 MB.");
+      setIsUploading(false);
+      return;
+    }
+    if (file.size < 100) {
+      setUploadError("File is too small (< 100 bytes).");
+      setIsUploading(false);
+      return;
+    }
+
     try {
-      const qCode = selectedQuestion.split(" - ")[0] || "GOV-01";
+      const qCode = selectedQuestion.split(" - ")[0]?.trim() || "GOV-01";
       const formData = new FormData();
       formData.append("file", file);
       formData.append("assessmentId", assessmentId);
       formData.append("controlCode", qCode);
+      formData.append("questionCode", qCode);
+      formData.append("evidenceCategory", selectedCategory);
+      formData.append("category", selectedCategory);
+      formData.append("description", uploadDescription || file.name);
 
       const res = await fetch("/api/evidence/upload", {
         method: "POST",
@@ -141,24 +251,59 @@ export function EvidenceManagementClient({
         category: selectedCategory,
         description: uploadDescription || file.name,
         uploadedOn: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-        uploadedBy: "Anita Sharma",
+        uploadedBy: userName,
         status: "Received",
+        rawStatus: "ACTIVE",
       };
 
       setEvidenceList((prev) => [newItem, ...prev]);
       setSelectedEvidence(newItem);
       setIsUploading(false);
+      fetchEvidence();
     } catch {
       setUploadError("Network error while connecting to evidence vault.");
       setIsUploading(false);
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`/api/evidence/${id}`, { method: "DELETE" });
+    } catch {}
     setEvidenceList((prev) => prev.filter((item) => item.id !== id));
     if (selectedEvidence.id === id && evidenceList.length > 1) {
       const remaining = evidenceList.filter((item) => item.id !== id);
       setSelectedEvidence(remaining[0]);
+    }
+    fetchEvidence();
+  };
+
+  const handleReviewDecision = async (newStatus: "VERIFIED" | "REJECTED") => {
+    if (!selectedEvidence?.id) return;
+    setIsReviewing(true);
+    setReviewFeedback(null);
+    try {
+      const res = await fetch(`/api/evidence/${selectedEvidence.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: newStatus,
+          verificationNotes: verificationNotes || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReviewFeedback(data.error || "Failed to update review decision.");
+        setIsReviewing(false);
+        return;
+      }
+      setReviewFeedback(`Evidence marked as ${newStatus}.`);
+      setVerificationNotes("");
+      await fetchEvidence();
+      setIsReviewing(false);
+    } catch {
+      setReviewFeedback("Network error while updating review decision.");
+      setIsReviewing(false);
     }
   };
 
@@ -289,7 +434,7 @@ export function EvidenceManagementClient({
             </div>
             <div>
               <span className="text-2xl font-bold text-slate-900 block leading-tight">
-                {evidenceList.length}
+                {coverage ? coverage.totalEvidence : evidenceList.length}
               </span>
               <span className="text-xs text-slate-500 font-medium">
                 Total Evidence
@@ -354,6 +499,41 @@ export function EvidenceManagementClient({
         </div>
       </div>
 
+      {/* Independent Evidence Coverage KPI Bar */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
+                Independent Evidence Coverage
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Statutory Metric
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Assesses question-level supporting documentation independently from questionnaire completion and readiness scores.
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-base font-bold text-slate-900">
+              {coverage ? coverage.questionsWithEvidence : evidenceList.filter((e) => e.status !== "Not Received").length} / {coverage ? coverage.totalQuestions : 60}
+            </span>
+            <span className="text-xs text-slate-500 ml-1 font-semibold">
+              ({coverage ? coverage.coveragePercentage : Math.round((evidenceList.filter((e) => e.status !== "Not Received").length / 60) * 100)}%)
+            </span>
+          </div>
+        </div>
+        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+          <div
+            className="bg-[#0066FF] h-2 rounded-full transition-all duration-300"
+            style={{
+              width: `${Math.min(100, coverage ? coverage.coveragePercentage : Math.round((evidenceList.filter((e) => e.status !== "Not Received").length / 60) * 100))}%`,
+            }}
+          />
+        </div>
+      </div>
+
       {/* 3. Main Grid: Left Area (8 cols) | Right Preview Area (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Upload Zone & Evidence List */}
@@ -390,7 +570,7 @@ export function EvidenceManagementClient({
                   Drag and drop files here or click to upload
                 </p>
                 <p className="text-[11px] text-slate-500">
-                  Supported formats: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG (Max 20 MB per file)
+                  Supported formats: PDF, DOCX, XLSX, PNG, JPG (Max 50 MB per file, recommended &lt; 20 MB)
                 </p>
               </div>
             </div>
@@ -411,15 +591,25 @@ export function EvidenceManagementClient({
                   onChange={(e) => setSelectedQuestion(e.target.value)}
                   className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white truncate"
                 >
-                  <option value="GOV-01 - Governance structure for data protection">
-                    GOV-01 - Governance structure for data protection
-                  </option>
-                  <option value="DAT-01 - Personal data inventory and processing">
-                    DAT-01 - Personal data inventory and processing
-                  </option>
-                  <option value="SEC-01 - Security safeguards for personal data">
-                    SEC-01 - Security safeguards for personal data
-                  </option>
+                  {canonicalQuestions.length > 0 ? (
+                    canonicalQuestions.map((q) => (
+                      <option key={q.code} value={`${q.code} - ${q.text.slice(0, 75)}`}>
+                        {q.code} - {q.text.slice(0, 75)}...
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="GOV-01 - Governance structure for data protection">
+                        GOV-01 - Governance structure for data protection
+                      </option>
+                      <option value="DAT-01 - Personal data inventory and processing">
+                        DAT-01 - Personal data inventory and processing
+                      </option>
+                      <option value="SEC-01 - Security safeguards for personal data">
+                        SEC-01 - Security safeguards for personal data
+                      </option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -496,7 +686,11 @@ export function EvidenceManagementClient({
                   {evidenceList.map((item) => (
                     <tr
                       key={item.id}
-                      onClick={() => setSelectedEvidence(item)}
+                      onClick={() => {
+                        setSelectedEvidence(item);
+                        setVerificationNotes(item.verificationNotes || "");
+                        setReviewFeedback(null);
+                      }}
                       className={`cursor-pointer transition-colors ${
                         selectedEvidence.id === item.id
                           ? "bg-blue-50/60"
@@ -544,6 +738,8 @@ export function EvidenceManagementClient({
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedEvidence(item);
+                              setVerificationNotes(item.verificationNotes || "");
+                              setReviewFeedback(null);
                             }}
                             className="p-1 text-slate-400 hover:text-blue-600"
                             title="Preview"
@@ -744,10 +940,67 @@ export function EvidenceManagementClient({
                 className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
               />
             </div>
+
+            {/* Assessor Review Decision Section */}
+            {isAssessor && (
+              <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                <div className="flex items-center space-x-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-[11px] font-bold text-slate-900">
+                    Assessor Review Decision
+                  </span>
+                </div>
+
+                {selectedEvidence.verifiedByName && (
+                  <p className="text-[10px] text-slate-500">
+                    Verified by <span className="font-semibold">{selectedEvidence.verifiedByName}</span>
+                  </p>
+                )}
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-1">
+                    Verification Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={verificationNotes}
+                    onChange={(e) => setVerificationNotes(e.target.value)}
+                    placeholder="Enter verification finding or rejection deficiency note..."
+                    className="w-full p-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
+                  />
+                </div>
+
+                {reviewFeedback && (
+                  <p className="text-[11px] text-blue-600 font-medium">
+                    {reviewFeedback}
+                  </p>
+                )}
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleReviewDecision("VERIFIED")}
+                    disabled={isReviewing}
+                    className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Verify Evidence</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReviewDecision("REJECTED")}
+                    disabled={isReviewing}
+                    className="flex-1 py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Reject Evidence</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
-

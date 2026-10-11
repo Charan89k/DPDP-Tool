@@ -45,6 +45,8 @@ export default async function AssessmentEvidencePage({ params }: EvidencePagePro
         assessmentId={id}
         tenantName={tenantName}
         assessmentCode={assessmentCode}
+        userRole={sessionUser.role}
+        userName={sessionUser.fullName || sessionUser.email}
       />
     </div>
   );

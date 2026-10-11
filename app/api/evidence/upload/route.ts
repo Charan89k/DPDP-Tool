@@ -36,6 +36,12 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const assessmentId = (formData.get("assessmentId") as string) || "default-assessment";
     const controlCode = (formData.get("controlCode") as string) || "GENERIC";
+    const questionCode = (formData.get("questionCode") as string) || controlCode;
+    const evidenceCategory =
+      (formData.get("evidenceCategory") as string) ||
+      (formData.get("category") as string) ||
+      "Policy / Procedure";
+    const description = (formData.get("description") as string) || "";
 
     if (!file) {
       return NextResponse.json(
@@ -59,6 +65,9 @@ export async function POST(req: NextRequest) {
       sessionUser,
       assessmentId,
       controlCode,
+      questionCode,
+      evidenceCategory,
+      description,
       filename: file.name,
       mimeType: file.type || "application/octet-stream",
       content: buffer,
@@ -76,13 +85,17 @@ export async function POST(req: NextRequest) {
           sha256: record.sha256,
           status: record.status,
           uploadedAt: record.createdAt,
+          questionCode: record.questionCode,
+          evidenceCategory: record.evidenceCategory,
+          description: record.description,
         },
       },
       { status: 201 }
     );
   } catch (err: unknown) {
     if (err instanceof ValidationError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      const isForbidden = err.message.includes("Access denied");
+      return NextResponse.json({ error: err.message }, { status: isForbidden ? 403 : 400 });
     }
 
     console.error("Evidence upload processing error:", err);

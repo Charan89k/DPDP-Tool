@@ -75,6 +75,7 @@ def run_static_validations() -> List[TestResult]:
         "007_remediate_consultant_write_boundary.sql",
         "008_assessment_questionnaire_responses.sql",
         "009_assessor_review_workspace.sql",
+        "010_evidence_and_clarification_workflows.sql",
     ]
     if files == expected:
         results.append(TestResult("Migration Files Sequence", True, f"Found all {len(files)} migration files: {files}"))
