@@ -4,9 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Shield,
   LayoutDashboard,
   FileCheck2,
+  FileText,
   Settings,
   Building2,
 } from "lucide-react";
@@ -34,6 +34,11 @@ export function Sidebar({ user }: SidebarProps) {
       icon: FileCheck2,
     },
     {
+      label: "Compliance Reports",
+      href: "/dashboard/reports",
+      icon: FileText,
+    },
+    {
       label: "Account & Security",
       href: "/dashboard/settings",
       icon: Settings,
@@ -41,17 +46,17 @@ export function Sidebar({ user }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-slate-200 flex flex-col flex-shrink-0 border-r border-slate-800">
+    <aside className="w-64 bg-white text-stone-800 flex flex-col flex-shrink-0 border-r border-stone-200">
       {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center space-x-3">
-        <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-md flex-shrink-0">
-          <Shield className="w-5 h-5" />
+      <div className="p-4 border-b border-stone-200 flex items-center space-x-3 bg-stone-50/50">
+        <div className="w-7 h-7 rounded border border-stone-400 bg-stone-900 flex items-center justify-center text-white font-serif font-bold text-xs tracking-tight shadow-xs flex-shrink-0">
+          TLI
         </div>
         <div className="overflow-hidden">
-          <h1 className="text-sm font-bold text-white tracking-wide truncate">
-            Truth Labs Intl
+          <h1 className="text-xs font-serif font-bold text-stone-900 tracking-tight truncate">
+            Truth Labs International
           </h1>
-          <p className="text-[11px] text-slate-400 truncate">
+          <p className="text-[10px] text-stone-500 font-mono truncate">
             DPDP Compliance Tool
           </p>
         </div>
@@ -59,20 +64,22 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Navigation Links */}
       <nav className="flex-1 p-3 space-y-1">
-        <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Navigation
+        <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">
+          Main Modules
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-3 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                 isActive
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-[#16191f] text-white shadow-xs font-semibold"
+                  : "text-stone-700 hover:bg-stone-100 hover:text-stone-900"
               }`}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
@@ -83,9 +90,9 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* Tenant Context & Role Badge Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/60">
-        <div className="flex items-center space-x-2 text-xs text-slate-400 mb-2">
-          <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+      <div className="p-4 border-t border-stone-200 bg-stone-50/80">
+        <div className="flex items-center space-x-2 text-xs text-stone-600 mb-2">
+          <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-stone-500" />
           <span className="truncate font-medium">{user.tenantName}</span>
         </div>
         <div className="flex items-center justify-between">
@@ -95,7 +102,7 @@ export function Sidebar({ user }: SidebarProps) {
           {user.isSdf && (
             <span
               title="Significant Data Fiduciary"
-              className="text-[10px] font-semibold text-amber-400 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-800"
+              className="text-[10px] font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200"
             >
               SDF
             </span>
@@ -105,4 +112,3 @@ export function Sidebar({ user }: SidebarProps) {
     </aside>
   );
 }
-

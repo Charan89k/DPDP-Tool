@@ -245,6 +245,67 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     loginRateLimiter.resetAttempts(testKey);
     assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
   });
+
+  it("should safely resolve client IP from trusted edge headers and reject spoofed headers", async () => {
+    const { resolveClientIp } = await import("../lib/auth/rate_limit.ts");
+
+    // 1. Cloudflare edge header takes precedence
+    const req1 = new Request("https://app.tli.internal", {
+      headers: {
+        "cf-connecting-ip": "203.0.113.195",
+        "x-real-ip": "198.51.100.22",
+        "x-forwarded-for": "10.0.0.1",
+      },
+    });
+    assert.equal(resolveClientIp(req1), "203.0.113.195");
+
+    // 2. Standard X-Real-IP reverse proxy header
+    const req2 = new Request("https://app.tli.internal", {
+      headers: {
+        "x-real-ip": "198.51.100.22",
+        "x-forwarded-for": "10.0.0.1",
+      },
+    });
+    assert.equal(resolveClientIp(req2), "198.51.100.22");
+
+    // 3. Valid X-Forwarded-For leftmost IP
+    const req3 = new Request("https://app.tli.internal", {
+      headers: {
+        "x-forwarded-for": "198.51.100.99, 10.0.0.1",
+      },
+    });
+    assert.equal(resolveClientIp(req3), "198.51.100.99");
+
+    // 4. Reject spoofed non-IP strings / injection attempts in forwarding header
+    const req4 = new Request("https://app.tli.internal", {
+      headers: {
+        "x-forwarded-for": "attacker-spoofed-host; drop table users;",
+      },
+    });
+    assert.equal(resolveClientIp(req4), "127.0.0.1", "Must fall back to 127.0.0.1 on invalid IP syntax");
+
+    // 5. Default fallback
+    const req5 = new Request("https://app.tli.internal");
+    assert.equal(resolveClientIp(req5), "127.0.0.1");
+  });
+
+  it("should prevent rate limit bypass via email case or whitespace variation", () => {
+    loginRateLimiter.clearAllRateLimits();
+    const rawEmail = "Lead.Consultant@TruthLabs.in ";
+    const normalizedKey = `email:${rawEmail.trim().toLowerCase()}`;
+
+    // Record 5 failed attempts on normalized email
+    for (let i = 0; i < 5; i++) {
+      loginRateLimiter.recordFailedAttempt(normalizedKey);
+    }
+
+    // Checking varying capitalizations / whitespaces normalized to same key
+    const checkVariant1 = `email:${"LEAD.CONSULTANT@TRUTHLABS.IN".trim().toLowerCase()}`;
+    const checkVariant2 = `email:${"  lead.consultant@truthlabs.in  ".trim().toLowerCase()}`;
+
+    assert.equal(loginRateLimiter.isRateLimited(checkVariant1).limited, true);
+    assert.equal(loginRateLimiter.isRateLimited(checkVariant2).limited, true);
+  });
 });
 
 describe("Phase 3C: RBAC Matrix & Role Permissions", () => {

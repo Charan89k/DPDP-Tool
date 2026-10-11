@@ -54,6 +54,12 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **27** | [Phase 3B.2 Pre-Commit Integrity Review](27_phase_3b_precommit_integrity_review.md) | Final pre-commit integrity audit, live migration checksum verification, presigned URL post-issuance revocation analysis, and READY TO COMMIT certification. |
 | **28** | [Phase 3C Application Core, Authentication & API Scaffolding](28_phase_3c_application_core_authentication_and_api.md) | Next.js 15 App Router foundation, TLI enterprise shell, jose session cookies, DEC-04 SSO alignment, 7-role RBAC, and executeWithRls pool integration. |
 | **29** | [Phase 3C.1 Authentication & RLS Security Gate Review](29_phase_3c_authentication_and_rls_security_review.md) | Security audit and remediation report: production synthetic credentials fail-closed, mandatory JWT secrets, rate limiting, and DB-verified RLS execution. |
+| **30** | [Phase 3C.2 Final Security Verification & Commit Readiness](30_phase_3c_final_security_and_commit_readiness.md) | Final verification report: proxy header IP resolution, RLS cleanup ordering, 27-test application suite, and READY TO COMMIT certification. |
+| **31** | [Phase 3D Assessment Workflow Implementation Plan](31_phase_3d_assessment_workflow_implementation_plan.md) | Architectural specification, questionnaire engine, scoring & gap algorithms, review state machine, and phased implementation roadmap. |
+| **32** | [Phase 3D Governance & Scoring Readiness Review](32_phase_3d_governance_and_scoring_readiness_review.md) | Canonical decision register reconciliation, statutory penalty audit, deterministic scoring mathematics, and Phase 3D.1 foundation readiness gate. |
+| **33** | [Phase 3D Canonical Governance Reconciliation & Foundation Gate](33_phase_3d_canonical_governance_reconciliation.md) | Authoritative decision audit (DEC-01..10), 13 database domain counts, 14-state lifecycle reconciliation, and foundation readiness gate. |
+| **34** | [Phase 3D.UI.1 Questionnaire Structure, Local Storage Vault & Editorial Redesign](34_phase_3d_ui_questionnaire_and_storage_implementation.md) | Canonical MCQ pagination engine (max 4 questions/section), local disk evidence vault, fail-closed quarantine download gate, and editorial audit login redesign. |
+| **35** | [Phase 3D UI Refinement & Demo Access](35_ui_refinement_and_demo_access.md) | Restrained enterprise consulting visual refinement, local demo accounts (`consultant.demo` & `customer.demo`), questionnaire navigation, and document report preview. |
 
 ---
 

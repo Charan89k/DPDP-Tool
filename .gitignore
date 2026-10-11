@@ -51,5 +51,6 @@ ENV/
 uploads/
 test_uploads/
 storage_local/
+.local_evidence/
+.local_evidence*/
 .moto/
-

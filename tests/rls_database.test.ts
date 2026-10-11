@@ -248,4 +248,42 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
       client.release();
     }
   });
+
+  it("should maintain tenant isolation across sequential switching after failed and successful transactions", async () => {
+    // 1. Successful query on Alpha
+    const alphaRes = await executeWithRls(ALPHA_USER, async (client) => {
+      const res = await client.query("SELECT id FROM assessments;");
+      return res.rows.map((r) => r.id);
+    });
+    assert.deepEqual(alphaRes, ["018f3a5b-7c8d-7e90-8000-000000000201"]);
+
+    // 2. Failed query on Alpha causing rollback
+    await assert.rejects(
+      async () => {
+        await executeWithRls(ALPHA_USER, async (client) => {
+          await client.query("UPDATE assessments SET title = 'Corrupted' WHERE false;");
+          throw new Error("Simulated business logic failure mid-transaction");
+        });
+      },
+      /Simulated business logic failure/
+    );
+
+    // 3. Immediate query on Beta over the same connection pool
+    const betaRes = await executeWithRls(BETA_USER, async (client) => {
+      const res = await client.query("SELECT id FROM assessments;");
+      return res.rows.map((r) => r.id);
+    });
+    // Beta must see strictly Beta assessment and zero Alpha assessments
+    assert.deepEqual(betaRes, ["018f3a5b-7c8d-7e90-8000-000000000202"]);
+    assert.ok(!betaRes.includes("018f3a5b-7c8d-7e90-8000-000000000201"));
+
+    // 4. Verify context on Beta query is strictly Beta's role and tenant
+    await executeWithRls(BETA_USER, async (client) => {
+      const roleCheck = await client.query(
+        "SELECT current_setting('app.current_user_role', true) AS role, current_setting('app.current_tenant_id', true) AS tid;"
+      );
+      assert.equal(roleCheck.rows[0].role, "CLIENT_ADMIN");
+      assert.equal(roleCheck.rows[0].tid, BETA_USER.tenantId);
+    });
+  });
 });

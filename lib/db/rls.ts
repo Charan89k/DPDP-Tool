@@ -60,6 +60,7 @@ export async function executeWithRls<T>(
 
   const client = await pool.connect();
   let transactionActive = false;
+  let connectionTainted = false;
 
   try {
     // 1. Begin isolated transaction
@@ -138,22 +139,29 @@ export async function executeWithRls<T>(
     if (transactionActive) {
       try {
         await client.query("ROLLBACK;");
+        transactionActive = false;
       } catch (rollbackErr) {
         console.error("Failed to rollback transaction after error:", rollbackErr);
+        connectionTainted = true;
       }
     }
     throw err;
   } finally {
-    // 8. Systematically neutralize context variables and reset role before pool return
-    try {
-      await client.query("RESET ALL;");
-      await client.query("RESET ROLE;");
-      await client.query("DISCARD TEMP;");
-      client.release();
-    } catch (cleanErr) {
-      console.error("Failed to clean up RLS session context on client release:", cleanErr);
-      // Discard contaminated connection from the pool
-      client.release(cleanErr instanceof Error ? cleanErr : new Error(String(cleanErr)));
+    // 8. Systematically neutralize context variables and reset role before pool return.
+    // Ordering: RESET ROLE first (restores pool session authority), then RESET ALL (clears GUCs), then DISCARD TEMP.
+    if (connectionTainted) {
+      client.release(new Error("Connection released in tainted state due to rollback failure"));
+    } else {
+      try {
+        await client.query("RESET ROLE;");
+        await client.query("RESET ALL;");
+        await client.query("DISCARD TEMP;");
+        client.release();
+      } catch (cleanErr) {
+        console.error("Failed to clean up RLS session context on client release:", cleanErr);
+        // Discard contaminated connection from the pool
+        client.release(cleanErr instanceof Error ? cleanErr : new Error(String(cleanErr)));
+      }
     }
   }
 }

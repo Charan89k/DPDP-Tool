@@ -152,6 +152,23 @@ export default async function AssessmentsPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Actions: Questionnaire & Report */}
+                <div className="pt-4 mt-4 border-t border-stone-200/80 flex items-center justify-end gap-2.5">
+                  <a
+                    href={`/dashboard/reports/${assessment.id}`}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 rounded-md transition-colors"
+                  >
+                    <span>View Report</span>
+                  </a>
+                  <a
+                    href={`/dashboard/assessments/${assessment.id}/questionnaire`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#16191f] hover:bg-stone-800 text-white rounded-md shadow-xs transition-colors"
+                  >
+                    <span>Open Questionnaire</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </a>
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -12,6 +12,10 @@ export const SYNTHETIC_SEED_HASH =
   "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
 export const SYNTHETIC_SEED_PASSWORD = "SyntheticTestPassword123!";
 
+export function getDemoPassword(): string {
+  return process.env.DEMO_USER_PASSWORD || SYNTHETIC_SEED_PASSWORD;
+}
+
 /**
  * Verifies a plain text password against a stored password hash.
  * Fails closed on empty strings or null values.
@@ -28,18 +32,18 @@ export async function verifyPassword(
   const isProduction = process.env.NODE_ENV === "production";
 
   // 1. Synthetic development seed check
-  // In local test environments seeded with Migration 004, the synthetic placeholder hash
-  // corresponds to 'SyntheticTestPassword123!'.
+  // In local test environments seeded with Migration 004 or scripts/seed_demo_users.py,
+  // the synthetic placeholder hash corresponds to 'SyntheticTestPassword123!' or DEMO_USER_PASSWORD.
   // CRITICAL SECURITY ENFORCEMENT: Synthetic fixtures are strictly rejected in production.
   if (storedHash === SYNTHETIC_SEED_HASH) {
     if (isProduction) {
       return false;
     }
-    return plainText === SYNTHETIC_SEED_PASSWORD;
+    return plainText === getDemoPassword();
   }
 
   // In production, synthetic credentials must never match any production hash
-  if (isProduction && plainText === SYNTHETIC_SEED_PASSWORD) {
+  if (isProduction && (plainText === SYNTHETIC_SEED_PASSWORD || (process.env.DEMO_USER_PASSWORD && plainText === process.env.DEMO_USER_PASSWORD))) {
     return false;
   }
 

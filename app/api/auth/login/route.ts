@@ -12,7 +12,7 @@ import { z } from "zod";
 import { pool } from "@/lib/db/pool";
 import { verifyPassword, SYNTHETIC_SEED_HASH } from "@/lib/auth/passwords";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
-import { loginRateLimiter } from "@/lib/auth/rate_limit";
+import { loginRateLimiter, resolveClientIp } from "@/lib/auth/rate_limit";
 import { SessionUser, UserRole, TenantType } from "@/lib/auth/types";
 
 const loginSchema = z.object({
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = parseResult.data;
     const normalizedEmail = email.trim().toLowerCase();
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+    const clientIp = resolveClientIp(request);
 
     // 1. Enforce login rate limiting (max 5 failed attempts per IP / email per 15 min)
     const ipRateLimit = loginRateLimiter.isRateLimited(`ip:${clientIp}`);
@@ -66,8 +66,21 @@ export async function POST(request: NextRequest) {
       WHERE LOWER(u.email) = $1
       LIMIT 1;
     `;
-    const result = await pool.query(query, [normalizedEmail]);
-    const row = result.rows[0];
+    let result = await pool.query(query, [normalizedEmail]);
+    let row = result.rows[0];
+
+    // In non-production development mode, support demo aliases if explicit records have not yet been seeded
+    if (!row && process.env.NODE_ENV !== "production") {
+      const demoAliases: Record<string, string> = {
+        "consultant.demo@tli.local": "lead.consultant@truthlabs.in",
+        "customer.demo@tli.local": "admin@alphahealth.example.com",
+      };
+      const fallbackTarget = demoAliases[normalizedEmail];
+      if (fallbackTarget) {
+        result = await pool.query(query, [fallbackTarget]);
+        row = result.rows[0];
+      }
+    }
 
     // Uniform failure message to prevent account enumeration
     const AUTH_FAILED_MSG = "Invalid email or password.";
@@ -133,7 +146,6 @@ export async function POST(request: NextRequest) {
 
     // 6. Emit audit log entry
     try {
-      const clientIp = request.headers.get("x-forwarded-for") || "127.0.0.1";
       const userAgent = request.headers.get("user-agent") || "TLI-App";
       await pool.query(
         `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, ip_address, user_agent, new_state)

@@ -6,8 +6,35 @@
  *
  * Defaults:
  * - 5 failed attempts per key within a 15-minute window (900 seconds)
- * - Tracked per IP and per normalized target email
+ * - Tracked per client IP and per normalized target email
+ *
+ * ============================================================================
+ * ARCHITECTURAL LIMITATIONS & PRODUCTION MITIGATION REQUIREMENTS:
+ * ============================================================================
+ * 1. Single-Instance Memory Scope:
+ *    This in-memory rate limiter stores state in process memory. It resets
+ *    upon application restarts and DOES NOT share state across multiple Node.js
+ *    instances or serverless worker invocations.
+ *
+ * 2. No Distributed Protection Claim:
+ *    This implementation DOES NOT provide distributed brute-force protection.
+ *    In multi-pod Kubernetes clusters or auto-scaled environments, requests will
+ *    be routed across multiple pods, partitioning the attempt counters.
+ *
+ * 3. Production Mitigations Required Before Public Deployment:
+ *    Before exposing this application to the public internet, infrastructure
+ *    teams MUST deploy one of the following production-grade mitigations:
+ *    a) Edge-Layer Rate Limiting: Terminate traffic through Cloudflare Rate
+ *       Limiting, AWS WAF rate-based rules, or NGINX limit_req_zone.
+ *    b) Shared Distributed Store: Replace or back this in-memory class with a
+ *       Redis / Valkey atomic token-bucket or sliding-window script.
+ *    c) Reverse Proxy Header Hardening: Ensure reverse proxies (ALB, Nginx)
+ *       strip client-supplied X-Forwarded-For headers and overwrite X-Real-IP
+ *       with the genuine client connection address ($remote_addr).
+ * ============================================================================
  */
+
+import type { NextRequest } from "next/server";
 
 interface RateLimitRecord {
   attempts: number;
@@ -17,6 +44,55 @@ interface RateLimitRecord {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_SECONDS = 15 * 60; // 15 minutes
+
+const IPV4_REGEX = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const IPV6_REGEX = /^[0-9a-fA-F:]{2,39}$/;
+
+/**
+ * Validates that an IP string conforms to standard IPv4 or IPv6 syntax.
+ */
+export function isValidIp(ip: string): boolean {
+  if (!ip || typeof ip !== "string") return false;
+  const trimmed = ip.trim();
+  return IPV4_REGEX.test(trimmed) || IPV6_REGEX.test(trimmed);
+}
+
+/**
+ * Resolves the client IP address from trusted edge and proxy headers.
+ * Does not trust arbitrary client-supplied headers without validation.
+ *
+ * Priority:
+ * 1. CF-Connecting-IP (Cloudflare Edge, cannot be forged if Cloudflare terminates)
+ * 2. X-Real-IP (Standard reverse proxy edge header overwritten by NGINX / Envoy)
+ * 3. X-Forwarded-For (Sanitized leftmost IP, strictly validated against IP regex)
+ * 4. Fallback: 127.0.0.1
+ */
+export function resolveClientIp(request: Request | NextRequest): string {
+  const headers = request.headers;
+
+  // 1. Cloudflare edge header
+  const cfIp = headers.get("cf-connecting-ip")?.trim();
+  if (cfIp && isValidIp(cfIp)) {
+    return cfIp;
+  }
+
+  // 2. Standard single-proxy header overwritten by edge reverse proxy
+  const realIp = headers.get("x-real-ip")?.trim();
+  if (realIp && isValidIp(realIp)) {
+    return realIp;
+  }
+
+  // 3. Forwarded-For header (extract first IP and strictly validate format)
+  const forwardedFor = headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    const candidate = forwardedFor.split(",")[0]?.trim();
+    if (candidate && isValidIp(candidate)) {
+      return candidate;
+    }
+  }
+
+  return "127.0.0.1";
+}
 
 class MemoryRateLimiter {
   private records: Map<string, RateLimitRecord> = new Map();
@@ -111,4 +187,3 @@ class MemoryRateLimiter {
 }
 
 export const loginRateLimiter = new MemoryRateLimiter();
-

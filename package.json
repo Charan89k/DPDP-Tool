@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "seed:demo": "python3 scripts/seed_demo_users.py",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts"
   },
   "dependencies": {
