@@ -82,6 +82,14 @@ The platform is purpose-built to enable TLI consultants and client organisations
 
 ---
 
+## Phase 5: Reporting, Approval & Remediation Management
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **48** | [Reporting, Approval & Remediation Management](48_reporting_and_remediation.md) | Word (.docx) report generation, OpenXML validity, draft watermark banners, Lead approval workflow, immutable report snapshots, CAPA remediation lifecycle, non-compensatory response immutability, and 129 automated tests. |
+
+---
+
 ## Machine-Readable Data Assets & Schemas
 
 | Asset | Records / Specs | Location & Formats | Description |
@@ -92,7 +100,7 @@ The platform is purpose-built to enable TLI consultants and client organisations
 | **Evidence Catalogue** | 27 | [JSON](../data/evidence_catalogue.json) \| [CSV](../data/evidence_catalogue.csv) | Evidence types with linked controls, verification procedures, confidentiality tiers, and masking rules. |
 | **Formal JSON Schemas** | 3 Schemas | [`schemas/`](../schemas/) | Formal Draft 2020-12 schemas for controls, evidence items, and legal sources. |
 | **Automated Data Validator** | Test Suite | [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py) | Standalone, offline Python test runner enforcing 100% schema compliance and referential integrity. |
-| **PostgreSQL Migrations** | 11 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, evidence lifecycle, consultant RLS scoping, write boundary remediation, questionnaire responses, assessor review workspace, evidence & clarification workflows, and assessment lifecycle & immutability. |
+| **PostgreSQL Migrations** | 12 Files | [`migrations/`](../migrations/) | Versioned DDL migrations: schema, RLS policies, canonical library, synthetic fixtures, evidence lifecycle, consultant RLS scoping, write boundary remediation, questionnaire responses, assessor review workspace, evidence & clarification workflows, assessment lifecycle & immutability, and reporting & remediation workflows. |
 | **Migration Runner** | Script | [`scripts/migrate.py`](../scripts/migrate.py) | Migration CLI runner tracking `schema_migrations` with SHA-256 checksum verification. |
 | **Database Security Test Suite** | Test Suite | [`scripts/test_database_rls.py`](../scripts/test_database_rls.py) | Automated test suite verifying schema constraints, immutability triggers, and PostgreSQL RLS tenant isolation. |
 | **Evidence Storage Test Suite** | Test Suite | [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py) | Automated test suite verifying presigned S3 workflows, file signature checks, malware quarantine, and tenant boundaries. |
