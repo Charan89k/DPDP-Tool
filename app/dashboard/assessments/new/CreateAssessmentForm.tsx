@@ -17,8 +17,11 @@ import {
   ArrowRight,
   FileText,
   FileCheck,
+  CheckCircle2,
+  Users,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
+import { canCreateCustomer } from "@/lib/auth/rbac";
 
 interface TenantOption {
   id: string;
@@ -26,11 +29,24 @@ interface TenantOption {
   slug: string;
   industry?: string;
   is_sdf?: boolean;
+  dpo_name?: string | null;
+  dpo_email?: string | null;
+}
+
+interface UserOption {
+  id: string;
+  tenant_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  phone?: string | null;
 }
 
 interface CreateAssessmentFormProps {
   sessionUser: SessionUser;
   tenants: TenantOption[];
+  users?: UserOption[];
+  initialTenantId?: string | null;
   frameworkId?: string | null;
   fallbackAssessmentId?: string | null;
 }
@@ -38,33 +54,81 @@ interface CreateAssessmentFormProps {
 export function CreateAssessmentForm({
   sessionUser,
   tenants,
+  users = [],
+  initialTenantId,
   frameworkId,
   fallbackAssessmentId,
 }: CreateAssessmentFormProps) {
   const router = useRouter();
 
-  // Form State initialized to reference UI defaults
-  const [customerName, setCustomerName] = useState(
-    tenants[0]?.name || "ABC Private Limited"
-  );
-  const [industry, setIndustry] = useState("IT / ITES");
-  const [orgSize, setOrgSize] = useState("500 - 1,000 employees");
-  const [email, setEmail] = useState("rohit.mehta@abc.com");
-  const [phone, setPhone] = useState("+91 98765 43210");
-  const [address, setAddress] = useState("Bengaluru, Karnataka");
+  // Find initial tenant
+  const defaultTenant =
+    (initialTenantId && tenants.find((t) => t.id === initialTenantId)) ||
+    tenants[0] || {
+      id: sessionUser.tenantId,
+      name: "Customer Organisation",
+      slug: "customer-org",
+      industry: "Healthcare",
+      is_sdf: false,
+    };
 
-  const [assessmentId, setAssessmentId] = useState("DPDP-2024-006");
+  const [selectedTenantId, setSelectedTenantId] = useState<string>(defaultTenant.id);
+  const [customerName, setCustomerName] = useState(defaultTenant.name);
+  const [industry, setIndustry] = useState(defaultTenant.industry || "Healthcare");
+  const [isSdf, setIsSdf] = useState(Boolean(defaultTenant.is_sdf));
+  const [orgSize, setOrgSize] = useState("500 - 1,000 employees");
+  const [email, setEmail] = useState(defaultTenant.dpo_email || "");
+  const [phone, setPhone] = useState("+91 98765 43210");
+  const [address, setAddress] = useState("India Operations");
+
+  const [assessmentId, setAssessmentId] = useState(
+    `DPDP-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
+  );
   const [assessmentType, setAssessmentType] = useState("DPDP Gap Assessment");
   const [status, setStatus] = useState("Draft");
-  const [visitDate, setVisitDate] = useState("2024-08-20");
+  const [visitDate, setVisitDate] = useState(new Date().toISOString().split("T")[0]);
   const [questionnaireVersion, setQuestionnaireVersion] = useState("v1.0 (60 Questions)");
-  const [targetReportDate, setTargetReportDate] = useState("2024-08-23");
+  const [targetReportDate, setTargetReportDate] = useState(
+    new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  );
   const [assessor, setAssessor] = useState(sessionUser.fullName || "Anita Sharma");
   const [coAssessor, setCoAssessor] = useState("");
-  const [engagementRef, setEngagementRef] = useState("Customer PO / Internal reference");
+  const [engagementRef, setEngagementRef] = useState("Customer PO / Engagement Scope");
   const [assessmentScope, setAssessmentScope] = useState("India operations");
 
+  // Assigned Coordinators: Track user IDs assigned from the target customer
+  const [assignedCoordinatorIds, setAssignedCoordinatorIds] = useState<string[]>(() => {
+    const tenantUsers = users.filter((u) => u.tenant_id === defaultTenant.id);
+    return tenantUsers.slice(0, 1).map((u) => u.id);
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Handle changing customer organization
+  const handleTenantChange = (newTenantId: string) => {
+    setSelectedTenantId(newTenantId);
+    const chosen = tenants.find((t) => t.id === newTenantId);
+    if (chosen) {
+      setCustomerName(chosen.name);
+      setIndustry(chosen.industry || "Healthcare");
+      setIsSdf(Boolean(chosen.is_sdf));
+      setEmail(chosen.dpo_email || "");
+
+      // Auto-assign the first available user of this tenant
+      const tenantUsers = users.filter((u) => u.tenant_id === chosen.id);
+      setAssignedCoordinatorIds(tenantUsers.slice(0, 1).map((u) => u.id));
+    }
+  };
+
+  // Toggle coordinator assignment
+  const toggleCoordinator = (userId: string) => {
+    if (assignedCoordinatorIds.includes(userId)) {
+      setAssignedCoordinatorIds(assignedCoordinatorIds.filter((id) => id !== userId));
+    } else {
+      setAssignedCoordinatorIds([...assignedCoordinatorIds, userId]);
+    }
+  };
 
   // Auto-generate Assessment ID handler
   const handleAutoGenerateId = () => {
@@ -73,23 +137,8 @@ export function CreateAssessmentForm({
     setAssessmentId(`DPDP-${year}-${randomNum}`);
   };
 
-  // Contacts Table State
-  const [contacts, setContacts] = useState([
-    {
-      id: "1",
-      name: "Rohit Mehta",
-      role: "IT Manager",
-      email: "rohit.mehta@abc.com",
-      phone: "98765 43210",
-    },
-    {
-      id: "2",
-      name: "Priya Nair",
-      role: "Compliance Lead",
-      email: "priya.nair@abc.com",
-      phone: "98765 56789",
-    },
-  ]);
+  // Available users for the selected tenant
+  const currentTenantUsers = users.filter((u) => u.tenant_id === selectedTenantId);
 
   // Documents Table State
   const [documents, setDocuments] = useState([
@@ -105,16 +154,11 @@ export function CreateAssessmentForm({
       type: "PDF",
       uploadedOn: "12 Aug 2024",
     },
-    {
-      id: "3",
-      fileName: "Client_Profile.docx",
-      type: "Word",
-      uploadedOn: "12 Aug 2024",
-    },
   ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     setIsSubmitting(true);
 
     try {
@@ -125,7 +169,8 @@ export function CreateAssessmentForm({
           title: `${customerName} DPDP Gap Assessment`,
           engagementCode: assessmentId,
           targetCompletionDate: targetReportDate,
-          tenantId: tenants[0]?.id || sessionUser.tenantId,
+          tenantId: selectedTenantId,
+          assignedUserIds: assignedCoordinatorIds,
         }),
       });
 
@@ -135,14 +180,12 @@ export function CreateAssessmentForm({
       } else if (fallbackAssessmentId) {
         router.push(`/dashboard/assessments/${fallbackAssessmentId}/questionnaire`);
       } else {
-        router.push("/dashboard/questionnaire");
+        router.push("/dashboard/assessments");
       }
-    } catch {
-      if (fallbackAssessmentId) {
-        router.push(`/dashboard/assessments/${fallbackAssessmentId}/questionnaire`);
-      } else {
-        router.push("/dashboard/questionnaire");
-      }
+    } catch (err: any) {
+      console.error("Failed to create assessment engagement:", err);
+      setFormError("Network error initializing assessment engagement.");
+      setIsSubmitting(false);
     }
   };
 
@@ -161,11 +204,11 @@ export function CreateAssessmentForm({
             Create New Assessment
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Enter customer and visit details to start the DPDP gap assessment.
+            Select customer organization, assign coordinators, and configure evaluation scope.
           </p>
         </div>
 
-        {/* 3-Step Stepper (matching 02_create_new_assessment.jpeg) */}
+        {/* 3-Step Stepper */}
         <div className="flex items-center space-x-3 self-start md:self-auto select-none">
           {/* Step 1: Customer Details (Active) */}
           <div className="flex items-center space-x-2">
@@ -177,7 +220,6 @@ export function CreateAssessmentForm({
             </span>
           </div>
 
-          {/* Line 1 -> 2 */}
           <div className="w-12 h-0.5 bg-blue-300" />
 
           {/* Step 2: Questionnaire */}
@@ -190,7 +232,6 @@ export function CreateAssessmentForm({
             </span>
           </div>
 
-          {/* Line 2 -> 3 */}
           <div className="w-12 h-0.5 bg-slate-200" />
 
           {/* Step 3: Review & Submit */}
@@ -205,85 +246,81 @@ export function CreateAssessmentForm({
         </div>
       </div>
 
+      {formError && (
+        <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+          {formError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (8 cols): Customer Info & Assessment Details */}
         <div className="lg:col-span-8 space-y-6">
           {/* Panel 1: Customer Information */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
-            <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <h3 className="font-bold text-sm text-slate-900">
-                Customer Information
-              </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2.5">
+                <Building2 className="w-4 h-4 text-blue-600" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  Customer Organisation & Scope
+                </h3>
+              </div>
+
+              {canCreateCustomer(sessionUser.role) && (
+                <Link
+                  href="/dashboard/customers/new"
+                  className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Onboard New Customer</span>
+                </Link>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Customer Name */}
-              <div>
+              {/* Customer Selector Dropdown */}
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Customer Name <span className="text-rose-500">*</span>
+                  Customer Organisation <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 pr-8 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
-                </div>
+                <select
+                  value={selectedTenantId}
+                  onChange={(e) => handleTenantChange(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white font-medium text-slate-900"
+                >
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {t.is_sdf ? " (SDF)" : ""} — {t.industry || "Enterprise"}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Industry */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Industry <span className="text-rose-500">*</span>
+                  Industry / Sector <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <input
+                  type="text"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] bg-white"
-                >
-                  <option value="IT / ITES">IT / ITES</option>
-                  <option value="BFSI">Banking & Financial Services</option>
-                  <option value="Healthcare">Healthcare & Pharmaceuticals</option>
-                  <option value="Retail">E-Commerce & Retail</option>
-                  <option value="Manufacturing">Manufacturing</option>
-                  <option value="Telecommunications">Telecommunications</option>
-                </select>
-              </div>
-
-              {/* Organisation Size */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Organisation Size <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={orgSize}
-                  onChange={(e) => setOrgSize(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] bg-white"
-                >
-                  <option value="1 - 50 employees">1 - 50 employees</option>
-                  <option value="51 - 200 employees">51 - 200 employees</option>
-                  <option value="201 - 500 employees">201 - 500 employees</option>
-                  <option value="500 - 1,000 employees">500 - 1,000 employees</option>
-                  <option value="1,000+ employees">1,000+ employees</option>
-                </select>
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Email */}
+              {/* DPO Email */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email
+                  DPO / Primary Email
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
                 />
               </div>
 
@@ -296,20 +333,20 @@ export function CreateAssessmentForm({
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
                 />
               </div>
 
               {/* Address */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Address
+                  Jurisdiction Scope
                 </label>
                 <input
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
                 />
               </div>
             </div>
@@ -320,7 +357,7 @@ export function CreateAssessmentForm({
             <div className="flex items-center space-x-2.5 pb-3 border-b border-slate-100">
               <ClipboardList className="w-4 h-4 text-blue-600" />
               <h3 className="font-bold text-sm text-slate-900">
-                Assessment Details
+                Assessment Engagement Details
               </h3>
             </div>
 
@@ -343,7 +380,7 @@ export function CreateAssessmentForm({
                     onClick={handleAutoGenerateId}
                     className="px-2.5 py-1.5 text-[11px] font-semibold text-[#0066FF] bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 whitespace-nowrap"
                   >
-                    Auto Generate
+                    Auto
                   </button>
                 </div>
               </div>
@@ -367,17 +404,14 @@ export function CreateAssessmentForm({
               {/* Status */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Status
+                  Initial Status
                 </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white"
-                >
-                  <option value="Draft">Draft</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Pending Validation">Pending Validation</option>
-                </select>
+                <input
+                  type="text"
+                  disabled
+                  value="DRAFT"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-mono"
+                />
               </div>
             </div>
 
@@ -385,89 +419,63 @@ export function CreateAssessmentForm({
               {/* Visit Date */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Visit Date <span className="text-rose-500">*</span>
+                  Commencement Date <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={visitDate}
+                  onChange={(e) => setVisitDate(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
+                />
               </div>
 
               {/* Questionnaire Version */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Questionnaire Version <span className="text-rose-500">*</span>
+                  Questionnaire Framework <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={questionnaireVersion}
                   onChange={(e) => setQuestionnaireVersion(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white font-medium"
                 >
-                  <option value="v1.0 (60 Questions)">v1.0 (60 Questions)</option>
+                  <option value="v1.0 (60 Questions)">v1.0 (60 Canonical Questions)</option>
                 </select>
               </div>
 
               {/* Target Report Date */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Target Report Date
+                  Target Completion Date
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={targetReportDate}
-                    onChange={(e) => setTargetReportDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
-                  />
-                </div>
+                <input
+                  type="date"
+                  value={targetReportDate}
+                  onChange={(e) => setTargetReportDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Assessor */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Lead Assessor */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Assessor <span className="text-rose-500">*</span>
+                  Lead TLI Assessor <span className="text-rose-500">*</span>
                 </label>
-                <div className="flex items-center space-x-2 border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                  <div className="w-6 h-6 rounded-full bg-[#0066FF] text-white flex items-center justify-center text-[10px] font-bold">
-                    AS
-                  </div>
-                  <select
-                    value={assessor}
-                    onChange={(e) => setAssessor(e.target.value)}
-                    className="w-full text-xs bg-transparent focus:outline-none"
-                  >
-                    <option value={assessor}>{assessor}</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Co-Assessor */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Co-Assessor (Optional)
-                </label>
-                <select
-                  value={coAssessor}
-                  onChange={(e) => setCoAssessor(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white text-slate-600"
-                >
-                  <option value="">Select co-assessor</option>
-                  <option value="Rohit Mehta">Rohit Mehta</option>
-                  <option value="Priya Nair">Priya Nair</option>
-                </select>
+                <input
+                  type="text"
+                  disabled
+                  value={sessionUser.fullName}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-800 font-medium"
+                />
               </div>
 
               {/* Engagement Reference */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Engagement Reference (Optional)
+                  Engagement Reference / PO Number
                 </label>
                 <input
                   type="text"
@@ -481,7 +489,7 @@ export function CreateAssessmentForm({
             {/* Assessment Scope */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Assessment Scope
+                Assessment Scope Description
               </label>
               <textarea
                 rows={2}
@@ -504,21 +512,89 @@ export function CreateAssessmentForm({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 text-xs font-semibold text-white bg-[#0066FF] hover:bg-[#0052CC] rounded-lg shadow-sm transition-colors flex items-center space-x-2"
+              className="px-6 py-2.5 text-xs font-semibold text-white bg-[#0066FF] hover:bg-[#0052CC] active:bg-[#0047B3] disabled:opacity-60 rounded-lg shadow-sm transition-colors flex items-center space-x-2"
             >
-              <span>{isSubmitting ? "Initialising..." : "Next"}</span>
+              <span>{isSubmitting ? "Initializing Assessment..." : "Create Assessment & Open Questionnaire"}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Right Column (4 cols): Scope Guidance, Customer Contacts, Documents */}
+        {/* Right Column (4 cols): Assigned Customer Coordinators & Documents */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Panel 1: Assessment Scope & Guidance */}
+          {/* Panel 1: Customer Coordinators Assignment */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center space-x-2">
+                <Users className="w-4 h-4 text-[#0066FF]" />
+                <h4 className="font-bold text-xs text-slate-900">
+                  Assign Customer Coordinators
+                </h4>
+              </div>
+              <Link
+                href={`/dashboard/customers/${selectedTenantId}`}
+                className="text-[11px] font-semibold text-[#0066FF] hover:underline"
+              >
+                Manage Team
+              </Link>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Selected users receive client coordinator assignment to participate in questionnaire responses and evidence submissions.
+            </p>
+
+            {currentTenantUsers.length === 0 ? (
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-center space-y-2">
+                <p className="text-[11px] text-slate-500">
+                  No provisioned users found for this organization yet.
+                </p>
+                <Link
+                  href={`/dashboard/customers/${selectedTenantId}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#0066FF] hover:underline"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Onboard Customer Users</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-1 max-h-60 overflow-y-auto">
+                {currentTenantUsers.map((u) => {
+                  const isChecked = assignedCoordinatorIds.includes(u.id);
+                  return (
+                    <label
+                      key={u.id}
+                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                        isChecked
+                          ? "bg-blue-50/60 border-blue-200"
+                          : "bg-white border-slate-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleCoordinator(u.id)}
+                        className="mt-0.5 rounded text-[#0066FF] focus:ring-[#0066FF] h-3.5 w-3.5"
+                      />
+                      <div className="text-left leading-tight">
+                        <span className="font-semibold text-xs text-slate-800 block">
+                          {u.full_name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 block truncate">
+                          {u.email} • {u.role}
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Panel 2: Guidance Box */}
           <div className="bg-[#F0F7FF] rounded-xl border border-blue-200/80 p-5 shadow-xs space-y-3">
             <div className="flex items-center space-x-2 text-blue-900 font-bold text-xs">
               <Info className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <span>What happens next?</span>
+              <span>Assessment Next Steps</span>
             </div>
 
             <ol className="space-y-2 text-xs text-slate-700 list-none pl-0">
@@ -526,129 +602,24 @@ export function CreateAssessmentForm({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
                   1
                 </span>
-                <span>Create the assessment record.</span>
+                <span>Assessment created in DRAFT under PostgreSQL RLS boundary.</span>
               </li>
               <li className="flex items-start space-x-2.5">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
                   2
                 </span>
-                <span>Proceed to the 60-question questionnaire.</span>
+                <span>Client coordinators gain access to the 60 canonical questions.</span>
               </li>
               <li className="flex items-start space-x-2.5">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
                   3
                 </span>
-                <span>Capture responses, evidence and observations.</span>
-              </li>
-              <li className="flex items-start space-x-2.5">
-                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">
-                  4
-                </span>
-                <span>Review and submit for validation.</span>
+                <span>Assessor conducts evaluation, scores gaps, and issues reports.</span>
               </li>
             </ol>
-          </div>
-
-          {/* Panel 2: Customer Contacts (Optional) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-bold text-xs text-slate-900">
-                Customer Contacts <span className="font-normal text-slate-400">(Optional)</span>
-              </h4>
-              <button
-                type="button"
-                className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center space-x-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Contact</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead className="text-slate-400 font-semibold border-b border-slate-100">
-                  <tr>
-                    <th className="pb-1.5">Name</th>
-                    <th className="pb-1.5">Role</th>
-                    <th className="pb-1.5">Email</th>
-                    <th className="pb-1.5">Phone</th>
-                    <th className="pb-1.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {contacts.map((c) => (
-                    <tr key={c.id}>
-                      <td className="py-2 font-medium text-slate-800">{c.name}</td>
-                      <td className="py-2 text-slate-500">{c.role}</td>
-                      <td className="py-2 text-slate-500">{c.email}</td>
-                      <td className="py-2 text-slate-500">{c.phone}</td>
-                      <td className="py-2 text-right">
-                        <div className="flex items-center justify-end space-x-1">
-                          <button type="button" className="p-0.5 text-blue-600 hover:text-blue-800">
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                          <button type="button" className="p-0.5 text-rose-500 hover:text-rose-700">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Panel 3: Documents (Optional) */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-bold text-xs text-slate-900">
-                Documents <span className="font-normal text-slate-400">(Optional)</span>
-              </h4>
-              <button
-                type="button"
-                className="text-[11px] font-semibold text-[#0066FF] hover:underline flex items-center space-x-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Upload Document</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px]">
-                <thead className="text-slate-400 font-semibold border-b border-slate-100">
-                  <tr>
-                    <th className="pb-1.5">File Name</th>
-                    <th className="pb-1.5">Type</th>
-                    <th className="pb-1.5">Uploaded On</th>
-                    <th className="pb-1.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {documents.map((d) => (
-                    <tr key={d.id}>
-                      <td className="py-2 font-medium text-slate-800">{d.fileName}</td>
-                      <td className="py-2 text-slate-500">{d.type}</td>
-                      <td className="py-2 text-slate-500">{d.uploadedOn}</td>
-                      <td className="py-2 text-right">
-                        <div className="flex items-center justify-end space-x-1">
-                          <button type="button" className="p-0.5 text-blue-600 hover:text-blue-800">
-                            <Download className="w-3 h-3" />
-                          </button>
-                          <button type="button" className="p-0.5 text-rose-500 hover:text-rose-700">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       </form>
     </div>
   );
 }
-

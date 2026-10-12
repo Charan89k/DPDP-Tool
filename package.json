@@ -10,9 +10,12 @@
     "start": "next start",
     "lint": "next lint",
     "seed:demo": "python3 scripts/seed_demo_users.py",
+    "provision:accounts": "node --experimental-strip-types scripts/provision_production_accounts.ts",
     "test": "node --experimental-strip-types --test tests/**/*.test.ts"
   },
   "dependencies": {
+    "@neon/config": "^1.8.6",
+    "@neon/env": "^1.5.3",
     "bcryptjs": "^2.4.3",
     "docx": "^9.10.0",
     "jose": "^5.9.6",

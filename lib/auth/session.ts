@@ -119,10 +119,34 @@ export async function verifySessionToken(
 }
 
 /**
- * Resolves the currently authenticated user from incoming request cookies.
- * For use inside Next.js Server Components, Server Actions, and Route Handlers.
+ * Resolves the currently authenticated user from incoming request cookies or direct headers.
+ * For use inside Next.js Server Components, Server Actions, Route Handlers, and test suites.
  */
-export async function getCurrentSession(): Promise<SessionUser | null> {
+export async function getCurrentSession(req?: Request | Headers): Promise<SessionUser | null> {
+  // 1. Direct request or headers inspection (e.g. In Route Handlers, Bearer auth, or tests)
+  if (req) {
+    try {
+      const headers = req instanceof Headers ? req : req.headers;
+      const authHeader = headers.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.slice(7).trim();
+        const user = await verifySessionToken(token);
+        if (user) return user;
+      }
+      const cookieHeader = headers.get("cookie");
+      if (cookieHeader) {
+        const match = cookieHeader.match(/(?:^|;\s*)tli_session=([^;]+)/);
+        if (match) {
+          const user = await verifySessionToken(match[1]);
+          if (user) return user;
+        }
+      }
+    } catch {
+      // Fall through to next/headers
+    }
+  }
+
+  // 2. Next.js server context cookies
   try {
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();

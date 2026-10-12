@@ -99,6 +99,30 @@ The platform is purpose-built to enable TLI consultants and client organisations
 
 ---
 
+## Phase 7: Secure Customer Onboarding, User Invitations & Assessment Assignment
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **51** | [Secure Customer Onboarding, User Invitations & Assessment Assignment](51_secure_customer_onboarding_and_assignment.md) | End-to-end customer organization onboarding, user provisioning, cryptographic SHA-256 invitation tokens, unconfigured SMTP status reporting, coordinator assignment, cross-tenant defense, and 155 automated tests. |
+
+---
+
+## Phase 8: Secure Production Admin Provisioning & Demo Customer Setup
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **52** | [Secure Production Admin Provisioning & Demo Customer Setup](52_production_admin_provisioning_and_demo_setup.md) | Root administrator (`admin@truthlabs.in`) and demo customer (`demo.admin@tlidemo.example`) provisioning, high-entropy password generation, bcrypt cost factor 12, 0600 credentials file delivery, target database validation, and 165 automated tests. |
+
+---
+
+## Phase 9: Production Database Initialization & Deployment Readiness
+
+| Ref | Document | Authoritative Topic |
+|---|---|---|
+| **53** | [Production Database Initialization & Deployment Readiness](53_production_database_initialization.md) | Clean Neon database initialization plan, atomic migration execution (`--single-transaction`), cloud non-superuser role grant architecture (Migration 014), pre-flight checks, rollback procedures, and post-migration verification queries. |
+
+---
+
 ## Machine-Readable Data Assets & Schemas
 
 | Asset | Records / Specs | Location & Formats | Description |

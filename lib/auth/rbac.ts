@@ -59,6 +59,10 @@ export function canManageTenantUsers(role: UserRole): boolean {
   return role === "TLI_SUPER_ADMIN" || role === "CLIENT_ADMIN";
 }
 
+export function canCreateCustomer(role: UserRole): boolean {
+  return role === "TLI_SUPER_ADMIN";
+}
+
 export function canEditQuestionnaire(role: UserRole): boolean {
   return (
     role === "CLIENT_ADMIN" ||

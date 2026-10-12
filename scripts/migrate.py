@@ -49,8 +49,8 @@ def run_psql(database_url: str, sql: str, capture_output: bool = True) -> Tuple[
     return p.returncode, p.stdout or "", p.stderr or ""
 
 def run_psql_file(database_url: str, filepath: str) -> Tuple[int, str, str]:
-    """Executes an SQL file via psql subprocess."""
-    cmd = ["psql", database_url, "-v", "ON_ERROR_STOP=1", "-f", filepath]
+    """Executes an SQL file via psql subprocess within a single atomic transaction."""
+    cmd = ["psql", database_url, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", filepath]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return p.returncode, p.stdout or "", p.stderr or ""
 
@@ -119,6 +119,18 @@ def cmd_up(database_url: str):
 
     applied = get_applied_migrations(database_url)
     migrations = get_migration_files()
+
+    if not applied:
+        # Pre-flight safety check: verify if database is truly clean
+        code, out, err = run_psql(
+            database_url,
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name != 'schema_migrations';"
+        )
+        if code == 0:
+            lines = [l.strip() for l in out.strip().splitlines() if l.strip().isdigit()]
+            if lines and int(lines[0]) > 0:
+                print(f"[WARNING] Database contains {lines[0]} existing tables in 'public', but no 'schema_migrations' tracking table exists!")
+                print("  Proceeding with initial migration sequence...")
 
     pending_count = 0
     for version, name, filepath in migrations:

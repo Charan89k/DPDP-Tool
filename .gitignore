@@ -7,6 +7,10 @@
 *.env
 !/.env.example
 
+# Provisioned credentials files
+.credentials*
+*.credentials
+
 # Database dumps, sockets & local data directories
 *.sql.gz
 *.dump
@@ -55,3 +59,4 @@ storage_local/
 .local_evidence/
 .local_evidence*/
 .moto/
+.neon

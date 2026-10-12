@@ -6,18 +6,32 @@ import { CreateAssessmentForm } from "./CreateAssessmentForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewAssessmentPage() {
+export default async function NewAssessmentPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ tenantId?: string }>;
+}) {
   const sessionUser = await getCurrentSession();
   if (!sessionUser) {
     redirect("/login?redirect=/dashboard/assessments/new");
   }
 
-  // Fetch available tenants and existing assessment ID for reference under RLS
+  const resolvedParams = searchParams ? await searchParams : {};
+  const initialTenantId = resolvedParams.tenantId || null;
+
+  // Fetch available tenants, users, and existing assessment ID under RLS
   const initData = await executeWithRls(sessionUser, async (client) => {
     const tenantsRes = await client.query(`
-      SELECT id, name, slug, industry, is_sdf
+      SELECT id, name, slug, industry, is_sdf, dpo_name, dpo_email
       FROM tenants
+      WHERE type = 'CLIENT'
       ORDER BY name ASC;
+    `);
+
+    const usersRes = await client.query(`
+      SELECT id, tenant_id, full_name, email, role, phone
+      FROM users
+      ORDER BY full_name ASC;
     `);
 
     const frameworksRes = await client.query(`
@@ -32,6 +46,7 @@ export default async function NewAssessmentPage() {
 
     return {
       tenants: tenantsRes.rows,
+      users: usersRes.rows,
       frameworkId: frameworksRes.rows[0]?.id || null,
       existingAssessmentId: latestRes.rows[0]?.id || null,
     };
@@ -42,10 +57,11 @@ export default async function NewAssessmentPage() {
       <CreateAssessmentForm
         sessionUser={sessionUser}
         tenants={initData.tenants}
+        users={initData.users}
+        initialTenantId={initialTenantId}
         frameworkId={initData.frameworkId}
         fallbackAssessmentId={initData.existingAssessmentId}
       />
     </div>
   );
 }
-

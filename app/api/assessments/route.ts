@@ -13,8 +13,8 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole } from "@/lib/auth/rbac";
 
-export async function GET() {
-  const sessionUser = await getCurrentSession();
+export async function GET(req: NextRequest) {
+  const sessionUser = await getCurrentSession(req);
 
   if (!sessionUser) {
     return NextResponse.json(
@@ -72,7 +72,7 @@ export async function GET() {
 import { pool } from "@/lib/db/pool";
 
 export async function POST(req: NextRequest) {
-  const sessionUser = await getCurrentSession();
+  const sessionUser = await getCurrentSession(req);
 
   if (!sessionUser) {
     return NextResponse.json(
@@ -115,6 +115,26 @@ export async function POST(req: NextRequest) {
     try {
       await client.query("BEGIN;");
 
+      // Verify tenant exists and is active
+      const tenantCheck = await client.query(
+        "SELECT id, name, status FROM tenants WHERE id = $1 LIMIT 1;",
+        [requestedTenantId]
+      );
+      if (tenantCheck.rows.length === 0) {
+        await client.query("ROLLBACK;");
+        return NextResponse.json(
+          { error: "Target customer organization not found." },
+          { status: 404 }
+        );
+      }
+      if (tenantCheck.rows[0].status !== "ACTIVE") {
+        await client.query("ROLLBACK;");
+        return NextResponse.json(
+          { error: "Cannot create assessment for an inactive or suspended organization." },
+          { status: 400 }
+        );
+      }
+
       // 1. Resolve framework version and scoring model
       const fwRes = await client.query("SELECT id FROM framework_versions LIMIT 1;");
       const frameworkId = fwRes.rows[0]?.id;
@@ -127,10 +147,12 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Resolve lead consultant
+      const leadConsultantId = body.leadConsultantId || sessionUser.userId;
       const consultantRes = await client.query(
-        "SELECT id FROM users WHERE role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;"
+        "SELECT id, role FROM users WHERE id = $1 AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;",
+        [leadConsultantId]
       );
-      const leadConsultantId = consultantRes.rows[0]?.id || sessionUser.userId;
+      const resolvedLeadId = consultantRes.rows[0]?.id || sessionUser.userId;
 
       // 3. Insert assessment
       const insertSql = `
@@ -144,7 +166,7 @@ export async function POST(req: NextRequest) {
           lead_consultant_id,
           target_completion_date
         ) VALUES ($1, $2, $3, $4, $5, 'DRAFT', $6, $7)
-        RETURNING id, engagement_code, title;
+        RETURNING id, engagement_code, title, tenant_id, status, created_at;
       `;
       const res = await client.query(insertSql, [
         requestedTenantId,
@@ -152,7 +174,7 @@ export async function POST(req: NextRequest) {
         scoringModelId,
         engagementCode,
         title,
-        leadConsultantId,
+        resolvedLeadId,
         targetDate,
       ]);
 
@@ -163,7 +185,67 @@ export async function POST(req: NextRequest) {
         `INSERT INTO assessment_assignments (assessment_id, user_id, assignment_role)
          VALUES ($1, $2, 'ENGAGEMENT_LEAD')
          ON CONFLICT (assessment_id, user_id) DO NOTHING;`,
-        [newAssessment.id, leadConsultantId]
+        [newAssessment.id, resolvedLeadId]
+      );
+
+      // 5. Validate and assign client coordinators if provided
+      const assignedUserIds: string[] = Array.isArray(body.assignedUserIds) ? body.assignedUserIds : [];
+      const assignedCount = assignedUserIds.length;
+
+      for (const assignedUserId of assignedUserIds) {
+        const userCheck = await client.query(
+          "SELECT id, tenant_id, role FROM users WHERE id = $1 LIMIT 1;",
+          [assignedUserId]
+        );
+
+        if (userCheck.rows.length === 0) {
+          await client.query("ROLLBACK;");
+          return NextResponse.json(
+            { error: `Assigned user ${assignedUserId} not found in database.` },
+            { status: 400 }
+          );
+        }
+
+        const targetUser = userCheck.rows[0];
+
+        // CRITICAL CROSS-TENANT DEFENSE: Verify assigned user belongs to the assessment tenant
+        if (targetUser.tenant_id !== requestedTenantId) {
+          await client.query("ROLLBACK;");
+          return NextResponse.json(
+            {
+              error: `Cross-tenant assignment violation: Assigned user ${assignedUserId} belongs to tenant '${targetUser.tenant_id}', which does not match target tenant '${requestedTenantId}'.`,
+            },
+            { status: 400 }
+          );
+        }
+
+        // Insert client assignment
+        await client.query(
+          `INSERT INTO assessment_assignments (assessment_id, user_id, assignment_role)
+           VALUES ($1, $2, 'CLIENT_COORDINATOR')
+           ON CONFLICT (assessment_id, user_id) DO NOTHING;`,
+          [newAssessment.id, targetUser.id]
+        );
+      }
+
+      // Audit log entry
+      const clientIp = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const userAgent = req.headers.get("user-agent") || "TLI-App";
+      await client.query(
+        `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, ip_address, user_agent, new_state)
+         VALUES ($1, $2, 'ASSESSMENT_CREATED', 'assessments', $3, $4, $5, $6);`,
+        [
+          requestedTenantId,
+          sessionUser.userId,
+          newAssessment.id,
+          clientIp,
+          userAgent,
+          JSON.stringify({
+            code: newAssessment.engagement_code,
+            title: newAssessment.title,
+            assignedUsersCount: assignedCount,
+          }),
+        ]
       );
 
       await client.query("COMMIT;");
@@ -172,6 +254,7 @@ export async function POST(req: NextRequest) {
         {
           success: true,
           assessment: newAssessment,
+          assignedCoordinatorsCount: assignedCount,
         },
         { status: 201 }
       );
