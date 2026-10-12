@@ -49,8 +49,8 @@ def run_psql(database_url: str, sql: str, capture_output: bool = True) -> Tuple[
     return p.returncode, p.stdout or "", p.stderr or ""
 
 def run_psql_file(database_url: str, filepath: str) -> Tuple[int, str, str]:
-    """Executes an SQL file via psql subprocess within a single atomic transaction."""
-    cmd = ["psql", database_url, "-v", "ON_ERROR_STOP=1", "--single-transaction", "-f", filepath]
+    """Executes an SQL file via psql subprocess with ON_ERROR_STOP=1."""
+    cmd = ["psql", database_url, "-v", "ON_ERROR_STOP=1", "-f", filepath]
     p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     return p.returncode, p.stdout or "", p.stderr or ""
 

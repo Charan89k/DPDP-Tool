@@ -156,8 +156,14 @@ export async function provisionAccounts(options: ProvisionOptions): Promise<Prov
     options.credentialsFilePath ||
     path.resolve(process.cwd(), ".credentials_provisioned.txt");
 
+  const isSsl =
+    databaseUrl.includes("sslmode=require") ||
+    databaseUrl.includes("neon.tech") ||
+    databaseUrl.includes("ssl=true");
+
   const pool = new Pool({
     connectionString: databaseUrl,
+    ssl: isSsl ? { rejectUnauthorized: false } : undefined,
     max: 2,
     connectionTimeoutMillis: 10000,
   });

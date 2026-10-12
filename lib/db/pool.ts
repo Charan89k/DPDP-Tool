@@ -12,8 +12,14 @@ const connectionString =
   process.env.DATABASE_URL ||
   "postgresql://postgres@127.0.0.1:54329/dpdp_test";
 
+const isSsl =
+  connectionString.includes("sslmode=require") ||
+  connectionString.includes("neon.tech") ||
+  connectionString.includes("ssl=true");
+
 const poolConfig: PoolConfig = {
   connectionString,
+  ssl: isSsl ? { rejectUnauthorized: false } : undefined,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
