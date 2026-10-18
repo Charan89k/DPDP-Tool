@@ -18,7 +18,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { buildPolicySql } from "./policies.ts";
+import { buildPolicySql, SENSITIVE_COLUMNS } from "./policies.ts";
 import { getMigrationStatus } from "./migrate.ts";
 
 export type SqliteDatabase = Database.Database;
@@ -108,7 +108,13 @@ export function openDatabase(filePath: string, options: OpenOptions = {}): Sqlit
               'Run "npm run db:migrate" before starting CloudE5.'
       );
     }
-    db.exec(buildPolicySql());
+    const columnsByTable = Object.fromEntries(
+      Object.keys(SENSITIVE_COLUMNS).map((table) => [
+        table,
+        (db.prepare(`PRAGMA main.table_info(${table})`).all() as { name: string }[]).map((c) => c.name),
+      ])
+    );
+    db.exec(buildPolicySql(columnsByTable));
   }
   return db;
 }

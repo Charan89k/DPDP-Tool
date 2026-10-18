@@ -9,6 +9,8 @@
  *                                       Replace the database with a verified backup (stop the app first).
  *   npm run db:verify-email -- <email> --confirm
  *                                       Operator override: mark an address verified (when SMTP is unavailable).
+ *   npm run db:reset-mfa -- <email> --confirm
+ *                                       Operator override: remove two-factor for a locked-out user.
  *   npm run db:seed-demo                Load synthetic demo tenants/users (refused in production).
  *
  * The database path comes from CLOUDE5_DATABASE_PATH (required in production). Output never
@@ -187,6 +189,41 @@ async function main(): Promise<number> {
       return 0;
     }
 
+    case "reset-mfa": {
+      // Operator override for a user who lost both their authenticator and recovery codes.
+      // Confirm the person's identity out of band first. Their sessions are revoked.
+      const email = args.find((a) => !a.startsWith("--"))?.trim().toLowerCase();
+      if (!email || !args.includes("--confirm")) {
+        console.error("Usage: npm run db:reset-mfa -- <email> --confirm   (verify identity out of band first)");
+        return 2;
+      }
+      const db = open(databasePath);
+      try {
+        const user = db.prepare("SELECT id, tenant_id FROM users WHERE LOWER(email) = ?").get(email) as
+          | { id: string; tenant_id: string }
+          | undefined;
+        if (!user) {
+          console.error("No account with that email address.");
+          return 1;
+        }
+        db.transaction(() => {
+          db.prepare(
+            `UPDATE users SET mfa_enabled = 0, mfa_secret_encrypted = NULL, mfa_last_used_step = NULL,
+                              session_version = session_version + 1 WHERE id = ?`
+          ).run(user.id);
+          db.prepare("DELETE FROM mfa_recovery_codes WHERE user_id = ?").run(user.id);
+          db.prepare(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, new_state)
+             VALUES (?, ?, 'MFA_RESET_BY_OPERATOR', 'users', ?, '{}')`
+          ).run(user.tenant_id, user.id, user.id);
+        })();
+        console.log(`Two-factor authentication reset for ${email}; existing sessions were revoked.`);
+      } finally {
+        db.close();
+      }
+      return 0;
+    }
+
     case "seed-demo": {
       if (process.env.NODE_ENV === "production") {
         console.error("Refusing to load synthetic demo data with NODE_ENV=production.");
@@ -212,7 +249,7 @@ async function main(): Promise<number> {
 
     default:
       console.error(
-        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | verify-email <email> --confirm | seed-demo"
+        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | verify-email <email> --confirm | reset-mfa <email> --confirm | seed-demo"
       );
       return 2;
   }

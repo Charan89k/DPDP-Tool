@@ -1,46 +1,20 @@
 /**
- * CloudE5 — In-Memory Login Rate Limiter
+ * CloudE5 — Rate limiting
  *
- * Implements a sliding-window rate limiter protecting POST /api/auth/login
- * against brute-force password guessing and credential stuffing attacks.
+ * Sliding-window limits persisted in SQLite (rate_limit_buckets), so they survive restarts:
+ * - Failed sign-ins: 5 per 15 minutes per client IP and per email address.
+ * - Account emails (registration, verification resend, password reset): 5 per 15 minutes per IP
+ *   and per email address.
+ * - New organisation registrations: 30 per hour across the installation.
  *
- * Defaults:
- * - 5 failed attempts per key within a 15-minute window (900 seconds)
- * - Tracked per client IP and per normalized target email
- *
- * ============================================================================
- * ARCHITECTURAL LIMITATIONS & PRODUCTION MITIGATION REQUIREMENTS:
- * ============================================================================
- * 1. Single-Instance Memory Scope:
- *    This in-memory rate limiter stores state in process memory. It resets
- *    upon application restarts and DOES NOT share state across multiple Node.js
- *    instances or serverless worker invocations.
- *
- * 2. No Distributed Protection Claim:
- *    This implementation DOES NOT provide distributed brute-force protection.
- *    In multi-pod Kubernetes clusters or auto-scaled environments, requests will
- *    be routed across multiple pods, partitioning the attempt counters.
- *
- * 3. Production Mitigations Required Before Public Deployment:
- *    Before exposing this application to the public internet, infrastructure
- *    teams MUST deploy one of the following production-grade mitigations:
- *    a) Edge-Layer Rate Limiting: Terminate traffic through Cloudflare Rate
- *       Limiting, AWS WAF rate-based rules, or NGINX limit_req_zone.
- *    b) Shared Distributed Store: Replace or back this in-memory class with a
- *       Redis / Valkey atomic token-bucket or sliding-window script.
- *    c) Reverse Proxy Header Hardening: Ensure reverse proxies (ALB, Nginx)
- *       strip client-supplied X-Forwarded-For headers and overwrite X-Real-IP
- *       with the genuine client connection address ($remote_addr).
- * ============================================================================
+ * Client IPs come only from headers the deployment trusts (see resolveClientIp). Limits apply to a
+ * single CloudE5 server; for internet-facing deployments also rate-limit at the reverse proxy.
  */
 
+import crypto from "node:crypto";
 import type { NextRequest } from "next/server";
+import { pool } from "../db/pool.ts";
 
-interface RateLimitRecord {
-  attempts: number;
-  firstAttemptAt: number;
-  lastAttemptAt: number;
-}
 
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_SECONDS = 15 * 60; // 15 minutes
@@ -104,109 +78,78 @@ export function resolveClientIp(
   return candidates.find((ip): ip is string => Boolean(ip)) ?? "127.0.0.1";
 }
 
-export class MemoryRateLimiter {
-  private records: Map<string, RateLimitRecord> = new Map();
+/**
+ * Rate limiter persisted in SQLite (table rate_limit_buckets), so limits survive restarts.
+ * Keys are hashed before storage. Each update is a single atomic statement.
+ */
+export class PersistentRateLimiter {
+  private readonly scope: string;
   private readonly maxAttempts: number;
   private readonly windowSeconds: number;
+  private lastPrune = 0;
 
-  constructor(maxAttempts: number = MAX_FAILED_ATTEMPTS, windowSeconds: number = WINDOW_SECONDS) {
+  constructor(scope: string, maxAttempts: number = MAX_FAILED_ATTEMPTS, windowSeconds: number = WINDOW_SECONDS) {
+    this.scope = scope;
     this.maxAttempts = maxAttempts;
     this.windowSeconds = windowSeconds;
   }
-  private lastCleanup: number = Date.now();
 
-  private cleanupIfNeeded() {
-    const now = Date.now();
-    // Run garbage collection at most once every 60 seconds
-    if (now - this.lastCleanup > 60 * 1000) {
-      this.lastCleanup = now;
-      const cutoff = now - this.windowSeconds * 1000;
-      for (const [key, record] of this.records.entries()) {
-        if (record.lastAttemptAt < cutoff) {
-          this.records.delete(key);
-        }
-      }
-    }
+  private hash(key: string): string {
+    return crypto.createHash("sha256").update(`${this.scope}:${key}`).digest("hex");
   }
 
-  /**
-   * Checks whether the given key has exceeded the allowed failed attempts threshold.
-   */
-  public isRateLimited(key: string): { limited: boolean; retryAfterSeconds: number } {
-    this.cleanupIfNeeded();
-    const record = this.records.get(key);
-    if (!record) {
+  private cutoff(): string {
+    return new Date(Date.now() - this.windowSeconds * 1000).toISOString();
+  }
+
+  public async isRateLimited(key: string): Promise<{ limited: boolean; retryAfterSeconds: number }> {
+    const row = (
+      await pool.query(
+        "SELECT attempts, window_started_at FROM rate_limit_buckets WHERE key_hash = $1;",
+        [this.hash(key)]
+      )
+    ).rows[0];
+    if (!row) return { limited: false, retryAfterSeconds: 0 };
+    const startedAt = new Date(row.window_started_at).getTime();
+    const elapsedSeconds = (Date.now() - startedAt) / 1000;
+    if (elapsedSeconds > this.windowSeconds || Number(row.attempts) < this.maxAttempts) {
       return { limited: false, retryAfterSeconds: 0 };
     }
-
-    const now = Date.now();
-    const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
-
-    if (elapsedSeconds > this.windowSeconds) {
-      // Window expired, reset
-      this.records.delete(key);
-      return { limited: false, retryAfterSeconds: 0 };
-    }
-
-    if (record.attempts >= this.maxAttempts) {
-      const remainingSeconds = Math.ceil(this.windowSeconds - elapsedSeconds);
-      return { limited: true, retryAfterSeconds: Math.max(remainingSeconds, 1) };
-    }
-
-    return { limited: false, retryAfterSeconds: 0 };
+    return { limited: true, retryAfterSeconds: Math.max(Math.ceil(this.windowSeconds - elapsedSeconds), 1) };
   }
 
-  /**
-   * Increments the failed attempt counter for the given key.
-   */
-  public recordFailedAttempt(key: string): void {
-    this.cleanupIfNeeded();
-    const now = Date.now();
-    const record = this.records.get(key);
-
-    if (!record) {
-      this.records.set(key, {
-        attempts: 1,
-        firstAttemptAt: now,
-        lastAttemptAt: now,
-      });
-      return;
-    }
-
-    const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
-    if (elapsedSeconds > this.windowSeconds) {
-      // Start a fresh window
-      this.records.set(key, {
-        attempts: 1,
-        firstAttemptAt: now,
-        lastAttemptAt: now,
-      });
-      return;
-    }
-
-    record.attempts += 1;
-    record.lastAttemptAt = now;
+  public async recordFailedAttempt(key: string): Promise<void> {
+    const now = new Date().toISOString();
+    const cutoff = this.cutoff();
+    await pool.query(
+      `INSERT INTO rate_limit_buckets (key_hash, attempts, window_started_at, updated_at)
+       VALUES ($1, 1, $2, $2)
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN 1 ELSE rate_limit_buckets.attempts + 1 END,
+         window_started_at = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN $2 ELSE rate_limit_buckets.window_started_at END,
+         updated_at = $2;`,
+      [this.hash(key), now, cutoff]
+    );
+    await this.pruneIfDue();
   }
 
-  /**
-   * Resets the failed attempts counter upon a successful login.
-   */
-  public resetAttempts(key: string): void {
-    this.records.delete(key);
+  public async resetAttempts(key: string): Promise<void> {
+    await pool.query("DELETE FROM rate_limit_buckets WHERE key_hash = $1;", [this.hash(key)]);
   }
 
-  /**
-   * Clears all stored rate limit records (for automated testing).
-   */
-  public clearAllRateLimits(): void {
-    this.records.clear();
+  /** Removes buckets whose window ended long ago (at most once a minute). */
+  private async pruneIfDue(): Promise<void> {
+    if (Date.now() - this.lastPrune < 60_000) return;
+    this.lastPrune = Date.now();
+    const staleBefore = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await pool.query("DELETE FROM rate_limit_buckets WHERE updated_at < $1;", [staleBefore]);
   }
 }
 
-export const loginRateLimiter = new MemoryRateLimiter();
+export const loginRateLimiter = new PersistentRateLimiter("login");
 
 /** Limits account emails (registration, verification resend, password reset) per IP and per email. */
-export const accountEmailRateLimiter = new MemoryRateLimiter();
+export const accountEmailRateLimiter = new PersistentRateLimiter("account-email");
 
-/** Installation-wide cap on new organisation registrations (per process): 30 per hour. */
-export const registrationRateLimiter = new MemoryRateLimiter(30, 60 * 60);
+/** Installation-wide cap on new organisation registrations: 30 per hour. */
+export const registrationRateLimiter = new PersistentRateLimiter("registration", 30, 60 * 60);

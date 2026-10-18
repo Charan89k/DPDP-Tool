@@ -197,6 +197,10 @@ export const TABLE_POLICIES: TablePolicy[] = [
   },
   // Authentication tokens are only ever handled by privileged authentication code paths.
   { table: "auth_tokens", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
+  // Rate-limit buckets are maintained only by the privileged rate limiter.
+  { table: "rate_limit_buckets", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
+  // MFA recovery codes are handled only by the privileged authentication service.
+  { table: "mfa_recovery_codes", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
 ];
 
 /** Reference data readable by every authenticated user but never writable at runtime. */
@@ -217,8 +221,32 @@ const permissionDenied = (table: string) =>
 const checkViolation = (table: string) =>
   `SELECT RAISE(ABORT, 'new row violates row-level security policy for table "${table}"');`;
 
-/** Builds the per-connection policy objects (temp views and triggers). */
-export function buildPolicySql(): string {
+/**
+ * Credential columns that tenant-scoped reads must never return. Through the policy views they read
+ * as NULL unless the connection is in the privileged system context (authentication code paths).
+ */
+export const SENSITIVE_COLUMNS: Record<string, string[]> = {
+  users: ["password_hash", "mfa_secret_encrypted", "mfa_last_used_step"],
+  user_invitations: ["token_hash"],
+};
+
+function viewSelectList(table: string, columns: string[] | undefined): string {
+  const hidden = SENSITIVE_COLUMNS[table];
+  if (!hidden || !columns) return "*";
+  return columns
+    .map((column) =>
+      hidden.includes(column)
+        ? `CASE WHEN ${BYPASS} = 1 THEN policy_row.${column} END AS ${column}`
+        : `policy_row.${column}`
+    )
+    .join(", ");
+}
+
+/**
+ * Builds the per-connection policy objects (temp views and triggers). `columnsByTable` lists each
+ * table's columns (from PRAGMA table_info) so views can mask sensitive columns.
+ */
+export function buildPolicySql(columnsByTable: Record<string, string[]> = {}): string {
   const statements: string[] = [
     `CREATE TEMP TABLE IF NOT EXISTS _ctx (
        tenant_id TEXT, user_id TEXT, role TEXT, bypass INTEGER NOT NULL
@@ -232,7 +260,7 @@ export function buildPolicySql(): string {
   for (const policy of TABLE_POLICIES) {
     const t = policy.table;
     statements.push(
-      `CREATE TEMP VIEW ${t} AS SELECT * FROM main.${t} AS policy_row WHERE ${BYPASS} = 1 OR coalesce((${qualify(policy.select, "policy_row.")}), 0);`
+      `CREATE TEMP VIEW ${t} AS SELECT ${viewSelectList(t, columnsByTable[t])} FROM main.${t} AS policy_row WHERE ${BYPASS} = 1 OR coalesce((${qualify(policy.select, "policy_row.")}), 0);`
     );
 
     statements.push(

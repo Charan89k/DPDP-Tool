@@ -5,6 +5,7 @@
 #   backup [file]               Online database backup (default under /data/backups).
 #   restore <file> --confirm    Restore a database backup (stop the web container first).
 #   verify-email <email> --confirm   Operator override when SMTP is unavailable.
+#   reset-mfa <email> --confirm      Operator override for a user locked out of two-factor.
 #   backup-all                  Database backup plus an evidence archive under /data/backups.
 #   admin:create --email=... --name="..."   Create the first platform administrator.
 set -eu
@@ -23,7 +24,7 @@ case "$command" in
     mkdir -p "$CLOUDE5_EVIDENCE_DIR"
     exec node server.js
     ;;
-  migrate|status|verify|backup|restore|verify-email)
+  migrate|status|verify|backup|restore|verify-email|reset-mfa)
     exec $DB_CLI "$command" "$@"
     ;;
   backup-all)

@@ -10,7 +10,7 @@ const schema = z.object({ email: z.string().trim().email("Enter a valid email ad
 export async function POST(req: NextRequest) {
   const parsed = await parseBody(req, schema);
   if ("response" in parsed) return parsed.response;
-  const limited = limitAccountEmail(req, parsed.data.email);
+  const limited = await limitAccountEmail(req, parsed.data.email);
   if (limited) return limited;
   try {
     await resendVerification(parsed.data.email);

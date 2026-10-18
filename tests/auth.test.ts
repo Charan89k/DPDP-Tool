@@ -225,25 +225,25 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(getSafeRedirectUrl(""), "/dashboard");
   });
 
-  it("should enforce sliding window rate limiting on repeated failed login attempts", () => {
-    loginRateLimiter.clearAllRateLimits();
-    const testKey = "ip:192.168.1.50";
+  it("should enforce sliding window rate limiting on repeated failed login attempts", async () => {
+    
+    const testKey = `ip:192.168.1.${Date.now() % 250}`;
 
     // First 4 attempts should not be rate limited
     for (let i = 0; i < 4; i++) {
-      loginRateLimiter.recordFailedAttempt(testKey);
-      assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
+      await loginRateLimiter.recordFailedAttempt(testKey);
+      assert.equal((await loginRateLimiter.isRateLimited(testKey)).limited, false);
     }
 
     // 5th failed attempt reaches the threshold
-    loginRateLimiter.recordFailedAttempt(testKey);
-    const limitStatus = loginRateLimiter.isRateLimited(testKey);
+    await loginRateLimiter.recordFailedAttempt(testKey);
+    const limitStatus = await loginRateLimiter.isRateLimited(testKey);
     assert.equal(limitStatus.limited, true, "5 failed attempts must trigger rate limiting");
     assert.ok(limitStatus.retryAfterSeconds > 0, "Must provide retry-after seconds");
 
     // Successful login resets the counter
-    loginRateLimiter.resetAttempts(testKey);
-    assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
+    await loginRateLimiter.resetAttempts(testKey);
+    assert.equal((await loginRateLimiter.isRateLimited(testKey)).limited, false);
   });
 
   it("should resolve client IP only from trusted proxy headers and reject spoofed headers", async () => {
@@ -275,22 +275,22 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(resolveClientIp(new Request("https://app.example"), selfHosted), "127.0.0.1");
   });
 
-  it("should prevent rate limit bypass via email case or whitespace variation", () => {
-    loginRateLimiter.clearAllRateLimits();
+  it("should prevent rate limit bypass via email case or whitespace variation", async () => {
+    
     const rawEmail = "Lead.Consultant@TruthLabs.in ";
     const normalizedKey = `email:${rawEmail.trim().toLowerCase()}`;
 
     // Record 5 failed attempts on normalized email
     for (let i = 0; i < 5; i++) {
-      loginRateLimiter.recordFailedAttempt(normalizedKey);
+      await loginRateLimiter.recordFailedAttempt(normalizedKey);
     }
 
     // Checking varying capitalizations / whitespaces normalized to same key
     const checkVariant1 = `email:${"LEAD.CONSULTANT@TRUTHLABS.IN".trim().toLowerCase()}`;
     const checkVariant2 = `email:${"  lead.consultant@truthlabs.in  ".trim().toLowerCase()}`;
 
-    assert.equal(loginRateLimiter.isRateLimited(checkVariant1).limited, true);
-    assert.equal(loginRateLimiter.isRateLimited(checkVariant2).limited, true);
+    assert.equal((await loginRateLimiter.isRateLimited(checkVariant1)).limited, true);
+    assert.equal((await loginRateLimiter.isRateLimited(checkVariant2)).limited, true);
   });
 });
 

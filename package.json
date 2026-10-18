@@ -1,7 +1,7 @@
 {
   "name": "tli-dpdp-tool",
   "version": "1.0.0",
-  "description": "TLI DPDP Compliance Gap Analysis Tool — Truth Labs International",
+  "description": "TLI DPDP Compliance Gap Analysis Tool \u2014 Truth Labs International",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,7 +18,8 @@
     "db:seed-demo": "node --experimental-strip-types scripts/cloude5-db.ts seed-demo",
     "admin:create": "node --experimental-strip-types scripts/create-platform-admin.ts",
     "db:verify-email": "node --experimental-strip-types scripts/cloude5-db.ts verify-email",
-    "db:import-postgres": "node --experimental-strip-types scripts/import-postgres.ts"
+    "db:import-postgres": "node --experimental-strip-types scripts/import-postgres.ts",
+    "db:reset-mfa": "node --experimental-strip-types scripts/cloude5-db.ts reset-mfa"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,7 +29,9 @@
     "lucide-react": "^0.469.0",
     "next": "^16.4.2",
     "nodemailer": "^10.1.6",
+    "otpauth": "^9.5.2",
     "pg": "^8.13.1",
+    "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "^3.24.1"
@@ -39,6 +42,7 @@
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.11.10",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.20",

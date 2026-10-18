@@ -322,3 +322,53 @@ describe("Platform hardening: security review regressions", () => {
     );
   });
 });
+
+describe("Platform hardening: persistent rate limiting", () => {
+  it("stores hashed buckets in the database so limits survive restarts", async () => {
+    const { PersistentRateLimiter } = await import("../lib/auth/rate_limit.ts");
+    const key = `email:persist.${SUITE_ID}@example.test`;
+    const first = new PersistentRateLimiter("login-test", 3, 900);
+    for (let i = 0; i < 3; i++) await first.recordFailedAttempt(key);
+
+    // A new limiter instance (as after a restart) sees the same state.
+    const afterRestart = new PersistentRateLimiter("login-test", 3, 900);
+    assert.equal((await afterRestart.isRateLimited(key)).limited, true);
+
+    const rows = (await pool.query("SELECT key_hash FROM rate_limit_buckets")).rows;
+    assert.ok(rows.every((r) => /^[0-9a-f]{64}$/.test(r.key_hash)), "Only hashes are stored");
+    assert.ok(!JSON.stringify(rows).includes("persist."), "No raw identifiers are stored");
+
+    await afterRestart.resetAttempts(key);
+    assert.equal((await afterRestart.isRateLimited(key)).limited, false);
+  });
+});
+
+describe("Platform hardening: credential columns", () => {
+  it("never returns password hashes, MFA secrets or invitation token hashes to tenant-scoped reads", async () => {
+    const admin: SessionUser = {
+      userId: "018f3a5b-7c8d-7e90-8000-000000000192",
+      email: "customer.demo@tli.local",
+      fullName: "Alpha Health Demo Admin",
+      role: "CLIENT_ADMIN",
+      tenantId: "018f3a5b-7c8d-7e90-8000-000000000002",
+      tenantName: "Alpha Healthcare Technologies Pvt Ltd",
+      tenantSlug: "alpha-healthcare",
+      tenantType: "CLIENT",
+      isSdf: true,
+    };
+    const rows = await executeWithRls(admin, async (client) => ({
+      users: (await client.query("SELECT * FROM users")).rows,
+      invitations: (await client.query("SELECT * FROM user_invitations")).rows,
+    }));
+    assert.ok(rows.users.length > 0);
+    for (const user of rows.users) {
+      assert.equal(user.password_hash, null);
+      assert.equal(user.mfa_secret_encrypted, null);
+    }
+    for (const invitation of rows.invitations) assert.equal(invitation.token_hash, null);
+
+    // Privileged authentication paths still see them.
+    const privileged = (await pool.query("SELECT password_hash FROM users WHERE id = $1", [admin.userId])).rows[0];
+    assert.ok(privileged.password_hash);
+  });
+});

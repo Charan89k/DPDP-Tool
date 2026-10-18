@@ -21,6 +21,8 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +43,11 @@ function LoginForm() {
         setIsLoading(false);
         return;
       }
+      if (data.mfaRequired) {
+        setMfaStep(true);
+        setIsLoading(false);
+        return;
+      }
       router.push(getSafeRedirectUrl(redirectTarget));
       router.refresh();
     } catch {
@@ -48,6 +55,70 @@ function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await fetch("/api/auth/mfa/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: mfaCode.trim() }),
+      });
+      const { data, errorMessage: error } = await readJsonResponse(res);
+      if (error) {
+        setErrorMessage(error);
+        if (data.code === "CHALLENGE_EXPIRED") {
+          setMfaStep(false);
+          setPassword("");
+        }
+        setIsLoading(false);
+        return;
+      }
+      router.push(getSafeRedirectUrl(redirectTarget));
+      router.refresh();
+    } catch {
+      setErrorMessage("Unable to reach CloudE5. Check your connection and try again.");
+      setIsLoading(false);
+    }
+  };
+
+  if (mfaStep) {
+    return (
+      <AuthShell title="Two-factor verification" subtitle="Enter the 6-digit code from your authenticator app.">
+        {errorMessage && <FormAlert tone="error">{errorMessage}</FormAlert>}
+        <form onSubmit={handleMfaSubmit} className="space-y-4">
+          <Field id="mfa-code" label="Authentication code" hint="Lost your device? Enter one of your recovery codes instead.">
+            <input
+              id="mfa-code"
+              autoComplete="one-time-code"
+              autoFocus
+              required
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value)}
+              aria-describedby="mfa-code-hint"
+              className={`${authInputClass} font-mono tracking-widest`}
+            />
+          </Field>
+          <button type="submit" disabled={isLoading} aria-busy={isLoading} className={authButtonClass}>
+            {isLoading ? "Verifying..." : "Verify and sign in"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMfaStep(false);
+              setMfaCode("");
+              setPassword("");
+            }}
+            className="w-full text-sm font-semibold text-slate-600 hover:underline"
+          >
+            Use a different account
+          </button>
+        </form>
+      </AuthShell>
+    );
+  }
 
   const resendVerification = async () => {
     setResendMessage(null);

@@ -22,16 +22,16 @@ const registerSchema = z.object({
 export async function POST(req: NextRequest) {
   const parsed = await parseBody(req, registerSchema);
   if ("response" in parsed) return parsed.response;
-  const limited = limitAccountEmail(req, parsed.data.email);
+  const limited = await limitAccountEmail(req, parsed.data.email);
   if (limited) return limited;
-  const globalLimit = registrationRateLimiter.isRateLimited("global:registrations");
+  const globalLimit = await registrationRateLimiter.isRateLimited("global:registrations");
   if (globalLimit.limited) {
     return NextResponse.json(
       { error: "Registration is temporarily busy. Please try again later." },
       { status: 429, headers: { "Retry-After": String(globalLimit.retryAfterSeconds) } }
     );
   }
-  registrationRateLimiter.recordFailedAttempt("global:registrations");
+  await registrationRateLimiter.recordFailedAttempt("global:registrations");
 
   try {
     const outcome = await registerOrganization(parsed.data, requestMeta(req));

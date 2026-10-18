@@ -40,10 +40,10 @@ export async function parseBody<T>(
  * Applies per-IP and per-email limits to endpoints that send email. Every call counts as an
  * attempt, so the limit caps email volume regardless of outcome.
  */
-export function limitAccountEmail(req: NextRequest, email: string): NextResponse | null {
+export async function limitAccountEmail(req: NextRequest, email: string): Promise<NextResponse | null> {
   const keys = [`ip:${resolveClientIp(req)}`, `email:${email.trim().toLowerCase()}`];
   for (const key of keys) {
-    const status = accountEmailRateLimiter.isRateLimited(key);
+    const status = await accountEmailRateLimiter.isRateLimited(key);
     if (status.limited) {
       return NextResponse.json(
         { error: "Too many requests. Please wait a few minutes and try again." },
@@ -51,7 +51,7 @@ export function limitAccountEmail(req: NextRequest, email: string): NextResponse
       );
     }
   }
-  keys.forEach((key) => accountEmailRateLimiter.recordFailedAttempt(key));
+  for (const key of keys) await accountEmailRateLimiter.recordFailedAttempt(key);
   return null;
 }
 
