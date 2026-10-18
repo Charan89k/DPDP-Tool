@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
-      const { data, errorMessage } = await readJsonResponse(res);
+      const { data, errorMessage } = await readJsonResponse<{ message: string }>(res);
       setResult(errorMessage ? { tone: "error", message: errorMessage } : { tone: "success", message: data.message });
     } catch {
       setResult({ tone: "error", message: "Unable to reach CloudE5. Please try again." });

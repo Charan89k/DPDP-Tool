@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { readJsonResponse } from "@/lib/http/responses";
+import type { UploadedEvidence } from "@/lib/storage/upload_response";
 import Link from "next/link";
 import {
   Paperclip,
@@ -37,6 +38,33 @@ interface EvidenceItem {
   rawStatus?: string;
   verificationNotes?: string | null;
   verifiedByName?: string | null;
+}
+
+/** Coverage metrics as returned by GET /api/assessments/[id]/evidence. */
+interface EvidenceCoverage {
+  totalQuestions: number;
+  questionsWithEvidence: number;
+  coveragePercentage: number;
+  totalEvidence: number;
+  verifiedCount: number;
+  activeCount: number;
+  rejectedCount: number;
+}
+
+/** Evidence item as returned by GET /api/assessments/[id]/evidence. */
+interface EvidenceApiItem {
+  id: string;
+  questionCode: string;
+  category: string;
+  description: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  status: string;
+  uploadedByName: string;
+  verifiedByName: string | null;
+  verificationNotes: string | null;
+  createdAt: string | null;
 }
 
 interface EvidenceManagementClientProps {
@@ -81,15 +109,7 @@ export function EvidenceManagementClient({
   const [reviewFeedback, setReviewFeedback] = useState<string | null>(null);
 
   // Independent Evidence Coverage State
-  const [coverage, setCoverage] = useState<{
-    totalQuestions: number;
-    questionsWithEvidence: number;
-    coveragePercentage: number;
-    totalEvidence: number;
-    verifiedCount: number;
-    activeCount: number;
-    rejectedCount: number;
-  } | null>(null);
+  const [coverage, setCoverage] = useState<EvidenceCoverage | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,9 +128,9 @@ export function EvidenceManagementClient({
     try {
       const res = await fetch(`/api/assessments/${assessmentId}/evidence`);
       if (!res.ok) return;
-      const data = await res.json();
+      const data: { items?: EvidenceApiItem[]; metrics?: EvidenceCoverage } = await res.json();
       if (data.items && Array.isArray(data.items)) {
-        const mapped: EvidenceItem[] = data.items.map((it: any) => ({
+        const mapped: EvidenceItem[] = data.items.map((it) => ({
           id: it.id,
           fileName: it.fileName,
           fileSizeBytes: it.fileSizeBytes,
@@ -195,7 +215,7 @@ export function EvidenceManagementClient({
         body: formData,
       });
 
-      const { data, errorMessage } = await readJsonResponse(res);
+      const { data, errorMessage } = await readJsonResponse<{ evidence: UploadedEvidence }>(res);
       if (errorMessage) {
         setUploadError(errorMessage);
         setIsUploading(false);

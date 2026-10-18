@@ -13,6 +13,18 @@ import { isTliRole } from "../auth/rbac.ts";
 import { getAssessmentGapAnalysis } from "../gaps/index.ts";
 import questionnaireData from "../../data/questionnaire_v1.json" with { type: "json" };
 import controlsData from "../../data/dpdp_controls.json" with { type: "json" };
+
+/** remediation_tasks row as selected for the report (with the owner's name joined in). */
+interface RemediationRow {
+  id: string;
+  question_code: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  target_date: string | Date | null;
+  status: string;
+  owner_name: string | null;
+}
 import type {
   ReportDocumentData,
   DomainFindingReportItem,
@@ -103,7 +115,7 @@ export async function compileReportDocumentData(
   const gapAnalysis = await getAssessmentGapAnalysis(sessionUser, assessmentId);
 
   // Map controls for quick lookup
-  const controlMap = new Map<string, any>();
+  const controlMap = new Map<string, (typeof controlsData)[number]>();
   for (const c of controlsData) {
     controlMap.set(c.control_id, c);
   }
@@ -168,7 +180,7 @@ export async function compileReportDocumentData(
   }));
 
   // 5. Compile Remediation Tasks
-  const remediationTasks: RemediationReportItem[] = dbData.remediations.map((r: any) => ({
+  const remediationTasks: RemediationReportItem[] = dbData.remediations.map((r: RemediationRow) => ({
     id: r.id,
     questionCode: r.question_code || null,
     title: r.title,

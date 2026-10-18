@@ -122,12 +122,21 @@ export async function getAssessmentLifecycleState(
   });
 }
 
+/** The assessments columns the transition guards read. */
+export interface TransitionAssessmentRow {
+  id: string;
+  status: string;
+  engagement_code: string;
+  lead_consultant_id: string | null;
+  is_partial_assessment?: boolean | null;
+}
+
 /**
  * Validates domain preconditions and role authorization for an assessment state transition.
  */
 export async function validateTransitionGuards(
   client: PoolClient,
-  assessment: any,
+  assessment: TransitionAssessmentRow,
   from: AssessmentStatus,
   to: AssessmentStatus,
   sessionUser: SessionUser,

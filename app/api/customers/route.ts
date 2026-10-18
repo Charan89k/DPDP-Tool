@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     const { customer, initialUser } = await createCustomerOrganization(
       sessionUser,
-      parseResult.data as any,
+      parseResult.data,
       clientIp,
       userAgent
     );

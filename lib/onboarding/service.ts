@@ -24,6 +24,9 @@ import type {
   CreateAssessmentWithAssignmentInput,
   CustomerDetails,
   InvitationResult,
+  CreatedAssessmentRecord,
+  CustomerRecord,
+  ProvisionedUserRecord,
 } from "./types.ts";
 
 export class OnboardingError extends Error {
@@ -86,7 +89,7 @@ export async function createCustomerOrganization(
   input: CreateCustomerInput,
   clientIp: string = "127.0.0.1",
   userAgent: string = "CloudE5-App"
-): Promise<{ customer: any; initialUser?: any }> {
+): Promise<{ customer: CustomerRecord; initialUser?: ProvisionedUserRecord }> {
   if (!canCreateCustomer(sessionUser.role)) {
     throw new OnboardingError(
       "Unauthorized: Only Platform Administrators are permitted to onboard customer organizations.",
@@ -108,7 +111,7 @@ export async function createCustomerOrganization(
       .replace(/^-|-$/g, "")
   ).slice(0, 100);
 
-  let result: any;
+  let result: { customer: CustomerRecord; initialUser?: ProvisionedUserRecord };
   let pendingVerification: PendingVerification | null = null;
   const client = await pool.connect();
   try {
@@ -172,7 +175,7 @@ export async function createCustomerOrganization(
     );
 
     // 4. Optionally provision initial user
-    let createdUser: any = undefined;
+    let createdUser: ProvisionedUserRecord | undefined = undefined;
     if (input.initialUser) {
       const { fullName, email, role = "CLIENT_ADMIN", password } = input.initialUser;
 
@@ -217,11 +220,12 @@ export async function createCustomerOrganization(
         [newCustomer.id, email.toLowerCase().trim(), passwordHash, fullName.trim(), role]
       );
 
-      createdUser = userRes.rows[0];
+      const initialUser: ProvisionedUserRecord = userRes.rows[0];
+      createdUser = initialUser;
       pendingVerification = {
-        email: createdUser.email,
-        fullName: createdUser.full_name,
-        token: await issueToken(client, createdUser.id, "EMAIL_VERIFICATION"),
+        email: initialUser.email,
+        fullName: initialUser.full_name,
+        token: await issueToken(client, initialUser.id, "EMAIL_VERIFICATION"),
       };
 
       await client.query(
@@ -231,12 +235,12 @@ export async function createCustomerOrganization(
         [
           newCustomer.id,
           sessionUser.userId,
-          createdUser.id,
+          initialUser.id,
           clientIp,
           userAgent,
           JSON.stringify({
-            email: createdUser.email,
-            role: createdUser.role,
+            email: initialUser.email,
+            role: initialUser.role,
             isInitialUser: true,
           }),
         ]
@@ -328,7 +332,7 @@ export async function provisionCustomerUser(
   input: ProvisionUserInput,
   clientIp: string = "127.0.0.1",
   userAgent: string = "CloudE5-App"
-): Promise<any> {
+): Promise<ProvisionedUserRecord> {
   // Permissions check
   if (!canManageTenantUsers(sessionUser.role)) {
     throw new OnboardingError("Unauthorized to manage users.", "FORBIDDEN", 403);
@@ -353,7 +357,7 @@ export async function provisionCustomerUser(
     throw new OnboardingError("A valid email address is required.", "INVALID_INPUT", 400);
   }
 
-  let newUser: any;
+  let newUser: ProvisionedUserRecord;
   let pendingVerification: PendingVerification | null = null;
   const client = await pool.connect();
   try {
@@ -573,7 +577,7 @@ export async function acceptCustomerInvitation(
   input: AcceptInvitationInput,
   clientIp: string = "127.0.0.1",
   userAgent: string = "CloudE5-App"
-): Promise<any> {
+): Promise<ProvisionedUserRecord> {
   const token = input.token?.trim();
   if (!token || token.length < 32) {
     throw new OnboardingError("Invalid or missing activation token.", "INVALID_TOKEN", 400);
@@ -655,7 +659,7 @@ export async function acceptCustomerInvitation(
       [invitation.email]
     );
 
-    let createdUser: any;
+    let createdUser: ProvisionedUserRecord;
     if (userCheck.rows.length > 0) {
       // Never take over an existing account through an invitation (matches the accept route).
       await client.query("UPDATE user_invitations SET status = 'REVOKED' WHERE id = $1;", [invitation.id]);
@@ -717,7 +721,7 @@ export async function createCustomerAssessment(
   input: CreateAssessmentWithAssignmentInput,
   clientIp: string = "127.0.0.1",
   userAgent: string = "CloudE5-App"
-): Promise<any> {
+): Promise<CreatedAssessmentRecord> {
   if (!isTliRole(sessionUser.role)) {
     throw new OnboardingError(
       "Only authorized CloudE5 consultants can initialize DPDP compliance assessments.",

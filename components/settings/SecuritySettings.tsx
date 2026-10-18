@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
-import { readJsonResponse } from "@/lib/http/responses";
+import { readJsonResponse, type JsonResult } from "@/lib/http/responses";
 
 const inputClass =
   "w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-transparent";
@@ -43,7 +43,7 @@ export function SecuritySettings({
   const [message, setMessage] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const call = async (url: string, body?: unknown) => {
+  const call = async <T extends object = Record<string, unknown>>(url: string, body?: unknown): Promise<JsonResult<T>> => {
     setBusy(true);
     setMessage(null);
     try {
@@ -52,25 +52,25 @@ export function SecuritySettings({
         headers: { "Content-Type": "application/json" },
         body: body ? JSON.stringify(body) : undefined,
       });
-      const result = await readJsonResponse(res);
+      const result = await readJsonResponse<T>(res);
       if (result.errorMessage) setMessage({ tone: "error", text: result.errorMessage });
       return result;
     } catch {
       setMessage({ tone: "error", text: "Unable to reach CloudE5. Please try again." });
-      return { data: {}, errorMessage: "network" };
+      return { data: {}, errorMessage: "network" } as JsonResult<T>;
     } finally {
       setBusy(false);
     }
   };
 
   const startSetup = async () => {
-    const { data, errorMessage } = await call("/api/auth/mfa/setup");
+    const { data, errorMessage } = await call<{ qrCodeDataUrl: string; manualEntryKey: string }>("/api/auth/mfa/setup");
     if (!errorMessage) setSetup({ qrCodeDataUrl: data.qrCodeDataUrl, manualEntryKey: data.manualEntryKey });
   };
 
   const confirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { data, errorMessage } = await call("/api/auth/mfa/enable", { code });
+    const { data, errorMessage } = await call<{ recoveryCodes: string[] }>("/api/auth/mfa/enable", { code });
     if (!errorMessage) {
       setRecoveryCodes(data.recoveryCodes);
       setEnabled(true);

@@ -22,7 +22,7 @@ function VerifyEmail() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
     })
-      .then(readJsonResponse)
+      .then((res) => readJsonResponse<{ message: string }>(res))
       .then(({ data, errorMessage }) =>
         setState(errorMessage ? { status: "failed", message: errorMessage } : { status: "done", message: data.message })
       )

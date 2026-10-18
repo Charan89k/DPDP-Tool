@@ -49,7 +49,19 @@ export class OrganizationError extends Error {
   }
 }
 
-function toProfile(row: any): OrganizationProfile {
+/** tenants row with PROFILE_COLUMNS selected. */
+interface TenantProfileRow {
+  id: string;
+  name: string;
+  slug: string;
+  industry: string | null;
+  is_sdf: boolean;
+  dpo_name: string | null;
+  dpo_email: string | null;
+  onboarding_completed_at: Date | string | null;
+}
+
+function toProfile(row: TenantProfileRow): OrganizationProfile {
   return {
     id: row.id,
     name: row.name,

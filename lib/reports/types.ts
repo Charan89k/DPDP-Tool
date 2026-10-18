@@ -144,6 +144,6 @@ export interface ReportSnapshotRecord {
   approvedAt: string;
   createdAt: string;
   isDraft: boolean;
-  summaryMetadata: Record<string, any>;
+  summaryMetadata: Record<string, unknown>;
 }
 

@@ -48,7 +48,7 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
     const { data, errorMessage } = await readJsonResponse(res);
     if (errorMessage) {
       setError(errorMessage);
-      setFieldErrors(data.details || {});
+      setFieldErrors((data.details as Record<string, string[] | undefined>) || {});
       return;
     }
     setStep(2);
@@ -66,7 +66,7 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
       setBusy(false);
       return setError("Unable to reach CloudE5. Please try again.");
     }
-    const { data, errorMessage } = await readJsonResponse(res);
+    const { data, errorMessage } = await readJsonResponse<{ assessment: { id: string } }>(res);
     if (errorMessage || !data.assessment?.id) {
       setBusy(false);
       return setError(errorMessage || "The assessment could not be created.");

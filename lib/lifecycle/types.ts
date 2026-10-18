@@ -65,7 +65,7 @@ export interface TransitionValidationResult {
 export interface TransitionRequest {
   targetStatus: AssessmentStatus;
   reason?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AssessmentStateSummary {
@@ -96,7 +96,7 @@ export interface TransitionAuditLogEntry {
   previousStatus: AssessmentStatus;
   newStatus: AssessmentStatus;
   reason?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   timestamp: string;
 }
 

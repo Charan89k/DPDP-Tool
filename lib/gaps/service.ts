@@ -10,6 +10,7 @@ import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { isClientRole } from "../auth/rbac.ts";
 import { evaluateAssessmentGaps } from "./engine.ts";
+import type { GapEngineInput } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
 import type { ScoringModelConfig } from "../scoring/types.ts";
 import type { GapAnalysisOutput } from "./types.ts";
@@ -194,7 +195,7 @@ async function computeAssessmentGapAnalysis(
     }));
 
     // 6. Query parent assessment data if this is a re-audit / subsequent iteration
-    let priorAssessmentScores: any = null;
+    let priorAssessmentScores: GapEngineInput["priorAssessmentScores"];
     if (assessment.parent_assessment_id) {
       const priorRes = await client.query(
         `SELECT 

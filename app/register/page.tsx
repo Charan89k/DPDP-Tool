@@ -36,7 +36,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, industry: form.industry || null }),
       });
-      const { data, errorMessage } = await readJsonResponse(res);
+      const { data, errorMessage } = await readJsonResponse<{ message: string; emailDelivered: boolean }>(res);
       if (errorMessage) {
         setError(errorMessage);
         setFieldErrors((data.details as FieldErrors) || {});

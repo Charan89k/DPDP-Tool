@@ -13,9 +13,30 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { errorMessage } from "@/lib/http/errors";
+
+interface ClarificationMessage {
+  id: string;
+  threadId: string;
+  authorUserId: string;
+  authorName: string;
+  messageText: string;
+  createdAt: string | null;
+}
+
+const optionalId = z.string().trim().max(64).nullable().optional();
+const clarificationBodySchema = z.object({
+  threadId: optionalId,
+  questionCode: z.string().trim().max(64).nullable().optional(),
+  evidenceItemId: optionalId,
+  targetRole: z.string().trim().max(40).nullable().optional(),
+  title: z.string().max(200).optional(),
+  message: z.string().max(10_000).optional(),
+  status: z.string().max(40).optional(),
+});
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -68,7 +89,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
 
       const threadIds = threadsRes.rows.map((r) => r.id);
-      const messagesMap = new Map<string, any[]>();
+      const messagesMap = new Map<string, ClarificationMessage[]>();
 
       if (threadIds.length > 0) {
         const msgsRes = await client.query(
@@ -151,14 +172,22 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
-  const { threadId, questionCode, evidenceItemId, targetRole, title, message, status } = body;
+  const parsed = clarificationBodySchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `Invalid clarification payload: ${issue?.message ?? "malformed"}${issue?.path.length ? ` (${issue.path.join(".")})` : ""}` },
+      { status: 400 }
+    );
+  }
+  const { threadId, questionCode, evidenceItemId, targetRole, title, message, status } = parsed.data;
 
   try {
     const result = await executeWithRls(sessionUser, async (client) => {

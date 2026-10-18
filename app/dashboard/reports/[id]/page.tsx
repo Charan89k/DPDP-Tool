@@ -6,6 +6,8 @@ import { executeWithRls } from "@/lib/db/rls";
 import { getAssessmentGapAnalysis } from "@/lib/gaps";
 import { getAssessmentReportSnapshots } from "@/lib/reports";
 import { CANONICAL_DOMAINS } from "@/lib/questionnaire/data";
+import type { GapAnalysisOutput } from "@/lib/gaps/types";
+import type { ReportSnapshotRecord } from "@/lib/reports/types";
 import {
   FileText,
   Shield,
@@ -21,6 +23,23 @@ interface ReportDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+interface ReportAssessmentRow {
+  id: string;
+  tenant_id: string;
+  title: string;
+  status: string;
+  target_framework: string;
+  start_date: Date | null;
+  target_completion_date: Date | null;
+  lead_consultant_name: string | null;
+  dpo_contact_name: string | null;
+  created_at: Date | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  industry: string | null;
+  is_sdf: boolean;
+}
+
 export default async function ReportDetailPage({ params }: ReportDetailPageProps) {
   const sessionUser = await getCurrentSession();
   const { id } = await params;
@@ -30,8 +49,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
   }
 
 
-  // Fetch assessment under PostgreSQL RLS
-  let assessment: any = null;
+  // Fetch the assessment through the tenant policy layer
+  let assessment: ReportAssessmentRow | null = null;
 
   try {
     assessment = await executeWithRls(sessionUser, async (client) => {
@@ -65,7 +84,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     console.error("Error fetching report under RLS:", err);
   }
 
-  let gapData: any = null;
+  let gapData: GapAnalysisOutput | null = null;
   if (assessment) {
     try {
       gapData = await getAssessmentGapAnalysis(sessionUser, id);
@@ -74,7 +93,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     }
   }
 
-  let reportSnapshots: any[] = [];
+  let reportSnapshots: ReportSnapshotRecord[] = [];
   if (assessment) {
     try {
       reportSnapshots = await getAssessmentReportSnapshots(sessionUser, id);
@@ -93,7 +112,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           Access Restricted / Report Not Found
         </h2>
         <p className="text-xs text-stone-600 max-w-md mx-auto mt-2 leading-relaxed">
-          PostgreSQL Row-Level Security policy prohibits access to this report record or it does not exist within your tenant scope.
+          This report does not exist, or your account does not have access to it.
         </p>
         <Link
           href="/dashboard/reports"
@@ -282,7 +301,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </div>
           <div className="space-y-3">
             {gapData && gapData.domainSummaries.length > 0 ? (
-              gapData.domainSummaries.map((domain: any, index: number) => (
+              gapData.domainSummaries.map((domain, index: number) => (
                 <div
                   key={domain.domainCode}
                   className="p-3.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1.5"
@@ -382,7 +401,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
               </span>
             </div>
             <div className="space-y-2.5">
-              {reportSnapshots.map((snap: any) => (
+              {reportSnapshots.map((snap) => (
                 <div
                   key={snap.id}
                   className="p-3.5 bg-stone-50 border border-stone-200 rounded-lg text-xs space-y-2 font-mono"

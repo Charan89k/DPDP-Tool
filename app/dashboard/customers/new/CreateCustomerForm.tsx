@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
+import type { CreateCustomerInput } from "@/lib/onboarding/types";
 
 interface CreateCustomerFormProps {
   sessionUser: SessionUser;
@@ -69,7 +70,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
     setIsSubmitting(true);
 
     try {
-      const payload: any = {
+      const payload: CreateCustomerInput = {
         name: name.trim(),
         industry,
         isSdf,

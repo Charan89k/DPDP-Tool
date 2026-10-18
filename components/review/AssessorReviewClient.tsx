@@ -83,6 +83,47 @@ interface CanonicalQuestion {
   }>;
 }
 
+/** Assessment header as returned by GET /api/assessments/[id]/reviews (database column names). */
+interface ReviewAssessment {
+  id: string;
+  engagement_code: string;
+  title: string;
+  status: string;
+  lead_consultant_id: string | null;
+  target_completion_date: string | null;
+  created_at: string | null;
+  lead_consultant_name: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  is_sdf: boolean;
+  framework_name: string | null;
+}
+
+interface ReviewSection {
+  code: string;
+  title: string;
+  heading: string;
+}
+
+interface ReviewMetrics {
+  totalQuestions: number;
+  clientAnsweredCount: number;
+  assessorReviewedCount: number;
+  pendingReviewCount: number;
+  clarificationRequestedCount: number;
+  deficienciesCount: number;
+  requiresValidationCount: number;
+  assessorProgressPct: number;
+  clientProgressPct: number;
+}
+
+interface ReviewDraft {
+  reviewStatus: string;
+  reviewFindings: string;
+  evidenceDeficiencyNotes: string;
+  requiresFurtherValidation: boolean;
+}
+
 interface ReviewWorkspaceProps {
   assessmentId: string;
 }
@@ -103,10 +144,10 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   const [saveSuccessCode, setSaveSuccessCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [assessment, setAssessment] = useState<any>(null);
-  const [sections, setSections] = useState<any[]>([]);
+  const [assessment, setAssessment] = useState<ReviewAssessment | null>(null);
+  const [sections, setSections] = useState<ReviewSection[]>([]);
   const [questions, setQuestions] = useState<CanonicalQuestion[]>([]);
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<ReviewMetrics | null>(null);
   const [isAssessor, setIsAssessor] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<string>("");
 
@@ -125,17 +166,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   const [sendingClarification, setSendingClarification] = useState(false);
 
   // Local draft state for edits
-  const [reviewDrafts, setReviewDrafts] = useState<
-    Record<
-      string,
-      {
-        reviewStatus: string;
-        reviewFindings: string;
-        evidenceDeficiencyNotes: string;
-        requiresFurtherValidation: boolean;
-      }
-    >
-  >({});
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
 
   const loadData = async () => {
     try {
@@ -156,7 +187,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       setUserRole(data.userRole || "");
 
       // Initialize drafts
-      const drafts: Record<string, any> = {};
+      const drafts: Record<string, ReviewDraft> = {};
       for (const q of data.questions) {
         drafts[q.code] = {
           reviewStatus: q.assessorReview.reviewStatus || "PENDING_REVIEW",
@@ -181,7 +212,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
-  const handleDraftChange = (code: string, field: string, value: any) => {
+  const handleDraftChange = <K extends keyof ReviewDraft>(code: string, field: K, value: ReviewDraft[K]) => {
     setReviewDrafts((prev) => ({
       ...prev,
       [code]: {
@@ -469,7 +500,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       <AssessmentLifecycleControls
         assessmentId={assessmentId}
         onStatusChanged={(newStatus) => {
-          setAssessment((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+          setAssessment((prev) => (prev ? { ...prev, status: newStatus } : null));
           loadData();
         }}
       />
@@ -555,7 +586,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {sec.code} ({sec.questionCount})
+              {sec.code} ({questions.filter((q) => q.sectionCode === sec.code).length})
             </button>
           ))}
         </div>

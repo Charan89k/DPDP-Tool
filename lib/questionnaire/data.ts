@@ -17,6 +17,7 @@ import type {
   CanonicalQuestion,
   CanonicalQuestionnaireSection,
   CanonicalResponseOption,
+  MappingStatus,
   RespondentQuestionResponse,
   SectionProgressSummary,
   QuestionnaireProgress,
@@ -149,6 +150,15 @@ export const CANONICAL_DOMAINS: Array<{
 /**
  * Returns the authoritative 8 questionnaire sections containing all 60 questions.
  */
+
+const MAPPING_STATUSES: readonly MappingStatus[] = ["MAPPED_PRIMARY", "UNRESOLVED_PENDING_EXCEL_SHEET"];
+
+/** The manifest is data: reject an unknown mapping status instead of trusting it. */
+function toMappingStatus(value: string): MappingStatus {
+  if ((MAPPING_STATUSES as readonly string[]).includes(value)) return value as MappingStatus;
+  throw new Error(`Unknown mapping status in questionnaire manifest: ${value}`);
+}
+
 export function getCanonicalQuestionnaireSections(): CanonicalQuestionnaireSection[] {
   const sectionsMap = new Map<string, CanonicalQuestion[]>();
 
@@ -171,7 +181,7 @@ export function getCanonicalQuestionnaireSections(): CanonicalQuestionnaireSecti
       options: CANONICAL_OPTIONS,
       followUpPrompt: q.follow_up_prompt,
       canonicalControlId: q.canonical_control_id,
-      mappingStatus: q.mapping_status as any,
+      mappingStatus: toMappingStatus(q.mapping_status),
       mappingNotes: q.mapping_notes,
     };
     list.push(questionItem);

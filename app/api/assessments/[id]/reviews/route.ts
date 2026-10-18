@@ -21,9 +21,9 @@ import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { canReviewAssessment } from "@/lib/auth/rbac";
-import fs from "fs";
-import path from "path";
+import { z } from "zod";
 import { errorMessage } from "@/lib/http/errors";
+import manifestData from "../../../../../data/questionnaire_v1.json" with { type: "json" };
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -41,11 +41,53 @@ const VALID_REVIEW_STATUSES = [
 
 type ReviewStatus = (typeof VALID_REVIEW_STATUSES)[number];
 
-// Load canonical questions from data manifest
-function getCanonicalQuestions() {
-  const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "questionnaire_v1.json");
-  const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw);
+const reviewItemSchema = z.object({
+  questionCode: z.string().trim().min(1).max(64),
+  reviewStatus: z.enum(VALID_REVIEW_STATUSES).optional(),
+  reviewFindings: z.string().max(10_000).optional(),
+  evidenceDeficiencyNotes: z.string().max(10_000).optional(),
+  requiresFurtherValidation: z.boolean().optional(),
+});
+const reviewBodySchema = z.union([
+  z.object({ reviews: z.array(reviewItemSchema).min(1).max(200) }),
+  reviewItemSchema,
+]);
+
+interface ClientResponseView {
+  selectedOption: string | null;
+  commentsAndJustification: string | null;
+  questionnaireVersion: string;
+  updatedAt: string | null;
+}
+
+interface AssessorReviewView {
+  id: string;
+  reviewStatus: ReviewStatus;
+  reviewFindings: string;
+  evidenceDeficiencyNotes: string;
+  requiresFurtherValidation: boolean;
+  reviewedByUserId: string | null;
+  reviewedByUserName: string;
+  reviewedAt: string | null;
+  updatedAt: string | null;
+}
+
+interface ClarificationThreadView {
+  id: string;
+  questionCode: string | null;
+  controlCode: string | null;
+  title: string;
+  status: string;
+  createdAt: string | null;
+  raisedByUserName: string;
+  messages: Array<{
+    id: string;
+    authorUserId: string;
+    authorName: string;
+    authorRole: string;
+    messageText: string;
+    createdAt: string | null;
+  }>;
 }
 
 export async function GET(request: Request, { params }: RouteParams) {
@@ -110,7 +152,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         WHERE assessment_id = $1;`,
         [assessmentId]
       );
-      const clientResponsesMap = new Map<string, any>();
+      const clientResponsesMap = new Map<string, ClientResponseView>();
       for (const row of clientResponsesRes.rows) {
         clientResponsesMap.set(row.question_code, {
           selectedOption: row.selected_option || null,
@@ -138,7 +180,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         WHERE r.assessment_id = $1;`,
         [assessmentId]
       );
-      const reviewsMap = new Map<string, any>();
+      const reviewsMap = new Map<string, AssessorReviewView>();
       for (const row of reviewsRes.rows) {
         reviewsMap.set(row.question_code, {
           id: row.id,
@@ -213,7 +255,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         [assessmentId]
       );
 
-      const threadsMap = new Map<string, any>();
+      const threadsMap = new Map<string, ClarificationThreadView>();
       for (const row of threadsRes.rows) {
         if (!threadsMap.has(row.thread_id)) {
           threadsMap.set(row.thread_id, {
@@ -228,7 +270,7 @@ export async function GET(request: Request, { params }: RouteParams) {
           });
         }
         if (row.message_id) {
-          threadsMap.get(row.thread_id).messages.push({
+          threadsMap.get(row.thread_id)!.messages.push({
             id: row.message_id,
             authorUserId: row.author_user_id,
             authorName: row.author_name || "User",
@@ -257,8 +299,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     // Merge with 60 canonical questions from manifest
-    const manifest = getCanonicalQuestions();
-    const questions = manifest.questions.map((q: any) => {
+    const questions = manifestData.questions.map((q) => {
       const clientResp = data.clientResponsesMap.get(q.code) || null;
       const review = data.reviewsMap.get(q.code) || {
         reviewStatus: "PENDING_REVIEW",
@@ -271,14 +312,14 @@ export async function GET(request: Request, { params }: RouteParams) {
 
       // Find matching evidence items: direct question code or mapped canonical control
       const matchingEvidence = data.evidenceList.filter(
-        (e: any) =>
+        (e) =>
           e.questionCode === q.code ||
           (q.canonical_control_id && e.controlCode === q.canonical_control_id)
       );
 
       // Find matching clarification threads
       const matchingThreads = data.clarificationThreads.filter(
-        (t: any) =>
+        (t) =>
           t.questionCode === q.code ||
           (q.canonical_control_id && t.controlCode === q.canonical_control_id)
       );
@@ -339,7 +380,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       assessment: data.assessment,
-      sections: manifest.sections,
+      sections: manifestData.sections,
       questions,
       metrics: {
         totalQuestions,
@@ -383,44 +424,23 @@ export async function PUT(request: Request, { params }: RouteParams) {
     );
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
-  // Support single question update or batch updates
-  const items: Array<{
-    questionCode: string;
-    reviewStatus: ReviewStatus;
-    reviewFindings?: string;
-    evidenceDeficiencyNotes?: string;
-    requiresFurtherValidation?: boolean;
-  }> = Array.isArray(body.reviews) ? body.reviews : [body];
-
-  if (items.length === 0 || !items[0].questionCode) {
+  // Single question update or a batch under "reviews".
+  const parsed = reviewBodySchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     return NextResponse.json(
-      { error: "Missing 'questionCode' or 'reviews' array." },
+      { error: `Invalid review payload: ${issue?.message ?? "malformed"}${issue?.path.length ? ` (${issue.path.join(".")})` : ""}` },
       { status: 400 }
     );
   }
-
-  // Validate items
-  for (const item of items) {
-    if (!item.questionCode || typeof item.questionCode !== "string") {
-      return NextResponse.json(
-        { error: "Invalid questionCode in payload." },
-        { status: 400 }
-      );
-    }
-    if (item.reviewStatus && !VALID_REVIEW_STATUSES.includes(item.reviewStatus)) {
-      return NextResponse.json(
-        { error: `Invalid reviewStatus '${item.reviewStatus}' for question ${item.questionCode}.` },
-        { status: 400 }
-      );
-    }
-  }
+  const items = "reviews" in parsed.data ? parsed.data.reviews : [parsed.data];
 
   try {
     const result = await executeWithRls(sessionUser, async (client) => {

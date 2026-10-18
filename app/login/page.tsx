@@ -127,8 +127,8 @@ function LoginForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: email.trim() }),
     });
-    const { data, errorMessage: error } = await readJsonResponse(res);
-    setResendMessage(error || data.message);
+    const { data, errorMessage: error } = await readJsonResponse<{ message: string }>(res);
+    setResendMessage(error || data.message || null);
   };
 
   return (

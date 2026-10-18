@@ -10,6 +10,20 @@ interface SummaryPageProps {
   params: Promise<{ id: string }>;
 }
 
+interface SummaryAssessmentRow {
+  id: string;
+  engagement_code: string;
+  title: string;
+  status: string;
+  created_at: Date | null;
+  target_completion_date: Date | null;
+  is_partial_assessment: boolean;
+  partial_assessment_reason: string | null;
+  tenant_name: string | null;
+  industry: string | null;
+  lead_consultant_name: string | null;
+}
+
 export default async function AssessmentSummaryPage({ params }: SummaryPageProps) {
   const sessionUser = await getCurrentSession();
   const { id } = await params;
@@ -18,7 +32,7 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
     redirect(`/login?redirect=/dashboard/assessments/${id}/summary`);
   }
 
-  let assessmentData: any = null;
+  let assessmentData: SummaryAssessmentRow | null = null;
 
   try {
     assessmentData = await executeWithRls(sessionUser, async (client) => {
@@ -43,7 +57,9 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
       );
       return res.rows[0] || null;
     });
-  } catch {}
+  } catch (err) {
+    console.error("Failed to load assessment summary:", err instanceof Error ? err.message : err);
+  }
 
   if (!assessmentData) {
     notFound();

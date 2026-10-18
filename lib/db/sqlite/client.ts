@@ -48,13 +48,22 @@ export async function withDefinerRights<T>(work: () => Promise<T>): Promise<T> {
   }
 }
 
-export interface QueryResult<Row = any> {
+/**
+ * Default row type for queries that do not declare one. Rows are plain objects keyed by column
+ * name (values converted by declared column type, see translate.ts). This is the one deliberate
+ * `any` in the data layer: the existing query sites read columns directly, as they did with
+ * node-postgres. New code should pass an explicit Row type, e.g. client.query<{ id: string }>(...).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type UntypedRow = any;
+
+export interface QueryResult<Row = UntypedRow> {
   rows: Row[];
   rowCount: number;
 }
 
 export interface Queryable {
-  query<Row = any>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>>;
+  query<Row = UntypedRow>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>>;
 }
 
 export interface PoolClient extends Queryable {
@@ -119,14 +128,14 @@ function activeUnit(): UnitOfWork | undefined {
 const mutex = new AsyncMutex();
 const currentUnit = new AsyncLocalStorage<UnitOfWork>();
 
-type CachedStatement = import("better-sqlite3").Statement<any[], any>;
+type CachedStatement = import("better-sqlite3").Statement<unknown[], unknown>;
 const statementCache = new Map<string, CachedStatement>();
 const STATEMENT_CACHE_LIMIT = 500;
 
 function prepare(db: SqliteDatabase, sql: string) {
   let statement = statementCache.get(sql);
   if (!statement) {
-    statement = db.prepare<any[], any>(sql);
+    statement = db.prepare<unknown[], unknown>(sql);
     if (statementCache.size >= STATEMENT_CACHE_LIMIT) {
       statementCache.clear();
     }
@@ -191,7 +200,7 @@ export function normalizeDatabaseError(err: unknown): unknown {
 }
 
 /** Executes one statement on the connection. Caller must hold the lock. */
-export function executeStatement<Row = any>(
+export function executeStatement<Row = UntypedRow>(
   db: SqliteDatabase,
   unit: UnitOfWork,
   sql: string,
@@ -280,7 +289,7 @@ class SqlitePoolClient implements PoolClient {
     this.onRelease = onRelease;
   }
 
-  async query<Row = any>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
+  async query<Row = UntypedRow>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
     if (this.released || this.unit.finished) {
       throw new Error("Database client used after release.");
     }
@@ -296,7 +305,7 @@ class SqlitePoolClient implements PoolClient {
 
 /** node-postgres compatible pool facade over the shared SQLite connection. */
 export const pool = {
-  async query<Row = any>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
+  async query<Row = UntypedRow>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
     return withConnection(async (db, unit) => executeStatement<Row>(db, unit, sql, params));
   },
 
@@ -326,7 +335,7 @@ export const pool = {
   /** No-op kept for API compatibility; the shared connection lives for the process. */
   async end(): Promise<void> {},
 
-  on(_event: string, _listener: (...args: any[]) => void) {
+  on(_event: string, _listener: (...args: unknown[]) => void) {
     return pool;
   },
 };

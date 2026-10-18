@@ -19,6 +19,14 @@ import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLi
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
 import { isTliRole } from "@/lib/auth/rbac";
 import { errorMessage } from "@/lib/http/errors";
+import type { ScoringEngineOutput } from "@/lib/scoring/types";
+
+/** Saved answer as returned by GET /api/assessments/[id]/responses. */
+interface SavedResponse {
+  selectedOption?: string;
+  commentsAndJustification?: string;
+  updatedAt: string;
+}
 
 interface AssessmentSummaryViewProps {
   assessmentId: string;
@@ -49,10 +57,11 @@ export function AssessmentSummaryView({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [scoringData, setScoringData] = useState<any>(null);
-  const [responses, setResponses] = useState<Record<string, any>>({});
-  const [evidenceList, setEvidenceList] = useState<any[]>([]);
-  const [clarifications, setClarifications] = useState<any[]>([]);
+  const [scoringData, setScoringData] = useState<ScoringEngineOutput | null>(null);
+  const [responses, setResponses] = useState<Record<string, SavedResponse>>({});
+  // The evidence API reports control-level evidence under its control code in questionCode.
+  const [evidenceList, setEvidenceList] = useState<{ id: string; questionCode: string }[]>([]);
+  const [clarifications, setClarifications] = useState<{ id: string }[]>([]);
 
   // Filtering & search
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
@@ -85,9 +94,9 @@ export function AssessmentSummaryView({
       // 1. Scoring calculation
       const scoringRes = await fetch(`/api/assessments/${assessmentId}/scoring`);
       if (scoringRes.ok) {
-        const scData = await scoringRes.json();
-        if (scData.success) {
-          setScoringData(scData);
+        const scData: { success?: boolean; data?: ScoringEngineOutput } = await scoringRes.json();
+        if (scData.success && scData.data) {
+          setScoringData(scData.data);
         }
       }
 
@@ -174,23 +183,27 @@ export function AssessmentSummaryView({
 
   // Compute live counts and metrics
   const totalQuestions = allQuestions.length || 60;
-  const answeredCount = Object.values(responses).filter((r: any) => r && r.selectedOption).length;
+  const saved = Object.values(responses);
+  const answeredCount = saved.filter((r) => r?.selectedOption).length;
   const answeredPct = Math.round((answeredCount / totalQuestions) * 100);
 
-  const implementedCount = scoringData?.summary?.counts?.implemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Implemented").length;
+  // Prefer the scoring engine's figures; fall back to counting saved answers.
+  const metrics = scoringData?.metrics;
+  const implementedCount =
+    metrics?.implementedCount ?? saved.filter((r) => r?.selectedOption === "Implemented").length;
 
-  const partiallyCount = scoringData?.summary?.counts?.partiallyImplemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Partially implemented").length;
+  const partiallyCount =
+    metrics?.partiallyImplementedCount ?? saved.filter((r) => r?.selectedOption === "Partially implemented").length;
 
-  const notImplementedCount = scoringData?.summary?.counts?.notImplemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Not implemented").length;
+  const notImplementedCount =
+    metrics?.notImplementedCount ?? saved.filter((r) => r?.selectedOption === "Not implemented").length;
 
-  const notApplicableCount = scoringData?.summary?.counts?.notApplicable ??
-    Object.values(responses).filter((r: any) => r?.selectedOption?.startsWith("Not applicable")).length;
+  const notApplicableCount = metrics
+    ? metrics.totalApprovedExcluded + metrics.totalUnapprovedNa
+    : saved.filter((r) => r?.selectedOption?.startsWith("Not applicable")).length;
 
-  const readinessPct = scoringData?.calculation?.indicativeReadinessPct ?? 0;
-  const maturityScore = scoringData?.calculation?.indicativeMaturityScore ?? 0;
+  const readinessPct = metrics?.indicativeReadinessPercentage ?? 0;
+  const maturityScore = metrics?.indicativeMaturityScore ?? 0;
 
   // Filtered Questions for Table
   const filteredQuestions = useMemo(() => {
@@ -211,9 +224,6 @@ export function AssessmentSummaryView({
     for (const ev of evidenceList) {
       if (ev.questionCode) {
         map.set(ev.questionCode, (map.get(ev.questionCode) || 0) + 1);
-      }
-      if (ev.controlCode) {
-        map.set(ev.controlCode, (map.get(ev.controlCode) || 0) + 1);
       }
     }
     return map;
@@ -523,8 +533,8 @@ export function AssessmentSummaryView({
                 Statutory Section Breakdown
               </h4>
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                {(scoringData?.domainRollups || canonicalSections).map((sec: any) => {
-                  const secCode = sec.sectionCode || sec.code;
+                {canonicalSections.map((sec) => {
+                  const secCode = sec.code;
                   const secTitle = sec.title;
                   const secQuestions = allQuestions.filter((q) => q.sectionCode === secCode);
                   const secAnswered = secQuestions.filter((q) => responses[q.code]?.selectedOption).length;
@@ -884,17 +894,17 @@ export function AssessmentSummaryView({
 
             {scoringData?.statutoryDeficits && scoringData.statutoryDeficits.length > 0 ? (
               <div className="space-y-2">
-                {scoringData.statutoryDeficits.slice(0, 3).map((def: any, i: number) => (
+                {scoringData.statutoryDeficits.slice(0, 3).map((def, i: number) => (
                   <div key={i} className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs space-y-1">
                     <div className="flex items-center justify-between font-bold text-rose-900 text-[11px]">
                       <span>{def.questionCode}</span>
                       <span className="text-[10px] bg-rose-200 px-1.5 py-0.2 rounded">
-                        {def.deficitType}
+                        {def.severity.replace(/_/g, " ")}
                       </span>
                     </div>
-                    <p className="text-rose-800 text-[11px] leading-normal">{def.statutoryDeficit}</p>
+                    <p className="text-rose-800 text-[11px] leading-normal">{def.description}</p>
                     <p className="text-[10px] text-rose-600 font-mono">
-                      Statutory Focus: {def.statutoryReference}
+                      Statutory Focus: {def.statutoryDomain ?? def.canonicalControlId ?? "—"}
                     </p>
                   </div>
                 ))}

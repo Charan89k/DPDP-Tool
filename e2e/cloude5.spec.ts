@@ -114,6 +114,27 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
       multipart: { file: { name, mimeType, buffer }, assessmentId, controlCode: "GENERIC" },
     });
 
+  // Answers are validated by schema: malformed payloads are refused with 400, never a server error.
+  const saveAnswers = (responses: unknown) =>
+    page.request.put(`/api/assessments/${assessmentId}/responses`, {
+      headers: { Origin: new URL(page.url()).origin },
+      data: { responses },
+    });
+  expect((await saveAnswers({ "GOV-001": { selectedOption: "Implemented", commentsAndJustification: 42 } })).status()).toBe(400);
+  expect((await saveAnswers({ "GOV-001": { selectedOption: "Definitely" } })).status()).toBe(400);
+  expect((await saveAnswers({ "<script>": { selectedOption: "Implemented" } })).status()).toBe(400);
+  expect((await saveAnswers({ "GOV-001": { selectedOption: "Not applicable — justification required" } })).status()).toBe(400);
+  const saved = await saveAnswers({ "GOV-001": { selectedOption: "Implemented", commentsAndJustification: "Policy approved" } });
+  expect(saved.status(), await saved.text()).toBe(200);
+
+  // The summary reads the scoring engine's output: one Implemented answer gives a non-zero readiness.
+  const pageErrors: string[] = [];
+  page.on("pageerror", (err) => pageErrors.push(err.message));
+  await page.goto(`/dashboard/assessments/${assessmentId}/summary`);
+  await expect(page.getByText("Indicative Readiness Score")).toBeVisible();
+  await expect(page.getByText("100%").first()).toBeVisible();
+  expect(pageErrors).toEqual([]);
+
   const clean = await upload("privacy-policy.pdf", "application/pdf", Buffer.from(`%PDF-1.7\nPrivacy policy\n${"A".repeat(300)}\n%%EOF`));
   expect(clean.status(), await clean.text()).toBe(201);
 

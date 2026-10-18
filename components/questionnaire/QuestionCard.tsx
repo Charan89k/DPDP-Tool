@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { readJsonResponse } from "@/lib/http/responses";
+import type { UploadedEvidence } from "@/lib/storage/upload_response";
 import {
   Eye,
   Trash2,
@@ -43,6 +44,65 @@ interface QuestionClarificationThread {
     messageText: string;
     createdAt: string;
   }>;
+}
+
+/** Evidence item as returned by GET /api/assessments/[id]/evidence. */
+interface EvidenceListItem {
+  id: string;
+  questionCode: string;
+  description: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  sha256: string | null;
+  status: string;
+  createdAt: string | null;
+}
+
+/** Thread as returned by GET /api/assessments/[id]/clarifications. */
+interface ClarificationThreadResponse {
+  id: string;
+  questionCode: string | null;
+  title: string;
+  status: string;
+  raisedByName?: string;
+  createdAt: string;
+  messages?: Array<{ id: string; authorName?: string; authorRole?: string; messageText: string; createdAt: string }>;
+}
+
+/**
+ * Evidence and threads belong to a question by its code, or by its mapped control code
+ * (the evidence API reports control-level evidence under the control code).
+ */
+function belongsTo(
+  questionCode: string,
+  controlId: string | null | undefined,
+  code: string | null | undefined
+): boolean {
+  return Boolean(code) && (code === questionCode || (Boolean(controlId) && code === controlId));
+}
+
+function toQuestionThreads(
+  threads: ClarificationThreadResponse[],
+  questionCode: string,
+  controlId: string | null | undefined
+): QuestionClarificationThread[] {
+  return threads
+    .filter((th) => belongsTo(questionCode, controlId, th.questionCode))
+    .map((th) => ({
+      id: th.id,
+      title: th.title,
+      status: th.status,
+      raisedByName: th.raisedByName || "Assessor",
+      createdAt: th.createdAt,
+      messages: (th.messages || []).map((msg) => ({
+        id: msg.id,
+        authorName: msg.authorName || "User",
+        authorRole: msg.authorRole || "",
+        messageText: msg.messageText,
+        createdAt: msg.createdAt,
+      })),
+    }));
 }
 
 interface QuestionCardProps {
@@ -101,15 +161,11 @@ export function QuestionCard({
       try {
         const evRes = await fetch(`/api/assessments/${assessmentId}/evidence`);
         if (evRes.ok) {
-          const evData = await evRes.json();
+          const evData: { items?: EvidenceListItem[] } = await evRes.json();
           if (evData.items && Array.isArray(evData.items) && isMounted) {
-            const matched = evData.items.filter(
-              (it: any) =>
-                it.questionCode === question.code ||
-                (question.canonicalControlId && it.controlCode === question.canonicalControlId)
-            );
+            const matched = evData.items.filter((it) => belongsTo(question.code, question.canonicalControlId, it.questionCode));
             setCurrentEvidenceList(
-              matched.map((m: any) => ({
+              matched.map((m) => ({
                 id: m.id,
                 fileName: m.fileName,
                 fileSizeBytes: m.fileSizeBytes,
@@ -131,29 +187,9 @@ export function QuestionCard({
       try {
         const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
         if (clRes.ok) {
-          const clData = await clRes.json();
+          const clData: { threads?: ClarificationThreadResponse[] } = await clRes.json();
           if (clData.threads && Array.isArray(clData.threads) && isMounted) {
-            const matched = clData.threads.filter(
-              (th: any) =>
-                th.questionCode === question.code ||
-                (question.canonicalControlId && th.controlCode === question.canonicalControlId)
-            );
-            setClarificationThreads(
-              matched.map((th: any) => ({
-                id: th.id,
-                title: th.title,
-                status: th.status,
-                raisedByName: th.raisedByName || "Assessor",
-                createdAt: th.createdAt,
-                messages: (th.messages || []).map((msg: any) => ({
-                  id: msg.id,
-                  authorName: msg.authorName || "User",
-                  authorRole: msg.authorRole || "",
-                  messageText: msg.messageText,
-                  createdAt: msg.createdAt,
-                })),
-              }))
-            );
+            setClarificationThreads(toQuestionThreads(clData.threads, question.code, question.canonicalControlId));
           }
         }
       } catch {}
@@ -209,7 +245,7 @@ export function QuestionCard({
         body: formData,
       });
 
-      const { data, errorMessage } = await readJsonResponse(res);
+      const { data, errorMessage } = await readJsonResponse<{ evidence: UploadedEvidence }>(res);
 
       if (errorMessage) {
         setUploadError(errorMessage);
@@ -277,29 +313,9 @@ export function QuestionCard({
         // Refresh clarification threads
         const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
         if (clRes.ok) {
-          const clData = await clRes.json();
+          const clData: { threads?: ClarificationThreadResponse[] } = await clRes.json();
           if (clData.threads) {
-            const matched = clData.threads.filter(
-              (th: any) =>
-                th.questionCode === question.code ||
-                (question.canonicalControlId && th.controlCode === question.canonicalControlId)
-            );
-            setClarificationThreads(
-              matched.map((th: any) => ({
-                id: th.id,
-                title: th.title,
-                status: th.status,
-                raisedByName: th.raisedByName || "Assessor",
-                createdAt: th.createdAt,
-                messages: (th.messages || []).map((msg: any) => ({
-                  id: msg.id,
-                  authorName: msg.authorName || "User",
-                  authorRole: msg.authorRole || "",
-                  messageText: msg.messageText,
-                  createdAt: msg.createdAt,
-                })),
-              }))
-            );
+            setClarificationThreads(toQuestionThreads(clData.threads, question.code, question.canonicalControlId));
           }
         }
       }

@@ -6,7 +6,8 @@
  *
  * E2E_MAILPIT_URL (default http://localhost:8025) is where verification emails are read from.
  * E2E_EXPECT_VIRUS_SCANNER=1 also checks that ClamAV rejects an EICAR test file.
- * Each run registers new throwaway organisations on example.com addresses.
+ * Each run registers two throwaway organisations on example.com addresses. Account emails are rate
+ * limited per IP (5 per 15 minutes), so back-to-back runs from one machine can see "Too many requests".
  */
 import { defineConfig, devices } from "@playwright/test";
 
