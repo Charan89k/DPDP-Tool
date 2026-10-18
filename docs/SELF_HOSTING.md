@@ -169,25 +169,6 @@ downgrade); always restore the pre-migration backup when rolling back across mig
 | `verify-email <email> --confirm` | Mark an address verified when email is unavailable (confirm the address out of band first) |
 | `admin:create --email=… --name="…" [--reset-password]` | Create the platform administrator, or reset its password |
 
-## Migrating from the PostgreSQL deployment
-
-Earlier versions stored data in PostgreSQL (Neon). To move that data into a new CloudE5 installation:
-
-1. Create a branch or copy of the source database and test against it first.
-2. On a new installation, run the import **instead of** the first `migrate` (it creates and migrates
-   the database itself and refuses to overwrite an existing one):
-
-   ```bash
-   docker compose run --rm -e SOURCE_DATABASE_URL='postgresql://…' cloude5 \
-     npm run db:import-postgres -- --report=/data/import-report.json
-   ```
-
-3. Review `/data/import-report.json`: per-table source and imported row counts, foreign key and integrity
-   results. It contains no credentials or password hashes.
-
-The import opens the source read-only, runs in one transaction, and rolls back completely on any
-count mismatch or integrity failure. Existing accounts keep their passwords and are treated as
-verified.
 
 ## Troubleshooting
 

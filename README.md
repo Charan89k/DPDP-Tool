@@ -62,8 +62,7 @@ npm run build     # production build
 | `lib/auth/`, `lib/organization/`, `lib/onboarding/` | Accounts, sessions, organisations, invitations |
 | `lib/scoring/`, `lib/gaps/`, `lib/lifecycle/`, `lib/reports/`, `lib/remediation/` | Assessment methodology |
 | `migrations/sqlite/` | Versioned SQLite migrations (never edit an applied migration) |
-| `migrations/postgres/` | Historical PostgreSQL migrations (reference and data import only) |
 | `data/` | Canonical control library, evidence catalogue and questionnaire |
-| `scripts/` | Operations CLI, admin bootstrap, PostgreSQL import, test database preparation |
+| `scripts/` | Operations CLI, admin bootstrap, test database preparation |
 | `deploy/` | Container entrypoint and Caddy configuration |
 | `docs/` | Methodology, legal source register and design history |
