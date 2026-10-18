@@ -12,6 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { FileValidator, ValidationError } from "./validation.ts";
+import { assertPersistentEvidenceStorage } from "./object_store.ts";
 
 export interface SaveResult {
   bytesWritten: number;
@@ -163,6 +164,7 @@ export class LocalStorageAdapter {
 let defaultAdapter: LocalStorageAdapter | null = null;
 
 export function getLocalStorageAdapter(): LocalStorageAdapter {
+  assertPersistentEvidenceStorage();
   if (!defaultAdapter) {
     defaultAdapter = new LocalStorageAdapter();
   }

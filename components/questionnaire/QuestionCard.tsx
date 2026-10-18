@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { readJsonResponse } from "@/lib/http/responses";
 import {
   Shield,
   FileText,
@@ -218,10 +219,10 @@ export function QuestionCard({
         body: formData,
       });
 
-      const data = await res.json();
+      const { data, errorMessage } = await readJsonResponse(res);
 
-      if (!res.ok) {
-        setUploadError(data.error || "File upload failed.");
+      if (errorMessage) {
+        setUploadError(errorMessage);
         setIsUploading(false);
         return;
       }

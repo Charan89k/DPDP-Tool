@@ -20,6 +20,7 @@ import {
 } from "../lib/storage/local_adapter.ts";
 import {
   EvidenceVaultService,
+  InMemoryEvidenceMetadataStore,
 } from "../lib/storage/service.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 import { canUploadEvidence } from "../lib/auth/rbac.ts";
@@ -358,6 +359,7 @@ describe("Phase 3D.UI.1: Multi-Tenant Access & Quarantine Download Gate", () => 
   const testVaultDir = path.resolve(process.cwd(), ".local_evidence_sec_" + Date.now());
   let adapter: LocalStorageAdapter;
   let service: EvidenceVaultService;
+  let metadataStore: InMemoryEvidenceMetadataStore;
 
   const tenantAlphaUser: SessionUser = {
     userId: "usr-alpha-contributor",
@@ -409,12 +411,11 @@ describe("Phase 3D.UI.1: Multi-Tenant Access & Quarantine Download Gate", () => 
 
   before(() => {
     adapter = new LocalStorageAdapter(testVaultDir);
-    service = new EvidenceVaultService(adapter);
-    EvidenceVaultService.clearMockRegistry();
+    metadataStore = new InMemoryEvidenceMetadataStore();
+    service = new EvidenceVaultService(adapter, undefined, metadataStore);
   });
 
   after(async () => {
-    EvidenceVaultService.clearMockRegistry();
     if (fs.existsSync(testVaultDir)) {
       await fs.promises.rm(testVaultDir, { recursive: true, force: true });
     }
@@ -494,7 +495,7 @@ describe("Phase 3D.UI.1: Multi-Tenant Access & Quarantine Download Gate", () => 
     });
 
     // Manually transition to QUARANTINED
-    EvidenceVaultService.setMockRecordStatus(record.id, "QUARANTINED");
+    metadataStore.setStatus(record.id, "QUARANTINED");
 
     await assert.rejects(
       async () => service.getEvidenceForDownload(tenantAlphaUser, record.id),
@@ -502,7 +503,7 @@ describe("Phase 3D.UI.1: Multi-Tenant Access & Quarantine Download Gate", () => 
     );
 
     // Manually transition to PENDING_SCAN
-    EvidenceVaultService.setMockRecordStatus(record.id, "PENDING_SCAN");
+    metadataStore.setStatus(record.id, "PENDING_SCAN");
 
     await assert.rejects(
       async () => service.getEvidenceForDownload(tenantAlphaUser, record.id),
@@ -510,7 +511,7 @@ describe("Phase 3D.UI.1: Multi-Tenant Access & Quarantine Download Gate", () => 
     );
 
     // Revert back to ACTIVE -> download succeeds
-    EvidenceVaultService.setMockRecordStatus(record.id, "ACTIVE");
+    metadataStore.setStatus(record.id, "ACTIVE");
     const cleanDownload = await service.getEvidenceForDownload(tenantAlphaUser, record.id);
     assert.equal(cleanDownload.record.id, record.id);
   });

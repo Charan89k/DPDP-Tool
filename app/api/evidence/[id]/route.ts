@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { EvidenceVaultService } from "@/lib/storage/service";
 import { ValidationError } from "@/lib/storage/validation";
+import { StorageConfigurationError, STORAGE_NOT_CONFIGURED_MESSAGE } from "@/lib/storage/object_store";
+import { DatabaseAuthorizationError } from "@/lib/db/rls";
 import { canReviewAssessment } from "@/lib/auth/rbac";
 
 interface RouteParams {
@@ -63,6 +65,15 @@ export async function GET(
       },
     });
   } catch (err: unknown) {
+    if (err instanceof StorageConfigurationError) {
+      return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json(
+        { error: "Your session is no longer authorized. Please sign in again." },
+        { status: 403 }
+      );
+    }
     if (err instanceof ValidationError) {
       const isForbidden = err.message.includes("Access denied");
       return NextResponse.json(
@@ -133,6 +144,15 @@ export async function PATCH(
       evidence: updated,
     });
   } catch (err: unknown) {
+    if (err instanceof StorageConfigurationError) {
+      return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json(
+        { error: "Your session is no longer authorized. Please sign in again." },
+        { status: 403 }
+      );
+    }
     if (err instanceof ValidationError) {
       const isForbidden = err.message.includes("Access denied");
       return NextResponse.json(
@@ -182,6 +202,15 @@ export async function DELETE(
       ...result,
     });
   } catch (err: unknown) {
+    if (err instanceof StorageConfigurationError) {
+      return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json(
+        { error: "Your session is no longer authorized. Please sign in again." },
+        { status: 403 }
+      );
+    }
     if (err instanceof ValidationError) {
       const isForbidden = err.message.includes("Access denied");
       return NextResponse.json(

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { readJsonResponse } from "@/lib/http/responses";
 import Link from "next/link";
 import {
   Paperclip,
@@ -196,9 +197,9 @@ export function EvidenceManagementClient({
         body: formData,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setUploadError(data.error || "File upload failed.");
+      const { data, errorMessage } = await readJsonResponse(res);
+      if (errorMessage) {
+        setUploadError(errorMessage);
         setIsUploading(false);
         return;
       }
@@ -228,18 +229,26 @@ export function EvidenceManagementClient({
   };
 
   const handleDelete = async (id: string) => {
+    setUploadError(null);
     try {
-      await fetch(`/api/evidence/${id}`, { method: "DELETE" });
-    } catch {}
-    setEvidenceList((prev) => prev.filter((item) => item.id !== id));
-    if (selectedEvidence?.id === id && evidenceList.length > 1) {
-      const remaining = evidenceList.filter((item) => item.id !== id);
+      const res = await fetch(`/api/evidence/${id}`, { method: "DELETE" });
+      const { errorMessage } = await readJsonResponse(res);
+      if (errorMessage) {
+        setUploadError(errorMessage);
+        return;
+      }
+    } catch {
+      setUploadError("Network error: the evidence item was not deleted. Please try again.");
+      return;
+    }
+    const remaining = evidenceList.filter((item) => item.id !== id);
+    setEvidenceList(remaining);
+    if (selectedEvidence?.id === id) {
       setSelectedEvidence(remaining[0] || null);
-    } else if (selectedEvidence?.id === id) {
-      setSelectedEvidence(null);
     }
     fetchEvidence();
   };
+
 
   const handleReviewDecision = async (newStatus: "VERIFIED" | "REJECTED") => {
     if (!selectedEvidence?.id) return;

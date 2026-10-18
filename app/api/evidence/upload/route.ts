@@ -12,6 +12,8 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { canUploadEvidence } from "@/lib/auth/rbac";
 import { EvidenceVaultService } from "@/lib/storage/service";
 import { ValidationError } from "@/lib/storage/validation";
+import { StorageConfigurationError, STORAGE_NOT_CONFIGURED_MESSAGE } from "@/lib/storage/object_store";
+import { DatabaseAuthorizationError } from "@/lib/db/rls";
 
 export async function POST(req: NextRequest) {
   const sessionUser = await getCurrentSession();
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    const assessmentId = (formData.get("assessmentId") as string) || "default-assessment";
+    const assessmentId = String(formData.get("assessmentId") || "").trim();
     const controlCode = (formData.get("controlCode") as string) || "GENERIC";
     const questionCode = (formData.get("questionCode") as string) || controlCode;
     const evidenceCategory =
@@ -46,6 +48,13 @@ export async function POST(req: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { error: "Missing required file upload parameter." },
+        { status: 400 }
+      );
+    }
+
+    if (!assessmentId) {
+      return NextResponse.json(
+        { error: "Missing required assessmentId parameter." },
         { status: 400 }
       );
     }
@@ -93,6 +102,15 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err: unknown) {
+    if (err instanceof StorageConfigurationError) {
+      return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json(
+        { error: "Your session is no longer authorized. Please sign in again." },
+        { status: 403 }
+      );
+    }
     if (err instanceof ValidationError) {
       const isForbidden = err.message.includes("Access denied");
       return NextResponse.json({ error: err.message }, { status: isForbidden ? 403 : 400 });
