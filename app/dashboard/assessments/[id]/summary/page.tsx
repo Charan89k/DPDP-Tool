@@ -18,7 +18,6 @@ interface SummaryAssessmentRow {
   created_at: Date | null;
   target_completion_date: Date | null;
   is_partial_assessment: boolean;
-  partial_assessment_reason: string | null;
   tenant_name: string | null;
   industry: string | null;
   lead_consultant_name: string | null;
@@ -45,7 +44,6 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
           a.created_at,
           a.target_completion_date,
           a.is_partial_assessment,
-          a.partial_assessment_reason,
           t.name AS tenant_name,
           t.industry,
           u.full_name AS lead_consultant_name

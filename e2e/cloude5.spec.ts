@@ -132,7 +132,8 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   page.on("pageerror", (err) => pageErrors.push(err.message));
   await page.goto(`/dashboard/assessments/${assessmentId}/summary`);
   await expect(page.getByText("Indicative Readiness Score")).toBeVisible();
-  await expect(page.getByText("100%").first()).toBeVisible();
+  await expect(page.getByText("100.0%").first()).toBeVisible();
+  await expect(page.getByText("Maturity 5.00/5.0")).toBeVisible();
   expect(pageErrors).toEqual([]);
 
   const clean = await upload("privacy-policy.pdf", "application/pdf", Buffer.from(`%PDF-1.7\nPrivacy policy\n${"A".repeat(300)}\n%%EOF`));
