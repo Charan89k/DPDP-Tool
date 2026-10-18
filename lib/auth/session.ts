@@ -19,6 +19,7 @@ export const SESSION_COOKIE_NAME = "tli_dpdp_session";
 export const SESSION_MAX_AGE_SECONDS = 8 * 60 * 60; // 8 hours
 export const TOKEN_ISSUER = "tli-dpdp-platform";
 export const TOKEN_AUDIENCE = "tli-dpdp-app";
+const SESSION_COOKIE_PATTERN = new RegExp(`(?:^|;\\s*)${SESSION_COOKIE_NAME}=([^;]+)`);
 export const DEFAULT_DEV_SECRET =
   "tli_dpdp_local_development_secret_key_must_be_overridden_in_prod_32b";
 
@@ -135,7 +136,7 @@ export async function getCurrentSession(req?: Request | Headers): Promise<Sessio
       }
       const cookieHeader = headers.get("cookie");
       if (cookieHeader) {
-        const match = cookieHeader.match(/(?:^|;\s*)tli_session=([^;]+)/);
+        const match = cookieHeader.match(SESSION_COOKIE_PATTERN);
         if (match) {
           const user = await verifySessionToken(match[1]);
           if (user) return user;

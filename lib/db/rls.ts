@@ -48,6 +48,69 @@ export function validateSessionContext(context: SessionUser): void {
   }
 }
 
+export interface VerifiedDatabaseIdentity {
+  id: string;
+  role: string;
+  tenantType: string;
+}
+
+/**
+ * Re-verifies a signed session against current database records: the user must exist in the
+ * claimed tenant, be active, belong to an ACTIVE tenant, and hold exactly the claimed role.
+ *
+ * Signed session tokens remain valid for up to 8 hours, so every privileged operation must call
+ * this (directly or through executeWithRls) to honour deactivations and role changes immediately.
+ * Safe to call on a privileged pool client or inside an RLS-scoped transaction.
+ */
+export async function assertSessionMatchesDatabase(
+  client: Pick<PoolClient, "query">,
+  context: SessionUser
+): Promise<VerifiedDatabaseIdentity> {
+  validateSessionContext(context);
+
+  const userCheck = await client.query(
+    `SELECT u.id, u.role, u.is_active, t.status AS tenant_status, t.type AS tenant_type
+     FROM users u
+     JOIN tenants t ON t.id = u.tenant_id
+     WHERE u.id = $1 AND u.tenant_id = $2;`,
+    [context.userId, context.tenantId]
+  );
+
+  if (userCheck.rows.length === 0) {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: user account or tenant not found."
+    );
+  }
+
+  const dbUser = userCheck.rows[0];
+
+  if (!dbUser.is_active) {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: user account is deactivated."
+    );
+  }
+
+  if (dbUser.tenant_status !== "ACTIVE") {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: organization account is inactive."
+    );
+  }
+
+  if (dbUser.role !== context.role) {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: session role no longer matches the account role."
+    );
+  }
+
+  if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: TLI_SUPER_ADMIN must belong to a TLI advisory tenant."
+    );
+  }
+
+  return { id: dbUser.id, role: dbUser.role, tenantType: dbUser.tenant_type };
+}
+
 /**
  * Executes a database operation within an RLS-hardened session bound to the trusted SessionUser.
  * Strictly verifies identity against current database records within an isolated transaction.
@@ -79,48 +142,7 @@ export async function executeWithRls<T>(
     ]);
 
     // 4. Verify identity against current database records to prevent role or tenant forgery
-    const verifySql = `
-      SELECT u.id, u.role, u.is_active, t.status AS tenant_status, t.type AS tenant_type
-      FROM users u
-      JOIN tenants t ON t.id = u.tenant_id
-      WHERE u.id = $1 AND u.tenant_id = $2;
-    `;
-    const userCheck = await client.query(verifySql, [
-      context.userId,
-      context.tenantId,
-    ]);
-
-    if (userCheck.rows.length === 0) {
-      throw new DatabaseAuthorizationError(
-        "Database identity verification failed: user account or tenant not found."
-      );
-    }
-
-    const dbUser = userCheck.rows[0];
-
-    if (!dbUser.is_active) {
-      throw new DatabaseAuthorizationError(
-        "Database identity verification failed: user account is deactivated."
-      );
-    }
-
-    if (dbUser.tenant_status !== "ACTIVE") {
-      throw new DatabaseAuthorizationError(
-        "Database identity verification failed: organization account is inactive."
-      );
-    }
-
-    if (dbUser.role !== context.role) {
-      throw new DatabaseAuthorizationError(
-        `Database identity verification failed: role mismatch. Claimed '${context.role}', actual '${dbUser.role}'.`
-      );
-    }
-
-    if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
-      throw new DatabaseAuthorizationError(
-        "Database identity verification failed: TLI_SUPER_ADMIN must belong to a TLI advisory tenant."
-      );
-    }
+    const dbUser = await assertSessionMatchesDatabase(client, context);
 
     // 5. Bind transaction-local verified user role (is_local = true)
     await client.query("SELECT set_config('app.current_user_role', $1, true);", [

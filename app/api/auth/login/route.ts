@@ -10,7 +10,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { pool } from "@/lib/db/pool";
-import { verifyPassword, SYNTHETIC_SEED_HASH } from "@/lib/auth/passwords";
+import {
+  consumePasswordVerificationTime,
+  verifyPassword,
+  SYNTHETIC_SEED_HASH,
+} from "@/lib/auth/passwords";
 import { createSessionToken, setSessionCookie } from "@/lib/auth/session";
 import { loginRateLimiter, resolveClientIp } from "@/lib/auth/rate_limit";
 import { SessionUser, UserRole, TenantType } from "@/lib/auth/types";
@@ -84,42 +88,43 @@ export async function POST(request: NextRequest) {
 
     // Uniform failure message to prevent account enumeration
     const AUTH_FAILED_MSG = "Invalid email or password.";
+    const recordFailure = () => {
+      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
+      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
+    };
 
+    // 3. Verify the password before revealing anything about the account. Unknown emails still
+    // pay the bcrypt cost so response timing does not disclose which accounts exist.
     if (!row) {
-      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
-      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
+      await consumePasswordVerificationTime(password);
+      recordFailure();
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
-    // In production, unconditionally block synthetic seed accounts
-    if (process.env.NODE_ENV === "production" && row.password_hash === SYNTHETIC_SEED_HASH) {
-      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
-      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
+    const isSyntheticAccountInProduction =
+      process.env.NODE_ENV === "production" && row.password_hash === SYNTHETIC_SEED_HASH;
+    const isValidPassword =
+      !isSyntheticAccountInProduction && (await verifyPassword(password, row.password_hash));
+
+    if (!isValidPassword) {
+      recordFailure();
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
+    // Account status is only disclosed to callers who proved knowledge of the password
     if (!row.is_active || row.tenant_status !== "ACTIVE") {
-      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
-      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
+      recordFailure();
       return NextResponse.json(
         { error: "Account or organization is inactive. Please contact your administrator." },
         { status: 403 }
       );
     }
 
-    // 3. Verify password hash (constant-time verification)
-    const isValidPassword = await verifyPassword(password, row.password_hash);
-    if (!isValidPassword) {
-      loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
-      loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
-      return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
-    }
-
     // Reset rate limiter counters on successful login
     loginRateLimiter.resetAttempts(`ip:${clientIp}`);
     loginRateLimiter.resetAttempts(`email:${normalizedEmail}`);
 
-    // 3. Construct authenticated SessionUser
+    // 4. Construct authenticated SessionUser
     const sessionUser: SessionUser = {
       userId: row.id,
       email: row.email,
@@ -132,10 +137,10 @@ export async function POST(request: NextRequest) {
       isSdf: Boolean(row.is_sdf),
     };
 
-    // 4. Generate JWT session token
+    // 5. Generate JWT session token
     const token = await createSessionToken(sessionUser);
 
-    // 5. Update last_login_at timestamp
+    // 6. Update last_login_at timestamp
     try {
       await pool.query("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1;", [
         sessionUser.userId,
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
       console.warn("Failed to update last_login_at timestamp:", updateErr);
     }
 
-    // 6. Emit audit log entry
+    // 7. Emit audit log entry
     try {
       const userAgent = request.headers.get("user-agent") || "TLI-App";
       await pool.query(
@@ -162,7 +167,7 @@ export async function POST(request: NextRequest) {
       console.warn("Audit logging warning on login:", auditErr);
     }
 
-    // 7. Set HTTP-only session cookie
+    // 8. Set HTTP-only session cookie
     await setSessionCookie(token);
 
     return NextResponse.json(

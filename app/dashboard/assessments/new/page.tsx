@@ -2,6 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { canCreateAssessment } from "@/lib/auth/rbac";
 import { CreateAssessmentForm } from "./CreateAssessmentForm";
 
 export const dynamic = "force-dynamic";
@@ -15,40 +16,42 @@ export default async function NewAssessmentPage({
   if (!sessionUser) {
     redirect("/login?redirect=/dashboard/assessments/new");
   }
+  if (!canCreateAssessment(sessionUser.role)) {
+    redirect("/unauthorized");
+  }
 
   const resolvedParams = searchParams ? await searchParams : {};
   const initialTenantId = resolvedParams.tenantId || null;
 
-  // Fetch available tenants, users, and existing assessment ID under RLS
+  // Fetch active customer organizations, their active users, and the framework label under RLS
   const initData = await executeWithRls(sessionUser, async (client) => {
     const tenantsRes = await client.query(`
       SELECT id, name, slug, industry, is_sdf, dpo_name, dpo_email
       FROM tenants
-      WHERE type = 'CLIENT'
+      WHERE type = 'CLIENT' AND status = 'ACTIVE'
       ORDER BY name ASC;
     `);
 
     const usersRes = await client.query(`
-      SELECT id, tenant_id, full_name, email, role, phone
-      FROM users
-      ORDER BY full_name ASC;
+      SELECT u.id, u.tenant_id, u.full_name, u.email, u.role
+      FROM users u
+      JOIN tenants t ON t.id = u.tenant_id
+      WHERE t.type = 'CLIENT' AND u.is_active = TRUE
+      ORDER BY u.full_name ASC;
     `);
 
     const frameworksRes = await client.query(`
-      SELECT id, name, code
+      SELECT name, code
       FROM framework_versions
+      ORDER BY created_at DESC
       LIMIT 1;
     `);
 
-    const latestRes = await client.query(`
-      SELECT id FROM assessments LIMIT 1;
-    `);
-
+    const framework = frameworksRes.rows[0];
     return {
       tenants: tenantsRes.rows,
       users: usersRes.rows,
-      frameworkId: frameworksRes.rows[0]?.id || null,
-      existingAssessmentId: latestRes.rows[0]?.id || null,
+      frameworkLabel: framework ? String(framework.name || framework.code) : null,
     };
   });
 
@@ -59,8 +62,7 @@ export default async function NewAssessmentPage({
         tenants={initData.tenants}
         users={initData.users}
         initialTenantId={initialTenantId}
-        frameworkId={initData.frameworkId}
-        fallbackAssessmentId={initData.existingAssessmentId}
+        frameworkLabel={initData.frameworkLabel}
       />
     </div>
   );

@@ -67,3 +67,23 @@ export async function hashPassword(plainText: string): Promise<string> {
   return bcrypt.hash(plainText, salt);
 }
 
+
+let timingEqualizationHash: Promise<string> | null = null;
+
+/**
+ * Performs a bcrypt comparison against a throwaway hash of the same cost factor.
+ * Called when no account matches a login attempt so that unknown and known emails
+ * take comparable time, preventing account enumeration through response timing.
+ */
+export async function consumePasswordVerificationTime(plainText: string): Promise<void> {
+  if (!timingEqualizationHash) {
+    timingEqualizationHash = bcrypt
+      .genSalt(12)
+      .then((salt) => bcrypt.hash(`timing-equalization-${Date.now()}-${Math.random()}`, salt));
+  }
+  try {
+    await bcrypt.compare(plainText || "", await timingEqualizationHash);
+  } catch {
+    // Timing equalization is best-effort and never affects the authentication outcome.
+  }
+}

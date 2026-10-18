@@ -12,6 +12,7 @@ import crypto from "crypto";
 import { getCurrentSession } from "@/lib/auth/session";
 import { CLIENT_ROLES } from "@/lib/auth/rbac";
 import { pool } from "@/lib/db/pool";
+import { assertSessionMatchesDatabase, DatabaseAuthorizationError } from "@/lib/db/rls";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 
 const inviteUserSchema = z.object({
@@ -77,6 +78,9 @@ export async function POST(
     const client = await pool.connect();
     try {
       await client.query("BEGIN;");
+
+      // Re-verify the signed session against live account state before privileged writes
+      await assertSessionMatchesDatabase(client, sessionUser);
 
       // Verify tenant
       const tenantCheck = await client.query(
@@ -186,11 +190,17 @@ export async function POST(
     } finally {
       client.release();
     }
-  } catch (err: any) {
-    console.error("Failed to generate user invitation:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to generate invitation." },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json(
+        { error: "Your session is no longer authorized for this action. Please sign in again." },
+        { status: 403 }
+      );
+    }
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    console.error("Failed to generate invitation:", err);
+    return NextResponse.json({ error: "Failed to generate invitation." }, { status: 500 });
   }
 }

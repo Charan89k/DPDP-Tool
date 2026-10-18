@@ -55,6 +55,10 @@ export function canFinalizeAssessment(role: UserRole): boolean {
   return role === "TLI_SUPER_ADMIN" || role === "TLI_LEAD_CONSULTANT";
 }
 
+export function canCreateAssessment(role: UserRole): boolean {
+  return role === "TLI_SUPER_ADMIN" || role === "TLI_LEAD_CONSULTANT";
+}
+
 export function canManageTenantUsers(role: UserRole): boolean {
   return role === "TLI_SUPER_ADMIN" || role === "CLIENT_ADMIN";
 }

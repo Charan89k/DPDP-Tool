@@ -10,8 +10,32 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
-import { executeWithRls } from "@/lib/db/rls";
-import { isTliRole } from "@/lib/auth/rbac";
+import { z } from "zod";
+import {
+  assertSessionMatchesDatabase,
+  DatabaseAuthorizationError,
+  executeWithRls,
+} from "@/lib/db/rls";
+import { canCreateAssessment, isTliRole } from "@/lib/auth/rbac";
+
+const createAssessmentSchema = z.object({
+  title: z.string().trim().min(3).max(255).optional(),
+  engagementCode: z
+    .string()
+    .trim()
+    .min(3)
+    .max(64)
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "Engagement code may only contain letters, numbers, '.', '_' and '-'.")
+    .optional(),
+  targetCompletionDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Target completion date must use YYYY-MM-DD.")
+    .nullable()
+    .optional(),
+  tenantId: z.string().uuid("Customer organization identifier is invalid.").optional(),
+  leadConsultantId: z.string().uuid().optional(),
+  assignedUserIds: z.array(z.string().uuid()).max(50).optional(),
+});
 
 export async function GET(req: NextRequest) {
   const sessionUser = await getCurrentSession(req);
@@ -82,11 +106,7 @@ export async function POST(req: NextRequest) {
   }
 
   // RBAC Enforcement: Only TLI Lead Consultant or TLI Super Admin can initiate assessments
-  const canCreate =
-    sessionUser.role === "TLI_SUPER_ADMIN" ||
-    sessionUser.role === "TLI_LEAD_CONSULTANT";
-
-  if (!canCreate) {
+  if (!canCreateAssessment(sessionUser.role)) {
     return NextResponse.json(
       { error: "Insufficient permissions. Only TLI Lead Consultants or Super Administrators can initiate assessments." },
       { status: 403 }
@@ -94,30 +114,38 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const title = (body.title || "India DPDP Comprehensive Compliance Gap Evaluation").trim();
-    const engagementCode = (
-      body.engagementCode ||
-      `DPDP-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`
-    ).trim();
-    const targetDate = body.targetCompletionDate || null;
-    const requestedTenantId = body.tenantId || sessionUser.tenantId;
-
-    // Cross-tenant boundary check: Client admin can only create for their own tenant
-    if (sessionUser.role === "CLIENT_ADMIN" && requestedTenantId !== sessionUser.tenantId) {
+    const parseResult = createAssessmentSchema.safeParse(await req.json());
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Client administrators can only create assessments for their own organization." },
-        { status: 403 }
+        { error: "Validation failed", details: parseResult.error.flatten().fieldErrors },
+        { status: 400 }
       );
     }
+    const body = parseResult.data;
+    const title = body.title || "India DPDP Comprehensive Compliance Gap Evaluation";
+    const engagementCode =
+      body.engagementCode ||
+      `DPDP-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    const targetDate = body.targetCompletionDate || null;
+    const requestedTenantId = body.tenantId;
+    if (!requestedTenantId) {
+      return NextResponse.json(
+        { error: "Select the customer organization this assessment is for." },
+        { status: 400 }
+      );
+    }
+
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN;");
 
+      // Re-verify the signed session against live account state before privileged writes
+      await assertSessionMatchesDatabase(client, sessionUser);
+
       // Verify tenant exists and is active
       const tenantCheck = await client.query(
-        "SELECT id, name, status FROM tenants WHERE id = $1 LIMIT 1;",
+        "SELECT id, name, status FROM tenants WHERE id = $1 AND type = 'CLIENT' LIMIT 1;",
         [requestedTenantId]
       );
       if (tenantCheck.rows.length === 0) {
@@ -149,7 +177,7 @@ export async function POST(req: NextRequest) {
       // 2. Resolve lead consultant
       const leadConsultantId = body.leadConsultantId || sessionUser.userId;
       const consultantRes = await client.query(
-        "SELECT id, role FROM users WHERE id = $1 AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;",
+        "SELECT id, role FROM users WHERE id = $1 AND is_active = TRUE AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;",
         [leadConsultantId]
       );
       const resolvedLeadId = consultantRes.rows[0]?.id || sessionUser.userId;
@@ -189,19 +217,19 @@ export async function POST(req: NextRequest) {
       );
 
       // 5. Validate and assign client coordinators if provided
-      const assignedUserIds: string[] = Array.isArray(body.assignedUserIds) ? body.assignedUserIds : [];
+      const assignedUserIds: string[] = Array.from(new Set(body.assignedUserIds ?? []));
       const assignedCount = assignedUserIds.length;
 
       for (const assignedUserId of assignedUserIds) {
         const userCheck = await client.query(
-          "SELECT id, tenant_id, role FROM users WHERE id = $1 LIMIT 1;",
+          "SELECT id, tenant_id, role FROM users WHERE id = $1 AND is_active = TRUE LIMIT 1;",
           [assignedUserId]
         );
 
         if (userCheck.rows.length === 0) {
           await client.query("ROLLBACK;");
           return NextResponse.json(
-            { error: `Assigned user ${assignedUserId} not found in database.` },
+            { error: `Assigned user ${assignedUserId} was not found or is inactive.` },
             { status: 400 }
           );
         }
@@ -264,10 +292,22 @@ export async function POST(req: NextRequest) {
     } finally {
       client.release();
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    if (err instanceof DatabaseAuthorizationError) {
+      return NextResponse.json({ error: "Your session is no longer authorized for this action." }, { status: 403 });
+    }
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    if (typeof err === "object" && err !== null && (err as { code?: string }).code === "23505") {
+      return NextResponse.json(
+        { error: "An assessment with this engagement code already exists." },
+        { status: 409 }
+      );
+    }
     console.error("Failed to create assessment engagement:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create assessment engagement." },
+      { error: "Failed to create assessment engagement." },
       { status: 500 }
     );
   }

@@ -61,33 +61,42 @@ export function isValidIp(ip: string): boolean {
  * Resolves the client IP address from trusted edge and proxy headers.
  * Does not trust arbitrary client-supplied headers without validation.
  *
- * Priority:
- * 1. CF-Connecting-IP (Cloudflare Edge, cannot be forged if Cloudflare terminates)
- * 2. X-Real-IP (Standard reverse proxy edge header overwritten by NGINX / Envoy)
- * 3. X-Forwarded-For (Sanitized leftmost IP, strictly validated against IP regex)
+ * On Vercel (VERCEL=1) the platform overwrites X-Vercel-Forwarded-For, X-Real-IP and
+ * X-Forwarded-For with the genuine client address, while CF-Connecting-IP is passed through
+ * from the client untouched. Trusting it there would let an attacker rotate the header to evade
+ * per-IP login limits, so it is only honoured when TRUST_CLOUDFLARE_IP_HEADER=true (i.e. when
+ * Cloudflare actually fronts the deployment).
+ *
+ * Priority off Vercel (self-hosted behind Cloudflare / NGINX):
+ * 1. CF-Connecting-IP
+ * 2. X-Real-IP
+ * 3. X-Forwarded-For (leftmost, strictly validated)
  * 4. Fallback: 127.0.0.1
  */
-export function resolveClientIp(request: Request | NextRequest): string {
+export function resolveClientIp(
+  request: Request | NextRequest,
+  env: Record<string, string | undefined> = process.env
+): string {
   const headers = request.headers;
+  const onVercel = env.VERCEL === "1";
+  const trustCloudflare = !onVercel || env.TRUST_CLOUDFLARE_IP_HEADER === "true";
 
-  // 1. Cloudflare edge header
-  const cfIp = headers.get("cf-connecting-ip")?.trim();
-  if (cfIp && isValidIp(cfIp)) {
-    return cfIp;
-  }
+  const firstValid = (value: string | null | undefined): string | null => {
+    const candidate = value?.split(",")[0]?.trim();
+    return candidate && isValidIp(candidate) ? candidate : null;
+  };
 
-  // 2. Standard single-proxy header overwritten by edge reverse proxy
-  const realIp = headers.get("x-real-ip")?.trim();
-  if (realIp && isValidIp(realIp)) {
-    return realIp;
-  }
+  const orderedCandidates = [
+    trustCloudflare ? headers.get("cf-connecting-ip") : null,
+    onVercel ? headers.get("x-vercel-forwarded-for") : null,
+    headers.get("x-real-ip"),
+    headers.get("x-forwarded-for"),
+  ];
 
-  // 3. Forwarded-For header (extract first IP and strictly validate format)
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const candidate = forwardedFor.split(",")[0]?.trim();
-    if (candidate && isValidIp(candidate)) {
-      return candidate;
+  for (const value of orderedCandidates) {
+    const ip = firstValid(value);
+    if (ip) {
+      return ip;
     }
   }
 

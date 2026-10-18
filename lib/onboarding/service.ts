@@ -7,8 +7,9 @@
  */
 
 import crypto from "node:crypto";
+import type { PoolClient } from "pg";
 import { pool } from "../db/pool.ts";
-import { executeWithRls } from "../db/rls.ts";
+import { assertSessionMatchesDatabase, DatabaseAuthorizationError, executeWithRls } from "../db/rls.ts";
 import type { SessionUser, UserRole } from "../auth/types.ts";
 import { canCreateCustomer, canManageTenantUsers, isTliRole, CLIENT_ROLES } from "../auth/rbac.ts";
 import { hashPassword } from "../auth/passwords.ts";
@@ -31,6 +32,28 @@ export class OnboardingError extends Error {
     this.name = "OnboardingError";
     this.code = code;
     this.statusCode = statusCode;
+  }
+}
+
+/**
+ * Re-verifies the signed session against live account state on a privileged client.
+ * Privileged onboarding operations run outside RLS, so they must not trust token claims alone.
+ */
+async function verifyPrivilegedSession(
+  client: Pick<PoolClient, "query">,
+  sessionUser: SessionUser
+): Promise<void> {
+  try {
+    await assertSessionMatchesDatabase(client, sessionUser);
+  } catch (err) {
+    if (err instanceof DatabaseAuthorizationError) {
+      throw new OnboardingError(
+        "Your session is no longer authorized for this action. Please sign in again.",
+        "SESSION_NOT_AUTHORIZED",
+        403
+      );
+    }
+    throw err;
   }
 }
 
@@ -67,6 +90,7 @@ export async function createCustomerOrganization(
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
+    await verifyPrivilegedSession(client, sessionUser);
 
     // 1. Check for duplicate slug or name
     const dupCheck = await client.query(
@@ -212,6 +236,7 @@ export async function getCustomerDetails(
 
   const client = await pool.connect();
   try {
+    await verifyPrivilegedSession(client, sessionUser);
     const tenantRes = await client.query(
       `SELECT id, name, slug, industry, is_sdf, dpo_name, dpo_email, status, created_at
        FROM tenants
@@ -297,6 +322,7 @@ export async function provisionCustomerUser(
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
+    await verifyPrivilegedSession(client, sessionUser);
 
     // Verify tenant exists
     const tCheck = await client.query("SELECT id, name FROM tenants WHERE id = $1 AND type = 'CLIENT';", [
@@ -397,6 +423,7 @@ export async function createCustomerInvitation(
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
+    await verifyPrivilegedSession(client, sessionUser);
 
     // 1. Verify tenant exists
     const tCheck = await client.query("SELECT id FROM tenants WHERE id = $1 AND type = 'CLIENT';", [
@@ -666,6 +693,7 @@ export async function createCustomerAssessment(
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
+    await verifyPrivilegedSession(client, sessionUser);
 
     // 1. Resolve framework version & scoring model
     const fwRes = await client.query("SELECT id FROM framework_versions LIMIT 1;");
