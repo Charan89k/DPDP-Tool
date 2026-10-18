@@ -20,9 +20,12 @@ import { Badge } from "@/components/ui/badge";
 
 interface SidebarProps {
   user: SessionUser;
+  /** Mobile drawer state; on large screens the sidebar is always visible. */
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const roleBadge = getRoleBadgeLabel(user.role);
 
@@ -83,7 +86,13 @@ export function Sidebar({ user }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F]">
+    <aside
+      id="app-sidebar"
+      className={`w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F] fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+      aria-label="Main navigation"
+    >
       {/* Brand Header */}
       <div className="p-6 pb-5">
         <Link
@@ -107,6 +116,8 @@ export function Sidebar({ user }: SidebarProps) {
             <Link
               key={item.label}
               href={item.href}
+              onClick={onNavigate}
+              aria-current={isActive ? "page" : undefined}
               className={`flex items-center space-x-3.5 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-[#0066FF] text-white shadow-sm font-semibold"

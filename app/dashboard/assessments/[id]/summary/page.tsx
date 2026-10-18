@@ -1,5 +1,5 @@
 import React from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { AssessmentSummaryView } from "@/components/questionnaire/AssessmentSummaryView";
@@ -45,15 +45,18 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
     });
   } catch {}
 
-  const tenantName = assessmentData?.tenant_name || sessionUser.tenantName || "ABC Private Limited";
-  const assessmentCode = assessmentData?.engagement_code || "DPDP-2024-006";
+  if (!assessmentData) {
+    notFound();
+  }
+  const tenantName: string = assessmentData.tenant_name || sessionUser.tenantName;
+  const assessmentCode: string = assessmentData.engagement_code;
   const visitDate = assessmentData?.created_at
     ? new Date(assessmentData.created_at).toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
       })
-    : "20 Aug 2024";
+    : "—";
 
   return (
     <div className="space-y-6">

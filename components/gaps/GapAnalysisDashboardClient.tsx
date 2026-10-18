@@ -201,7 +201,7 @@ export function GapAnalysisDashboardClient({
             )}
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Data Fiduciary: <strong>{data.tenantName}</strong> • Evaluated under <strong>{data.frameworkName}</strong> • Lead Assessor: <strong>{data.leadConsultantName}</strong>
+            Data Fiduciary: <strong>{data.tenantName}</strong> • Evaluated under <strong>{data.frameworkName}</strong> • Assessment lead: <strong>{data.leadConsultantName}</strong>
           </p>
         </div>
 

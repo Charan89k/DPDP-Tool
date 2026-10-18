@@ -317,7 +317,6 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
     const consultantMsg = "Does the patient portal include a direct hyperlink to the Data Protection Board grievance form?";
     const clientReply = "Yes, confirmed in Release v2.4 under Settings > Privacy Rights.";
 
-    let threadId: string;
 
     // 1. Consultant raises clarification thread
     const createRes = await executeWithRls(DEMO_CONSULTANT, async (client) => {
@@ -346,7 +345,7 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
       return tid;
     });
 
-    threadId = createRes;
+    const threadId: string = createRes;
     assert.ok(threadId, "Thread ID must be generated");
 
     // 2. Client user reads the thread and replies

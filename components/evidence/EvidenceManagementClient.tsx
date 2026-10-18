@@ -56,8 +56,8 @@ interface EvidenceManagementClientProps {
 export function EvidenceManagementClient({
   assessmentId,
   tenantName,
-  assessmentCode = "DPDP-2024-006",
-  visitDate = "20 Aug 2024",
+  assessmentCode = "",
+  visitDate = "",
   userRole,
   userName = "Anita Sharma",
 }: EvidenceManagementClientProps) {

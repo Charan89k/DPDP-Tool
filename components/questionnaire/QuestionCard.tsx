@@ -401,7 +401,7 @@ export function QuestionCard({
                     : "bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-900 border-emerald-200"
                 }`}
               >
-                ✓ Implemented
+                {selectedOption === "Implemented" ? "✓ " : ""}Implemented
               </button>
 
               {/* Partially Implemented */}

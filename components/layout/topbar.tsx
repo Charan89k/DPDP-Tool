@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  Menu,
   ChevronDown,
   LogOut,
   Building,
@@ -15,9 +16,11 @@ import { getRoleBadgeLabel } from "@/lib/auth/rbac";
 
 interface TopbarProps {
   user: SessionUser;
+  onOpenNavigation?: () => void;
+  navigationOpen?: boolean;
 }
 
-export function Topbar({ user }: TopbarProps) {
+export function Topbar({ user, onOpenNavigation, navigationOpen = false }: TopbarProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -68,9 +71,19 @@ export function Topbar({ user }: TopbarProps) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 select-none shadow-xs">
-      {/* Left: Application Header */}
-      <div>
+    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-3 flex-shrink-0 select-none shadow-xs">
+      {/* Left: Navigation toggle (small screens) and application header */}
+      <button
+        type="button"
+        onClick={onOpenNavigation}
+        aria-controls="app-sidebar"
+        aria-expanded={navigationOpen}
+        aria-label="Open navigation"
+        className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]"
+      >
+        <Menu className="w-5 h-5" aria-hidden="true" />
+      </button>
+      <div className="min-w-0 flex-1">
         <div className="flex items-center space-x-2.5">
           <h2 className="text-base font-bold text-slate-900 tracking-tight">
             {user.tenantName}

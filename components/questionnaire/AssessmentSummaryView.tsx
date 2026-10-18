@@ -44,8 +44,8 @@ interface AssessmentSummaryViewProps {
 export function AssessmentSummaryView({
   assessmentId,
   tenantName = "ABC Private Limited",
-  assessmentCode = "DPDP-2024-006",
-  visitDate = "20 Aug 2024",
+  assessmentCode = "",
+  visitDate = "",
   leadConsultantName = "Anita Sharma",
   industry = "IT / ITES",
   assessmentStatus = "DATA_GATHERING",

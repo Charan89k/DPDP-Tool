@@ -31,16 +31,34 @@ interface QuestionnaireClientProps {
   assessmentId: string;
   assessmentTitle: string;
   tenantName: string;
+  engagementCode: string;
+  startedAt: string;
+  targetCompletionDate?: string | null;
   isAssessor?: boolean;
   canEdit?: boolean;
   userRole?: string;
   assessmentStatus?: string;
 }
 
+const NOT_APPLICABLE = "Not applicable — justification required";
+
+function needsJustification(response: RespondentQuestionResponse | undefined): boolean {
+  return (
+    response?.selectedOption === NOT_APPLICABLE && !(response.commentsAndJustification ?? "").trim()
+  );
+}
+
+function formatDisplayDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export function QuestionnaireClient({
   assessmentId,
   assessmentTitle,
   tenantName,
+  engagementCode,
+  startedAt,
+  targetCompletionDate = null,
   isAssessor = false,
   canEdit = true,
   userRole,
@@ -111,12 +129,18 @@ export function QuestionnaireClient({
 
   const persistToServer = useCallback(
     async (latestResponses: Record<string, RespondentQuestionResponse>) => {
+      // "Not applicable" requires a justification before it can be saved. Incomplete N/A answers
+      // stay in this browser (and are flagged in the question list) so they never block saving
+      // every other answer.
+      const persistable = Object.fromEntries(
+        Object.entries(latestResponses).filter(([, r]) => !needsJustification(r))
+      );
       setSaveStatus("saving");
       try {
         const res = await fetch(`/api/assessments/${assessmentId}/responses`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ responses: latestResponses }),
+          body: JSON.stringify({ responses: persistable }),
         });
 
         if (res.ok) {
@@ -248,7 +272,9 @@ export function QuestionnaireClient({
             <span className="text-slate-800">Questionnaire</span>
           </nav>
           <p className="text-xs font-semibold text-slate-600">
-            {tenantName} | Assessment ID: <span className="font-mono text-slate-900">DPDP-2024-006</span> | Visit Date: 20 Aug 2024
+            {tenantName} | Assessment ID: <span className="font-mono text-slate-900">{engagementCode}</span> | Started:{" "}
+            {formatDisplayDate(startedAt)}
+            {targetCompletionDate ? ` | Target: ${formatDisplayDate(targetCompletionDate)}` : ""}
           </p>
         </div>
 
@@ -342,8 +368,13 @@ export function QuestionnaireClient({
                     </span>
                   )}
                   {saveStatus === "saved" && (
-                    <span className="text-[11px] text-emerald-600 font-medium">
+                    <span className="text-[11px] text-emerald-600 font-medium" role="status">
                       ✓ Saved
+                    </span>
+                  )}
+                  {saveStatus === "error" && (
+                    <span className="text-[11px] text-rose-600 font-medium" role="alert">
+                      Not saved: {saveMessage}
                     </span>
                   )}
                 </div>
@@ -431,7 +462,8 @@ export function QuestionnaireClient({
             <div className="space-y-1.5 max-h-[380px] overflow-y-auto pr-1">
               {currentSection.questions.map((q, qIdx) => {
                 const resp = responses[q.code];
-                const isAnswered = Boolean(resp?.selectedOption);
+                const incomplete = needsJustification(resp);
+                const isAnswered = Boolean(resp?.selectedOption) && !incomplete;
                 const isCurrent = qIdx === activeQuestionIndex && !isReviewStep;
 
                 return (
@@ -450,8 +482,16 @@ export function QuestionnaireClient({
                     }`}
                   >
                     <div className="flex-shrink-0 pt-0.5">
-                      {isAnswered ? (
-                        <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                      {incomplete ? (
+                        <div
+                          className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold"
+                          title="Justification required"
+                          aria-label="Justification required"
+                        >
+                          !
+                        </div>
+                      ) : isAnswered ? (
+                        <div className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold" aria-label="Answered">
                           ✓
                         </div>
                       ) : (
