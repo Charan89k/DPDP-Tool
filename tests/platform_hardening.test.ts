@@ -30,6 +30,7 @@ import { EvidenceVaultService } from "../lib/storage/service.ts";
 import { ValidationError } from "../lib/storage/validation.ts";
 import { assertPersistentEvidenceStorage, StorageConfigurationError } from "../lib/storage/object_store.ts";
 import { checkConfiguration } from "../lib/ops/readiness.ts";
+import { buildContentSecurityPolicy, createNonce } from "../lib/http/csp.ts";
 
 const TLI_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000001";
 const SUITE_ID = Date.now().toString(36);
@@ -404,5 +405,26 @@ describe("Platform hardening: readiness configuration", () => {
     const key = Buffer.alloc(32, 7).toString("base64");
     assert.equal(checkConfiguration({ ...baseEnv, CLOUDE5_ENCRYPTION_KEY: key }).ok, true);
     assert.equal(checkConfiguration(baseEnv).ok, true);
+  });
+});
+
+describe("Platform hardening: content security policy", () => {
+  it("allows only nonce-bearing scripts in production, with a fresh nonce per request", () => {
+    const first = createNonce();
+    assert.notEqual(first, createNonce());
+    assert.match(first, /^[A-Za-z0-9+/]{22}==$/, "128-bit base64 nonce");
+
+    const policy = buildContentSecurityPolicy(first, true);
+    const scriptSrc = policy.split("; ").find((d) => d.startsWith("script-src")) ?? "";
+    assert.equal(scriptSrc, `script-src 'self' 'nonce-${first}' 'strict-dynamic'`);
+    assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/);
+    assert.match(policy, /frame-ancestors 'none'/);
+    assert.match(policy, /object-src 'none'/);
+  });
+
+  it("adds only what the development server needs outside production", () => {
+    const policy = buildContentSecurityPolicy("n", false);
+    assert.match(policy, /script-src [^;]*'unsafe-eval'/);
+    assert.match(policy, /connect-src 'self' ws: wss:/);
   });
 });

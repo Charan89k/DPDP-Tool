@@ -9,10 +9,14 @@
  *
  * Browsers cannot attach custom headers such as X-Forwarded-Host to cross-site form posts, and
  * cross-site fetches with custom headers fail CORS preflight, so honouring them here is safe.
+ *
+ * It also sets the Content-Security-Policy: a per-request script nonce for pages (lib/http/csp.ts)
+ * and a deny-everything policy for API responses.
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { API_CONTENT_SECURITY_POLICY, buildContentSecurityPolicy, createNonce } from "./lib/http/csp.ts";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -45,12 +49,26 @@ export function isSameOriginRequest(
 }
 
 export function proxy(req: NextRequest) {
-  if (UNSAFE_METHODS.has(req.method) && !isSameOriginRequest(req)) {
-    return NextResponse.json({ error: "Cross-site request rejected." }, { status: 403 });
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    if (UNSAFE_METHODS.has(req.method) && !isSameOriginRequest(req)) {
+      return NextResponse.json({ error: "Cross-site request rejected." }, { status: 403 });
+    }
+    const response = NextResponse.next();
+    response.headers.set("Content-Security-Policy", API_CONTENT_SECURITY_POLICY);
+    return response;
   }
-  return NextResponse.next();
+
+  // Pages: a fresh script nonce per request. Next.js reads it from the request header and applies
+  // it to the scripts it renders; the browser enforces the policy from the response header.
+  const policy = buildContentSecurityPolicy(createNonce(), process.env.NODE_ENV === "production");
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("Content-Security-Policy", policy);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("Content-Security-Policy", policy);
+  return response;
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  // Everything except build assets, which are files rather than documents.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

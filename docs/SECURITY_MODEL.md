@@ -75,6 +75,11 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   cookie scoped to `/api/auth/mfa`; the session is issued only after a valid code. Code attempts are
   limited to 5 per 15 minutes per account. Enabling or disabling MFA (disabling requires the password
   and a current code) revokes all other sessions.
+- Organisation administrators can require MFA for every member (Settings → Security; they must use
+  MFA themselves first). The requirement is enforced in the same database session check as account
+  status and revocation: a member without MFA can only enrol (and sign out) — every page redirects
+  to `/setup-two-factor` and every API call is refused — and nobody can turn MFA off while it is
+  required.
 - Rate limiting: failed logins and account emails are limited per IP and per email address, new
   registrations are capped installation-wide (30 per hour), and MFA codes per account. Counters are
   stored in the database (`rate_limit_buckets`, keyed by SHA-256 hashes, never raw emails or IPs), so
@@ -93,14 +98,17 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
 
 ## HTTP hardening
 
-- Response headers on every route: `Content-Security-Policy` (only this origin for scripts, styles,
-  images, fonts and connections; no plugins; no framing; forms post only to this origin),
-  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
-  `Permissions-Policy` (camera, microphone, geolocation off), `Cross-Origin-Opener-Policy:
-  same-origin`, and in production `Strict-Transport-Security` (one year, including subdomains).
-- The CSP allows `'unsafe-inline'` for scripts and styles because Next.js emits inline bootstrap
-  scripts; moving to per-request nonces would remove this. The development server also allows
-  `'unsafe-eval'` and WebSocket connections for hot reload.
+- Content-Security-Policy (set per request in `proxy.ts`, built in `lib/http/csp.ts`): pages get a
+  fresh 128-bit script nonce on every request; only scripts carrying it, or loaded by one
+  (`'strict-dynamic'`), run, so injected inline scripts are blocked. Everything else is limited to
+  this origin, with no plugins, no framing and forms posting only here. Inline style attributes
+  remain allowed (React renders them). API responses get `default-src 'none'`. Pages are rendered
+  per request so each can carry its nonce. The development server also allows `'unsafe-eval'` and
+  WebSocket connections for hot reload.
+- Other headers on every route: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy`, `Permissions-Policy` (camera, microphone, geolocation off),
+  `Cross-Origin-Opener-Policy: same-origin`, and in production `Strict-Transport-Security` (one year,
+  including subdomains).
 - Unexpected server errors return a generic message; details go to the server log only. Expected
   validation and permission errors (4xx) return their specific message.
 
@@ -109,8 +117,13 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
 Evidence is stored on local disk outside the web root under an opaque, tenant-partitioned key.
 Uploads are size-limited, checked against an allowlist of types, and verified by file signature.
 Access is authorised before any bytes are written, and every download is checked against the tenant
-policy and the evidence status (quarantined, pending or deleted files are never served). No malware
-scanner is configured by default; do not describe uploads as virus-scanned unless one is added.
+policy and the evidence status (quarantined, pending or deleted files are never served).
+
+Virus scanning is optional: with `CLOUDE5_CLAMAV_HOST` set (the compose `antivirus` profile runs
+ClamAV), every upload is streamed to clamd before anything is stored. Detected files are rejected
+and logged with tenant and user; if the scanner is unreachable, uploads are refused (HTTP 503)
+rather than accepted unscanned, and `/api/ready` reports it. Each evidence record notes which check
+it passed (`CLAMAV` or `LOCAL_VALIDATOR`). Without ClamAV, do not describe uploads as virus-scanned.
 
 ## Out of scope / known limitations
 
@@ -120,7 +133,7 @@ scanner is configured by default; do not describe uploads as virus-scanned unles
   user's sign-in attempts or reset emails. This is the usual trade-off against password guessing.
 - Inviting or adding a user whose email already exists elsewhere reports that the email is taken,
   because email addresses are unique across the installation.
-- MFA is optional per user; administrators cannot yet require it for a whole organisation.
+- When MFA is not required by the organisation, it is optional per user.
 - Issuing a final report moves the assessment to FINAL_ISSUED before the report file is written. If
   writing the file fails, issuance reports an error and records no snapshot; issuing again retries
   the file and snapshot (the lifecycle step is not repeated).

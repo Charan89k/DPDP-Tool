@@ -9,6 +9,7 @@
 
 import crypto from "node:crypto";
 import { FileValidator, ValidationError } from "./validation.ts";
+import { getConfiguredScanner, MalwareDetectedError, type MalwareScanner } from "./malware_scanner.ts";
 import { getLocalStorageAdapter, LocalStorageAdapter } from "./local_adapter.ts";
 import type { SaveResult } from "./local_adapter.ts";
 import { executeWithRls } from "../db/rls.ts";
@@ -30,6 +31,8 @@ export interface EvidenceRecord {
   sha256: string;
   status: "PENDING_UPLOAD" | "PENDING_SCAN" | "ACTIVE" | "VERIFIED" | "REJECTED" | "QUARANTINED" | "SUPERSEDED" | "DELETED";
   quarantineReason?: string | null;
+  /** Who checked the payload before storage: CLAMAV when a virus scanner ran, else LOCAL_VALIDATOR. */
+  scanProvider?: string;
   uploadedByUserId: string;
   verifiedByReviewerId?: string | null;
   verificationNotes?: string | null;
@@ -101,7 +104,7 @@ export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
           $1, $2, $3, $4, $5,
           $6, $7, $8,
           $9, $10, $11, $12, 'local-vault',
-          $13, 'ACTIVE', 'LOCAL_VALIDATOR', 'CLEAN', CURRENT_TIMESTAMP
+          $13, 'ACTIVE', $14, 'CLEAN', CURRENT_TIMESTAMP
         )`,
         [
           record.id,
@@ -117,6 +120,7 @@ export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
           record.mimeType,
           record.storageKey,
           save.sha256,
+          record.scanProvider || "LOCAL_VALIDATOR",
         ]
       );
 
@@ -217,15 +221,18 @@ export class EvidenceVaultService {
   private validator: FileValidator;
   private adapter: LocalStorageAdapter;
   private metadataStore: EvidenceMetadataStore;
+  private scanner: MalwareScanner | null;
 
   constructor(
     adapter?: LocalStorageAdapter,
     validator?: FileValidator,
-    metadataStore?: EvidenceMetadataStore
+    metadataStore?: EvidenceMetadataStore,
+    scanner?: MalwareScanner | null
   ) {
     this.adapter = adapter || getLocalStorageAdapter();
     this.validator = validator || new FileValidator();
     this.metadataStore = metadataStore || new PostgresEvidenceMetadataStore();
+    this.scanner = scanner === undefined ? getConfiguredScanner() : scanner;
   }
 
   /**
@@ -266,6 +273,17 @@ export class EvidenceVaultService {
     // 2. Validate binary magic bytes against declared MIME type and blocked signatures
     this.validator.verifyMagicBytes(content, normalizedMime);
 
+    // 2b. Virus scan when a scanner is configured; failures reject the upload (fail closed)
+    if (this.scanner) {
+      const result = await this.scanner.scan(content);
+      if (!result.clean) {
+        console.warn(
+          `Evidence upload rejected by ${this.scanner.provider}: ${result.signature} (tenant ${sessionUser.tenantId}, user ${sessionUser.userId})`
+        );
+        throw new MalwareDetectedError();
+      }
+    }
+
     // 3. Generate opaque evidence ID and storage key
     const evidenceId = crypto.randomUUID();
     const storageKey = FileValidator.generateStorageKey(
@@ -288,6 +306,7 @@ export class EvidenceVaultService {
       mimeType: normalizedMime,
       storageKey,
       sha256: "",
+      scanProvider: this.scanner?.provider || "LOCAL_VALIDATOR",
       status: "ACTIVE", // Verified and clean through pre-storage inspection
       uploadedByUserId: sessionUser.userId,
       createdAt: new Date().toISOString(),

@@ -13,7 +13,9 @@ import { pool } from "../db/pool.ts";
 import { getDatabase } from "../db/sqlite/connection.ts";
 import { getMigrationStatus } from "../db/sqlite/migrate.ts";
 import { isSmtpConfigured } from "../email/mailer.ts";
+import { errorMessage } from "../http/errors.ts";
 import { resolveEvidenceDirSetting } from "../storage/local_adapter.ts";
+import { getConfiguredScanner } from "../storage/malware_scanner.ts";
 
 export interface CheckResult {
   name: string;
@@ -71,6 +73,19 @@ export function checkConfiguration(env: Record<string, string | undefined> = pro
   return { name: "configuration", ok: true };
 }
 
+/** Only when CLOUDE5_CLAMAV_HOST is set: uploads are refused while the scanner is unreachable. */
+export async function checkMalwareScanner(env: Record<string, string | undefined> = process.env): Promise<CheckResult | null> {
+  try {
+    const scanner = getConfiguredScanner(env);
+    if (!scanner) return null;
+    return (await scanner.ping())
+      ? { name: "virus_scanner", ok: true }
+      : { name: "virus_scanner", ok: false, detail: "ClamAV is not reachable; evidence uploads are refused." };
+  } catch (err) {
+    return { name: "virus_scanner", ok: false, detail: errorMessage(err) };
+  }
+}
+
 export async function runReadinessChecks(): Promise<{ ready: boolean; checks: CheckResult[] }> {
   const database = await checkDatabase();
   const checks = [
@@ -79,5 +94,7 @@ export async function runReadinessChecks(): Promise<{ ready: boolean; checks: Ch
     checkEvidenceStorage(),
     checkConfiguration(),
   ];
+  const scanner = await checkMalwareScanner();
+  if (scanner) checks.push(scanner);
   return { ready: checks.every((c) => c.ok), checks };
 }

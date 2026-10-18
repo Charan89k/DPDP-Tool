@@ -12,6 +12,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { canUploadEvidence } from "@/lib/auth/rbac";
 import { EvidenceVaultService } from "@/lib/storage/service";
 import { ValidationError } from "@/lib/storage/validation";
+import { ScannerUnavailableError } from "@/lib/storage/malware_scanner";
 import { StorageConfigurationError, STORAGE_NOT_CONFIGURED_MESSAGE } from "@/lib/storage/object_store";
 import { DatabaseAuthorizationError } from "@/lib/db/rls";
 
@@ -104,6 +105,13 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     if (err instanceof StorageConfigurationError) {
       return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof ScannerUnavailableError) {
+      console.error("Evidence upload refused:", err.message);
+      return NextResponse.json(
+        { error: "The virus scanner is unavailable, so uploads are paused. Please try again shortly." },
+        { status: 503 }
+      );
     }
     if (err instanceof DatabaseAuthorizationError) {
       return NextResponse.json(

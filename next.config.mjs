@@ -1,21 +1,5 @@
 const isProduction = process.env.NODE_ENV === "production";
 
-// Next.js renders inline bootstrap scripts and style attributes, so 'unsafe-inline' is required for
-// script-src/style-src without per-request nonces; everything else is restricted to this origin.
-// The dev server additionally needs 'unsafe-eval' for fast refresh.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  `connect-src 'self'${isProduction ? "" : " ws: wss:"}`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join("; ");
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -41,7 +25,7 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "Content-Security-Policy", value: contentSecurityPolicy },
+          // Content-Security-Policy is set per request by proxy.ts (script nonces).
           { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           ...(isProduction
             ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]

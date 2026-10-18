@@ -3,10 +3,47 @@
  * starting an assessment, two-factor enrolment and two-factor sign-in, plus a phone-width check.
  */
 import crypto from "node:crypto";
+import zlib from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import { Secret, TOTP } from "otpauth";
 
 const MAILPIT = process.env.E2E_MAILPIT_URL || "http://localhost:8025";
+// Set E2E_EXPECT_VIRUS_SCANNER=1 when the installation runs ClamAV (CLOUDE5_CLAMAV_HOST).
+const EXPECT_VIRUS_SCANNER = process.env.E2E_EXPECT_VIRUS_SCANNER === "1";
+
+/** The industry-standard EICAR antivirus test string, assembled at runtime (it is harmless). */
+function eicar(): Buffer {
+  return Buffer.from(["X5O!P%@AP[4\\PZX54(P^)7CC)7}$", "EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"].join(""), "latin1");
+}
+
+/** Minimal stored (uncompressed) ZIP with one member: the shape of a .docx carrying a payload. */
+function zipWith(name: string, data: Buffer): Buffer {
+  const fileName = Buffer.from(name);
+  const crc = zlib.crc32(data);
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt32LE(crc, 14);
+  local.writeUInt32LE(data.length, 18);
+  local.writeUInt32LE(data.length, 22);
+  local.writeUInt16LE(fileName.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt32LE(crc, 16);
+  central.writeUInt32LE(data.length, 20);
+  central.writeUInt32LE(data.length, 24);
+  central.writeUInt16LE(fileName.length, 28);
+  const localSize = local.length + fileName.length + data.length;
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(central.length + fileName.length, 12);
+  end.writeUInt32LE(localSize, 16);
+  return Buffer.concat([local, fileName, data, central, fileName, end]);
+}
 
 function newAccount() {
   return {
@@ -68,6 +105,24 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Start your first assessment" })).toBeVisible();
   await page.getByRole("button", { name: "Start assessment" }).click();
   await expect(page).toHaveURL(/\/dashboard\/assessments\/[^/]+\/questionnaire/, { timeout: 30_000 });
+
+  // Evidence upload with the signed-in session (same-origin, as the evidence page sends it).
+  const assessmentId = page.url().match(/assessments\/([^/]+)\/questionnaire/)![1];
+  const upload = (name: string, mimeType: string, buffer: Buffer) =>
+    page.request.post("/api/evidence/upload", {
+      headers: { Origin: new URL(page.url()).origin },
+      multipart: { file: { name, mimeType, buffer }, assessmentId, controlCode: "GENERIC" },
+    });
+
+  const clean = await upload("privacy-policy.pdf", "application/pdf", Buffer.from(`%PDF-1.7\nPrivacy policy\n${"A".repeat(300)}\n%%EOF`));
+  expect(clean.status(), await clean.text()).toBe(201);
+
+  if (EXPECT_VIRUS_SCANNER) {
+    const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const infected = await upload("policy.docx", docx, zipWith("word/eicar.com", eicar()));
+    expect(infected.status()).toBe(400);
+    expect((await infected.json()).error).toMatch(/virus scanner/i);
+  }
 });
 
 test("two-factor enrolment and sign-in with an authenticator code", async ({ page }) => {

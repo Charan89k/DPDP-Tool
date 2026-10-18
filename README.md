@@ -12,8 +12,9 @@ and receive an explainable gap register, provisional readiness metrics, and a co
 ## Features
 
 - Organisation self-registration with email verification, password reset and invitations
-- Optional two-factor sign-in (authenticator app codes and single-use recovery codes), database-backed
-  rate limits, CSRF checks and strict security headers
+- Two-factor sign-in (authenticator app codes and single-use recovery codes), optionally required for a
+  whole organisation; database-backed rate limits, CSRF checks and a nonce-based Content Security Policy
+- Optional virus scanning of evidence uploads with ClamAV
 - Role-based access: organisation administrators, business-unit leads, contributors and viewers;
   platform administrators, lead consultants and reviewers for assisted assessments
 - Guided questionnaire (8 areas, 60 questions) with autosave and mandatory justification for
@@ -50,6 +51,7 @@ npm test          # builds a template SQLite database and runs the full test sui
 npx tsc --noEmit  # type check
 npm run lint      # ESLint
 npm run build     # production build
+E2E_BASE_URL=https://your-host npm run test:e2e   # browser tests against a running installation
 ```
 
 ## Repository layout

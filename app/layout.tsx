@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Every page is rendered per request so it can carry that request's CSP script nonce (proxy.ts).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     default: "CloudE5 — DPDP compliance self-assessment",

@@ -22,7 +22,7 @@ on a network filesystem (NFS, SMB) or share one file between servers.
 - Linux server (x86_64 or arm64) with Docker Engine and the Compose plugin
 - A DNS name pointing at the server (for HTTPS)
 - An SMTP account for transactional email (verification, password reset, invitations)
-- 2 GB RAM and enough disk for evidence plus backups
+- 2 GB RAM (4 GB with virus scanning) and enough disk for evidence plus backups
 
 ## 2. Install
 
@@ -78,6 +78,26 @@ docker compose logs -f cloude5
 `/api/ready` reports `not_ready` if SMTP or required settings are missing; registration cannot work
 without email.
 
+## Trying it on a laptop (no server, no domain)
+
+For evaluation you can run the same production image on any machine with Docker and get a temporary
+public HTTPS address from a Cloudflare quick tunnel, with a local mail catcher instead of SMTP:
+
+```bash
+cp .env.example .env     # generate SESSION_SECRET and CLOUDE5_ENCRYPTION_KEY as above
+# in .env: SMTP_HOST=mailpit  SMTP_PORT=1025  SMTP_FROM="CloudE5 <no-reply@cloude5.local>"
+#          TRUST_CLOUDFLARE_IP_HEADER=true
+docker compose build && docker compose run --rm cloude5 migrate
+docker compose --profile mail --profile tunnel up -d
+docker compose logs cloudflared | grep trycloudflare.com   # your public URL
+# set CLOUDE5_PUBLIC_URL to that URL in .env, then: docker compose up -d cloude5
+```
+
+Account emails appear at http://localhost:8025 and never leave the machine, so this suits testing,
+not real users. The tunnel URL changes whenever the tunnel restarts, and the site is offline while
+the machine is off or asleep. Platforms without a persistent disk (for example Vercel or other
+serverless hosts) cannot run CloudE5, because the SQLite database and evidence files must persist.
+
 ## Configuration reference
 
 | Variable | Required | Purpose |
@@ -88,6 +108,7 @@ without email.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | yes | Email delivery |
 | `CLOUDE5_DATABASE_PATH` | set by image | SQLite file (`/data/db/cloude5.db`) |
 | `CLOUDE5_EVIDENCE_DIR` | set by image | Evidence directory (`/data/evidence`) |
+| `CLOUDE5_CLAMAV_HOST`, `CLOUDE5_CLAMAV_PORT` | no | Virus-scan uploads with ClamAV (`clamav` and `3310` with `docker compose --profile antivirus up -d`). While set, uploads are refused if the scanner is down; `/api/ready` checks it. |
 | `TRUST_CLOUDFLARE_IP_HEADER` | no | `true` only if Cloudflare fronts the server |
 | `CLOUDE5_TRUST_X_REAL_IP` | no | `true` only if your proxy overwrites `X-Real-IP` (by default the rightmost `X-Forwarded-For` entry is used) |
 
