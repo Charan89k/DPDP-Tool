@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
 
       const threadIds = threadsRes.rows.map((r) => r.id);
-      let messagesMap = new Map<string, any[]>();
+      const messagesMap = new Map<string, any[]>();
 
       if (threadIds.length > 0) {
         const msgsRes = await client.query(

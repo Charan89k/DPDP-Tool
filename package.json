@@ -1,14 +1,14 @@
 {
   "name": "tli-dpdp-tool",
   "version": "1.0.0",
-  "description": "TLI DPDP Compliance Gap Analysis Tool — Truth Labs International",
+  "description": "TLI DPDP Compliance Gap Analysis Tool \u2014 Truth Labs International",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "node --experimental-strip-types scripts/prepare-test-db.ts && CLOUDE5_TEST_DATABASE_TEMPLATE=.test-db/template.db CLOUDE5_DEV_OUTBOX_DIR=.test-db/outbox CLOUDE5_EVIDENCE_DIR=.test-db/evidence node --experimental-strip-types --test tests/**/*.test.ts",
     "db:migrate": "node --experimental-strip-types scripts/cloude5-db.ts migrate",
     "db:status": "node --experimental-strip-types scripts/cloude5-db.ts status",
@@ -34,6 +34,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.10.5",
@@ -42,6 +43,8 @@
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.27",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3"

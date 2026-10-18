@@ -324,7 +324,7 @@ export function CustomerDetailClient({
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
           {users.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-500">
-              No users provisioned for this customer yet. Use "Add / Invite User" to add team members.
+              No users provisioned for this customer yet. Use &ldquo;Add / Invite User&rdquo; to add team members.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -394,7 +394,7 @@ export function CustomerDetailClient({
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             {invitations.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                No active invitations. Use "Add / Invite User" to issue a new single-use activation invitation.
+                No active invitations. Use &ldquo;Add / Invite User&rdquo; to issue a new single-use activation invitation.
               </div>
             ) : (
               <div className="overflow-x-auto">

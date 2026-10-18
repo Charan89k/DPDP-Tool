@@ -110,7 +110,7 @@ function ActivateAccountForm() {
                 Account Activated Successfully!
               </h2>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Your corporate account has been provisioned under your organization's tenant workspace.
+                Your corporate account has been provisioned under your organization&apos;s tenant workspace.
               </p>
             </div>
             <Link
