@@ -42,7 +42,7 @@ type ReviewStatus = (typeof VALID_REVIEW_STATUSES)[number];
 
 // Load canonical questions from data manifest
 function getCanonicalQuestions() {
-  const filePath = path.join(process.cwd(), "data", "questionnaire_v1.json");
+  const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "questionnaire_v1.json");
   const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw);
 }

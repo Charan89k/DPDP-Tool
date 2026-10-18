@@ -44,7 +44,7 @@ export function checkMigrations(): CheckResult {
 }
 
 export function checkEvidenceStorage(env: Record<string, string | undefined> = process.env): CheckResult {
-  const dir = path.resolve(resolveEvidenceDirSetting(env) || path.join(process.cwd(), ".local_evidence"));
+  const dir = path.resolve(resolveEvidenceDirSetting(env) || path.join(/*turbopackIgnore: true*/ process.cwd(), ".local_evidence"));
   try {
     fs.mkdirSync(dir, { recursive: true, mode: 0o750 });
     fs.accessSync(dir, fs.constants.W_OK);

@@ -7,6 +7,10 @@ const nextConfig = {
   // Self-contained server bundle for the Docker image (node .next/standalone/server.js).
   output: "standalone",
   // Never trace local development state (dev database, dev email outbox) into the server bundle.
+  // Runtime files read from disk by the server (applied to the database at startup checks).
+  outputFileTracingIncludes: {
+    "*": ["migrations/sqlite/**"],
+  },
   outputFileTracingExcludes: {
     "*": [".cloude5/**", ".test-db/**", ".local_evidence/**", "**/*.db", "**/*.db-wal", "**/*.db-shm"],
   },

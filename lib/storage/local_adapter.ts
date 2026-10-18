@@ -34,11 +34,11 @@ export class LocalStorageAdapter {
     
     // Default to .local_evidence in project root if not explicitly configured
     const targetDir = configuredDir
-      ? path.resolve(configuredDir)
-      : path.resolve(process.cwd(), ".local_evidence");
+      ? path.resolve(/*turbopackIgnore: true*/ configuredDir)
+      : path.resolve(/*turbopackIgnore: true*/ process.cwd(), ".local_evidence");
 
     // Strictly enforce that the evidence vault is never placed in public/ or client-accessible assets
-    const publicDir = path.resolve(process.cwd(), "public");
+    const publicDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "public");
     if (FileValidator.isSafePath(publicDir, targetDir)) {
       throw new Error(
         "CRITICAL SECURITY VIOLATION: Evidence storage directory cannot be inside the 'public/' directory."

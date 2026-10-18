@@ -30,7 +30,7 @@ export class DatabaseConfigurationError extends Error {
   }
 }
 
-export const DEFAULT_DEV_DATABASE_PATH = path.resolve(process.cwd(), ".cloude5", "cloude5.db");
+export const DEFAULT_DEV_DATABASE_PATH = path.resolve(/*turbopackIgnore: true*/ process.cwd(), ".cloude5", "cloude5.db");
 const BUSY_TIMEOUT_MS = 5000;
 
 type Env = Record<string, string | undefined>;

@@ -49,7 +49,7 @@ function getTransporter(env: Env): Transporter {
 }
 
 export function devOutboxDir(env: Env = process.env): string {
-  return path.resolve(env.CLOUDE5_DEV_OUTBOX_DIR || path.join(process.cwd(), ".cloude5", "dev-outbox"));
+  return path.resolve(env.CLOUDE5_DEV_OUTBOX_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), ".cloude5", "dev-outbox"));
 }
 
 function writeToDevOutbox(message: EmailMessage, env: Env): void {

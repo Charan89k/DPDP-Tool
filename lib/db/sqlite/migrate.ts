@@ -15,7 +15,7 @@ import path from "node:path";
 import type { SqliteDatabase } from "./connection.ts";
 
 export const MIGRATIONS_DIR = path.resolve(
-  process.env.CLOUDE5_MIGRATIONS_DIR || path.join(process.cwd(), "migrations", "sqlite")
+  process.env.CLOUDE5_MIGRATIONS_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "migrations", "sqlite")
 );
 
 export interface MigrationFile {

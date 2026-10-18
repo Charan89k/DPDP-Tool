@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Request middleware.
+ * CloudE5 — Request proxy (Next.js 16 convention, formerly middleware).
  *
  * CSRF defence in depth: the session cookie is SameSite=Lax, and in addition every state-changing
  * API request (POST, PUT, PATCH, DELETE) must carry an Origin (or, failing that, Referer) header
@@ -44,7 +44,7 @@ export function isSameOriginRequest(
   return allowed.has(requestOrigin);
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (UNSAFE_METHODS.has(req.method) && !isSameOriginRequest(req)) {
     return NextResponse.json({ error: "Cross-site request rejected." }, { status: 403 });
   }
