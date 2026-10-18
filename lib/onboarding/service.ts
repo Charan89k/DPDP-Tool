@@ -12,7 +12,7 @@ import { pool } from "../db/pool.ts";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError, executeWithRls } from "../db/rls.ts";
 import type { SessionUser, UserRole } from "../auth/types.ts";
 import { canCreateCustomer, canManageTenantUsers, isTliRole, CLIENT_ROLES } from "../auth/rbac.ts";
-import { hashPassword } from "../auth/passwords.ts";
+import { describePasswordProblem, hashPassword } from "../auth/passwords.ts";
 import { issueToken } from "../auth/account.ts";
 import { publicBaseUrl, sendEmail } from "../email/mailer.ts";
 import { verificationEmail } from "../email/templates.ts";
@@ -199,6 +199,12 @@ export async function createCustomerOrganization(
         );
       }
 
+      if (password) {
+        const passwordProblem = describePasswordProblem(password, { email });
+        if (passwordProblem) {
+          throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
+        }
+      }
       // Without an administrator-chosen password the account gets an unusable random one; the
       // user verifies their email and sets their own password via "Forgot password".
       const passwordHash = await hashPassword(password || crypto.randomBytes(32).toString("base64url"));
@@ -265,9 +271,8 @@ export async function getCustomerDetails(
     );
   }
 
-  const client = await pool.connect();
-  try {
-    await verifyPrivilegedSession(client, sessionUser);
+  // Runs under the tenant policy layer: platform staff see only organisations they may access.
+  return executeWithRls(sessionUser, async (client) => {
     const tenantRes = await client.query(
       `SELECT id, name, slug, industry, is_sdf, dpo_name, dpo_email, status, created_at
        FROM tenants
@@ -311,9 +316,7 @@ export async function getCustomerDetails(
       invitations: invRes.rows,
       assessments: assessRes.rows,
     };
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -380,6 +383,12 @@ export async function provisionCustomerUser(
       );
     }
 
+    if (input.password) {
+      const passwordProblem = describePasswordProblem(input.password, { email });
+      if (passwordProblem) {
+        throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
+      }
+    }
     const passwordHash = await hashPassword(input.password || crypto.randomBytes(32).toString("base64url"));
 
     const userRes = await client.query(
@@ -571,8 +580,9 @@ export async function acceptCustomerInvitation(
   }
 
   const password = input.password;
-  if (!password || password.length < 8) {
-    throw new OnboardingError("Password must be at least 8 characters.", "WEAK_PASSWORD", 400);
+  const passwordProblem = describePasswordProblem(password ?? "");
+  if (passwordProblem) {
+    throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
   }
 
   const fullName = input.fullName?.trim();
@@ -647,15 +657,10 @@ export async function acceptCustomerInvitation(
 
     let createdUser: any;
     if (userCheck.rows.length > 0) {
-      // Activate existing user if pre-created
-      const updateRes = await client.query(
-        `UPDATE users
-         SET full_name = $1, password_hash = $2, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $3
-         RETURNING id, tenant_id, email, full_name, role, is_active;`,
-        [fullName, passwordHash, userCheck.rows[0].id]
-      );
-      createdUser = updateRes.rows[0];
+      // Never take over an existing account through an invitation (matches the accept route).
+      await client.query("UPDATE user_invitations SET status = 'REVOKED' WHERE id = $1;", [invitation.id]);
+      await client.query("COMMIT;");
+      throw new OnboardingError("An account with this email address already exists.", "ACCOUNT_EXISTS", 409);
     } else {
       const insertRes = await client.query(
         `INSERT INTO users (
@@ -743,11 +748,26 @@ export async function createCustomerAssessment(
     const frameworkVersionId = fwRes.rows[0].id;
     const scoringModelId = smRes.rows[0].id;
 
-    // 2. Validate tenant exists
-    const tRes = await client.query("SELECT id, name FROM tenants WHERE id = $1;", [tenantId]);
+    // 2. Validate the customer organisation and the engagement lead
+    const tRes = await client.query(
+      "SELECT id, name FROM tenants WHERE id = $1 AND type = 'CLIENT' AND status = 'ACTIVE';",
+      [tenantId]
+    );
     if (tRes.rows.length === 0) {
       await client.query("ROLLBACK;");
       throw new OnboardingError("Customer organisation not found.", "NOT_FOUND", 404);
+    }
+    if (sessionUser.role !== "TLI_SUPER_ADMIN" && leadConsultantId !== sessionUser.userId) {
+      await client.query("ROLLBACK;");
+      throw new OnboardingError("Only a platform administrator can assign another engagement lead.", "FORBIDDEN", 403);
+    }
+    const leadRes = await client.query(
+      "SELECT id FROM users WHERE id = $1 AND is_active = TRUE AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN');",
+      [leadConsultantId]
+    );
+    if (leadRes.rows.length === 0) {
+      await client.query("ROLLBACK;");
+      throw new OnboardingError("The engagement lead must be an active lead consultant.", "INVALID_INPUT", 400);
     }
 
     // 3. Create assessment

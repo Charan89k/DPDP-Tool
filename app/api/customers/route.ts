@@ -28,7 +28,7 @@ const createCustomerSchema = z.object({
       fullName: z.string().min(2, "User name must be at least 2 characters."),
       email: z.string().email("Valid corporate email address is required."),
       role: z.enum(["CLIENT_ADMIN", "CLIENT_BU_LEAD", "CLIENT_CONTRIBUTOR", "CLIENT_VIEWER"]).default("CLIENT_ADMIN"),
-      password: z.string().min(8, "Password must be at least 8 characters.").optional(),
+      password: z.string().max(200).optional().or(z.literal("").transform(() => undefined)),
     })
     .optional(),
 });

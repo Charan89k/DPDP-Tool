@@ -246,47 +246,33 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
   });
 
-  it("should safely resolve client IP from trusted edge headers and reject spoofed headers", async () => {
+  it("should resolve client IP only from trusted proxy headers and reject spoofed headers", async () => {
     const { resolveClientIp } = await import("../lib/auth/rate_limit.ts");
+    const selfHosted = {};
 
-    // 1. Cloudflare edge header takes precedence
-    const req1 = new Request("https://app.tli.internal", {
+    // 1. Behind a reverse proxy the rightmost X-Forwarded-For entry (appended by the proxy) wins;
+    //    client-injected CF-Connecting-IP / X-Real-IP / leftmost entries are ignored.
+    const spoofed = new Request("https://app.example", {
       headers: {
         "cf-connecting-ip": "203.0.113.195",
         "x-real-ip": "198.51.100.22",
-        "x-forwarded-for": "10.0.0.1",
+        "x-forwarded-for": "203.0.113.250, 198.51.100.99",
       },
     });
-    assert.equal(resolveClientIp(req1), "203.0.113.195");
+    assert.equal(resolveClientIp(spoofed, selfHosted), "198.51.100.99");
 
-    // 2. Standard X-Real-IP reverse proxy header
-    const req2 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-real-ip": "198.51.100.22",
-        "x-forwarded-for": "10.0.0.1",
-      },
+    // 2. Explicitly trusted headers are honoured
+    assert.equal(resolveClientIp(spoofed, { TRUST_CLOUDFLARE_IP_HEADER: "true" }), "203.0.113.195");
+    assert.equal(resolveClientIp(spoofed, { CLOUDE5_TRUST_X_REAL_IP: "true" }), "198.51.100.22");
+
+    // 3. Reject spoofed non-IP strings / injection attempts in forwarding header
+    const req4 = new Request("https://app.example", {
+      headers: { "x-forwarded-for": "attacker-spoofed-host; drop table users;" },
     });
-    assert.equal(resolveClientIp(req2), "198.51.100.22");
+    assert.equal(resolveClientIp(req4, selfHosted), "127.0.0.1", "Must fall back to 127.0.0.1 on invalid IP syntax");
 
-    // 3. Valid X-Forwarded-For leftmost IP
-    const req3 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-forwarded-for": "198.51.100.99, 10.0.0.1",
-      },
-    });
-    assert.equal(resolveClientIp(req3), "198.51.100.99");
-
-    // 4. Reject spoofed non-IP strings / injection attempts in forwarding header
-    const req4 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-forwarded-for": "attacker-spoofed-host; drop table users;",
-      },
-    });
-    assert.equal(resolveClientIp(req4), "127.0.0.1", "Must fall back to 127.0.0.1 on invalid IP syntax");
-
-    // 5. Default fallback
-    const req5 = new Request("https://app.tli.internal");
-    assert.equal(resolveClientIp(req5), "127.0.0.1");
+    // 4. Default fallback
+    assert.equal(resolveClientIp(new Request("https://app.example"), selfHosted), "127.0.0.1");
   });
 
   it("should prevent rate limit bypass via email case or whitespace variation", () => {

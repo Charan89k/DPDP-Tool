@@ -88,6 +88,7 @@ without email.
 | `CLOUDE5_DATABASE_PATH` | set by image | SQLite file (`/data/db/cloude5.db`) |
 | `CLOUDE5_EVIDENCE_DIR` | set by image | Evidence directory (`/data/evidence`) |
 | `TRUST_CLOUDFLARE_IP_HEADER` | no | `true` only if Cloudflare fronts the server |
+| `CLOUDE5_TRUST_X_REAL_IP` | no | `true` only if your proxy overwrites `X-Real-IP` (by default the rightmost `X-Forwarded-For` entry is used) |
 
 ## Backups
 

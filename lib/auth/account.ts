@@ -152,6 +152,13 @@ async function inTransaction<T>(work: (client: PoolClient) => Promise<T>): Promi
   }
 }
 
+/** Sends an email without delaying the caller; delivery failures are logged by the mailer. */
+function deliverInBackground(message: Parameters<typeof sendEmail>[0]): void {
+  void sendEmail(message).catch((err) => {
+    console.error("Background email delivery failed:", err instanceof Error ? err.message : err);
+  });
+}
+
 function existingAccountNotice(email: string) {
   const base = publicBaseUrl();
   return existingAccountEmail(email, `${base}/login`, `${base}/forgot-password`);
@@ -282,7 +289,8 @@ export async function resendVerification(emailInput: string): Promise<void> {
   if (!user) return;
 
   const rawToken = await inTransaction((client) => issueToken(client, user.id, "EMAIL_VERIFICATION"));
-  await sendEmail(
+  // Not awaited: the response time must not reveal whether an account exists.
+  deliverInBackground(
     verificationEmail(
       email,
       user.full_name,
@@ -317,7 +325,8 @@ export async function requestPasswordReset(emailInput: string, meta: RequestMeta
     );
     return token;
   });
-  await sendEmail(
+  // Not awaited: the response time must not reveal whether an account exists.
+  deliverInBackground(
     passwordResetEmail(
       email,
       user.full_name,
@@ -337,8 +346,15 @@ export async function resetPassword(
       return { error: new AccountError("This password reset link is invalid, expired or already used.", "INVALID_TOKEN") };
     }
     const user = (
-      await client.query("SELECT email, full_name, tenant_id FROM users WHERE id = $1;", [userId])
+      await client.query(
+        `SELECT u.email, u.full_name, u.tenant_id FROM users u JOIN tenants t ON t.id = u.tenant_id
+         WHERE u.id = $1 AND u.is_active = TRUE AND t.status = 'ACTIVE';`,
+        [userId]
+      )
     ).rows[0];
+    if (!user) {
+      return { error: new AccountError("This password reset link is invalid, expired or already used.", "INVALID_TOKEN") };
+    }
     const problem = describePasswordProblem(newPassword, { email: user.email });
     if (problem) {
       // Keep the token usable: throw so the transaction (including consumption) rolls back.

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { registerOrganization } from "@/lib/auth/account";
+import { registrationRateLimiter } from "@/lib/auth/rate_limit";
 import { accountErrorResponse, limitAccountEmail, parseBody, requestMeta } from "@/lib/http/account_routes";
 
 const registerSchema = z.object({
@@ -23,6 +24,14 @@ export async function POST(req: NextRequest) {
   if ("response" in parsed) return parsed.response;
   const limited = limitAccountEmail(req, parsed.data.email);
   if (limited) return limited;
+  const globalLimit = registrationRateLimiter.isRateLimited("global:registrations");
+  if (globalLimit.limited) {
+    return NextResponse.json(
+      { error: "Registration is temporarily busy. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(globalLimit.retryAfterSeconds) } }
+    );
+  }
+  registrationRateLimiter.recordFailedAttempt("global:registrations");
 
   try {
     const outcome = await registerOrganization(parsed.data, requestMeta(req));

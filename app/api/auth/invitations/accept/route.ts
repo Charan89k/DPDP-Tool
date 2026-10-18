@@ -10,12 +10,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { pool } from "@/lib/db/pool";
-import { hashPassword } from "@/lib/auth/passwords";
+import { describePasswordProblem, hashPassword } from "@/lib/auth/passwords";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 
 const acceptInvitationSchema = z.object({
   token: z.string().min(16, "Invalid token format."),
-  password: z.string().min(8, "Password must be at least 8 characters long."),
+  password: z.string().min(1, "Choose a password.").max(200),
   fullName: z.string().min(2).optional(),
 });
 
@@ -35,6 +35,13 @@ export async function POST(req: NextRequest) {
     }
 
     const { token, password, fullName: nameOverride } = parseResult.data;
+    const passwordProblem = describePasswordProblem(password);
+    if (passwordProblem) {
+      return NextResponse.json(
+        { error: `Password does not meet requirements: ${passwordProblem}`, details: { password: [passwordProblem] } },
+        { status: 400 }
+      );
+    }
     const clientIp = resolveClientIp(req);
     const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
@@ -174,7 +181,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("Failed to accept invitation:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to process invitation acceptance." },
+      { error: "Failed to process invitation acceptance." },
       { status: 500 }
     );
   }

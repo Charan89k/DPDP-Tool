@@ -58,20 +58,17 @@ export function isValidIp(ip: string): boolean {
 }
 
 /**
- * Resolves the client IP address from trusted edge and proxy headers.
- * Does not trust arbitrary client-supplied headers without validation.
+ * Resolves the client IP address used for rate limiting and audit logs.
  *
- * On Vercel (VERCEL=1) the platform overwrites X-Vercel-Forwarded-For, X-Real-IP and
- * X-Forwarded-For with the genuine client address, while CF-Connecting-IP is passed through
- * from the client untouched. Trusting it there would let an attacker rotate the header to evade
- * per-IP login limits, so it is only honoured when TRUST_CLOUDFLARE_IP_HEADER=true (i.e. when
- * Cloudflare actually fronts the deployment).
- *
- * Priority off Vercel (self-hosted behind Cloudflare / NGINX):
- * 1. CF-Connecting-IP
- * 2. X-Real-IP
- * 3. X-Forwarded-For (leftmost, strictly validated)
- * 4. Fallback: 127.0.0.1
+ * Only headers set by infrastructure CloudE5 is told to trust are honoured, because any client can
+ * send arbitrary X-Real-IP / CF-Connecting-IP / X-Forwarded-For values:
+ * - Vercel (VERCEL=1): X-Vercel-Forwarded-For / X-Real-IP / X-Forwarded-For are set by the platform.
+ * - Self-hosted behind a reverse proxy (default; Caddy, nginx `$proxy_add_x_forwarded_for`): the
+ *   proxy appends the real peer address as the RIGHTMOST X-Forwarded-For entry, so that entry is used.
+ *   Client-supplied entries to its left are ignored.
+ * - X-Real-IP is honoured only with CLOUDE5_TRUST_X_REAL_IP=true (proxy overwrites it).
+ * - CF-Connecting-IP is honoured only with TRUST_CLOUDFLARE_IP_HEADER=true (Cloudflare fronts the site).
+ * Falls back to 127.0.0.1 when no trusted header carries a valid address.
  */
 export function resolveClientIp(
   request: Request | NextRequest,
@@ -79,32 +76,43 @@ export function resolveClientIp(
 ): string {
   const headers = request.headers;
   const onVercel = env.VERCEL === "1";
-  const trustCloudflare = !onVercel || env.TRUST_CLOUDFLARE_IP_HEADER === "true";
 
-  const firstValid = (value: string | null | undefined): string | null => {
-    const candidate = value?.split(",")[0]?.trim();
+  const valid = (value: string | null | undefined): string | null => {
+    const candidate = value?.trim();
     return candidate && isValidIp(candidate) ? candidate : null;
   };
+  const leftmost = (value: string | null) => valid(value?.split(",")[0]);
+  const rightmost = (value: string | null) => valid(value?.split(",").pop());
 
-  const orderedCandidates = [
-    trustCloudflare ? headers.get("cf-connecting-ip") : null,
-    onVercel ? headers.get("x-vercel-forwarded-for") : null,
-    headers.get("x-real-ip"),
-    headers.get("x-forwarded-for"),
-  ];
-
-  for (const value of orderedCandidates) {
-    const ip = firstValid(value);
-    if (ip) {
-      return ip;
+  const candidates: Array<string | null> = [];
+  if (env.TRUST_CLOUDFLARE_IP_HEADER === "true") {
+    candidates.push(valid(headers.get("cf-connecting-ip")));
+  }
+  if (onVercel) {
+    candidates.push(
+      leftmost(headers.get("x-vercel-forwarded-for")),
+      valid(headers.get("x-real-ip")),
+      leftmost(headers.get("x-forwarded-for"))
+    );
+  } else {
+    if (env.CLOUDE5_TRUST_X_REAL_IP === "true") {
+      candidates.push(valid(headers.get("x-real-ip")));
     }
+    candidates.push(rightmost(headers.get("x-forwarded-for")));
   }
 
-  return "127.0.0.1";
+  return candidates.find((ip): ip is string => Boolean(ip)) ?? "127.0.0.1";
 }
 
 export class MemoryRateLimiter {
   private records: Map<string, RateLimitRecord> = new Map();
+  private readonly maxAttempts: number;
+  private readonly windowSeconds: number;
+
+  constructor(maxAttempts: number = MAX_FAILED_ATTEMPTS, windowSeconds: number = WINDOW_SECONDS) {
+    this.maxAttempts = maxAttempts;
+    this.windowSeconds = windowSeconds;
+  }
   private lastCleanup: number = Date.now();
 
   private cleanupIfNeeded() {
@@ -112,7 +120,7 @@ export class MemoryRateLimiter {
     // Run garbage collection at most once every 60 seconds
     if (now - this.lastCleanup > 60 * 1000) {
       this.lastCleanup = now;
-      const cutoff = now - WINDOW_SECONDS * 1000;
+      const cutoff = now - this.windowSeconds * 1000;
       for (const [key, record] of this.records.entries()) {
         if (record.lastAttemptAt < cutoff) {
           this.records.delete(key);
@@ -134,14 +142,14 @@ export class MemoryRateLimiter {
     const now = Date.now();
     const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
 
-    if (elapsedSeconds > WINDOW_SECONDS) {
+    if (elapsedSeconds > this.windowSeconds) {
       // Window expired, reset
       this.records.delete(key);
       return { limited: false, retryAfterSeconds: 0 };
     }
 
-    if (record.attempts >= MAX_FAILED_ATTEMPTS) {
-      const remainingSeconds = Math.ceil(WINDOW_SECONDS - elapsedSeconds);
+    if (record.attempts >= this.maxAttempts) {
+      const remainingSeconds = Math.ceil(this.windowSeconds - elapsedSeconds);
       return { limited: true, retryAfterSeconds: Math.max(remainingSeconds, 1) };
     }
 
@@ -166,7 +174,7 @@ export class MemoryRateLimiter {
     }
 
     const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
-    if (elapsedSeconds > WINDOW_SECONDS) {
+    if (elapsedSeconds > this.windowSeconds) {
       // Start a fresh window
       this.records.set(key, {
         attempts: 1,
@@ -199,3 +207,6 @@ export const loginRateLimiter = new MemoryRateLimiter();
 
 /** Limits account emails (registration, verification resend, password reset) per IP and per email. */
 export const accountEmailRateLimiter = new MemoryRateLimiter();
+
+/** Installation-wide cap on new organisation registrations (per process): 30 per hour. */
+export const registrationRateLimiter = new MemoryRateLimiter(30, 60 * 60);

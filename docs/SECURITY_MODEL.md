@@ -57,8 +57,14 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   (24 hours, 1 hour and 7 days).
 - Registration, verification resend and password reset return identical responses whether or not
   an account exists. Login takes the same time for unknown and known emails.
-- Rate limiting: failed logins and account emails are limited per IP and per email address
-  (in-memory, per server process).
+- Rate limiting: failed logins and account emails are limited per IP and per email address, and new
+  registrations are capped installation-wide (30 per hour), all in memory per server process.
+  Client IPs come only from headers the deployment trusts: the rightmost `X-Forwarded-For` entry
+  (appended by the reverse proxy); `X-Real-IP` only with `CLOUDE5_TRUST_X_REAL_IP=true`;
+  `CF-Connecting-IP` only with `TRUST_CLOUDFLARE_IP_HEADER=true`. Expose CloudE5 only through a
+  reverse proxy so clients cannot write the rightmost entry themselves.
+- Signing out clears the session cookie on that device; "sign out everywhere" (and any password
+  reset) revokes every session. `/api/auth/me` re-checks the database on each call.
 - CSRF: in addition to SameSite cookies, every state-changing API request must come from this site's
   origin.
 
@@ -74,6 +80,10 @@ scanner is configured by default; do not describe uploads as virus-scanned unles
 
 - Rate limits are per process and reset on restart; place CloudE5 behind a reverse proxy with its own
   rate limiting for internet-facing deployments.
+- Per-email limits mean someone who knows a user's email can temporarily (15 minutes) block that
+  user's sign-in attempts or reset emails. This is the usual trade-off against password guessing.
+- Inviting or adding a user whose email already exists elsewhere reports that the email is taken,
+  because email addresses are unique across the installation.
 - Multi-factor authentication is not implemented.
 - SQLite suits a single application server. Running several app servers against one database file,
   or placing the file on a network filesystem, is not supported.

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { z } from "zod";
+import { resolveClientIp } from "@/lib/auth/rate_limit";
 import {
   assertSessionMatchesDatabase,
   DatabaseAuthorizationError,
@@ -183,6 +184,15 @@ export async function POST(req: NextRequest) {
 
       // 2. Resolve lead consultant
       // Self-assessments are led by the customer administrator who starts them.
+      // Only platform administrators may name another engagement lead (the former RLS WITH CHECK
+      // only allowed consultants to create assessments they lead).
+      if (!isSelfAssessment && sessionUser.role !== "TLI_SUPER_ADMIN" && body.leadConsultantId && body.leadConsultantId !== sessionUser.userId) {
+        await client.query("ROLLBACK;");
+        return NextResponse.json(
+          { error: "Only a platform administrator can assign another engagement lead." },
+          { status: 403 }
+        );
+      }
       const leadConsultantId = isSelfAssessment ? sessionUser.userId : body.leadConsultantId || sessionUser.userId;
       const consultantRes = isSelfAssessment
         ? { rows: [{ id: sessionUser.userId }] }
@@ -231,31 +241,20 @@ export async function POST(req: NextRequest) {
       const assignedCount = assignedUserIds.length;
 
       for (const assignedUserId of assignedUserIds) {
+        // Look up only within the target organisation, with one uniform error, so callers cannot
+        // probe which user ids exist in other organisations.
         const userCheck = await client.query(
-          "SELECT id, tenant_id, role FROM users WHERE id = $1 AND is_active = TRUE LIMIT 1;",
-          [assignedUserId]
+          "SELECT id FROM users WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE LIMIT 1;",
+          [assignedUserId, requestedTenantId]
         );
-
         if (userCheck.rows.length === 0) {
           await client.query("ROLLBACK;");
           return NextResponse.json(
-            { error: `Assigned user ${assignedUserId} was not found or is inactive.` },
+            { error: "Every assigned coordinator must be an active user of the selected organisation." },
             { status: 400 }
           );
         }
-
         const targetUser = userCheck.rows[0];
-
-        // CRITICAL CROSS-TENANT DEFENSE: Verify assigned user belongs to the assessment tenant
-        if (targetUser.tenant_id !== requestedTenantId) {
-          await client.query("ROLLBACK;");
-          return NextResponse.json(
-            {
-              error: `Cross-tenant assignment violation: Assigned user ${assignedUserId} belongs to tenant '${targetUser.tenant_id}', which does not match target tenant '${requestedTenantId}'.`,
-            },
-            { status: 400 }
-          );
-        }
 
         // Insert client assignment
         await client.query(
@@ -267,7 +266,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Audit log entry
-      const clientIp = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const clientIp = resolveClientIp(req);
       const userAgent = req.headers.get("user-agent") || "CloudE5-App";
       await client.query(
         `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, ip_address, user_agent, new_state)

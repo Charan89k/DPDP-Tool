@@ -20,7 +20,7 @@ import {
   openDatabase,
   resolveDatabasePath,
 } from "../lib/db/sqlite/connection.ts";
-import { assertSessionMatchesDatabase, DatabaseAuthorizationError } from "../lib/db/rls.ts";
+import { assertSessionMatchesDatabase, DatabaseAuthorizationError, executeWithRls } from "../lib/db/rls.ts";
 import { resolveClientIp } from "../lib/auth/rate_limit.ts";
 import { consumePasswordVerificationTime } from "../lib/auth/passwords.ts";
 import { createCustomerOrganization, OnboardingError } from "../lib/onboarding/index.ts";
@@ -253,5 +253,72 @@ describe("Platform hardening: evidence vault fails closed", () => {
   it("refuses to store evidence on Vercel's ephemeral filesystem", () => {
     assert.throws(() => assertPersistentEvidenceStorage({ VERCEL: "1" }), StorageConfigurationError);
     assert.doesNotThrow(() => assertPersistentEvidenceStorage({}));
+  });
+});
+
+describe("Platform hardening: security review regressions", () => {
+  const TLI = "018f3a5b-7c8d-7e90-8000-000000000001";
+  const BETA = "018f3a5b-7c8d-7e90-8000-000000000003";
+  const ALPHA_ADMIN: SessionUser = {
+    userId: "018f3a5b-7c8d-7e90-8000-000000000192",
+    email: "customer.demo@tli.local",
+    fullName: "Alpha Health Demo Admin",
+    role: "CLIENT_ADMIN",
+    tenantId: "018f3a5b-7c8d-7e90-8000-000000000002",
+    tenantName: "Alpha Healthcare Technologies Pvt Ltd",
+    tenantSlug: "alpha-healthcare",
+    tenantType: "CLIENT",
+    isSdf: true,
+  };
+  const UNASSIGNED_REVIEWER: SessionUser = {
+    userId: "018f3a5b-7c8d-7e90-8000-000000000103",
+    email: "reviewer.privacy@truthlabs.in",
+    fullName: "Privacy Reviewer",
+    role: "TLI_REVIEWER",
+    tenantId: TLI,
+    tenantName: "Truth Labs International",
+    tenantSlug: "truth-labs-advisory",
+    tenantType: "TLI",
+    isSdf: false,
+  };
+
+  it("refuses database work that outlives its unit of work", async () => {
+    let escaped: Promise<unknown> | null = null;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    await executeWithRls(ALPHA_ADMIN, async () => {
+      escaped = gate.then(() => pool.query("SELECT COUNT(*) AS n FROM assessments"));
+    });
+    release();
+    await assert.rejects(escaped!, /after its unit of work finished/);
+  });
+
+  it("does not let an invitation take over an existing account", async () => {
+    const { createCustomerInvitation, acceptCustomerInvitation } = await import("../lib/onboarding/index.ts");
+    const victimEmail = `victim.${SUITE_ID}@alphahealth.example.com`;
+    const invite = await createCustomerInvitation(ALPHA_ADMIN, ALPHA_ADMIN.tenantId, {
+      email: victimEmail,
+      fullName: "Victim",
+      role: "CLIENT_CONTRIBUTOR",
+    });
+    await pool.query(
+      `INSERT INTO users (tenant_id, email, password_hash, full_name, role, is_active)
+       VALUES ($1, $2, 'victim-hash', 'Victim', 'CLIENT_ADMIN', TRUE)`,
+      [BETA, victimEmail]
+    );
+    await assert.rejects(
+      acceptCustomerInvitation({ token: invite.token, password: "Takeover-Attempt-2026", fullName: "Attacker" }),
+      (err: unknown) => err instanceof OnboardingError && err.statusCode === 409
+    );
+    const victim = (await pool.query("SELECT password_hash, tenant_id FROM users WHERE email = $1", [victimEmail])).rows[0];
+    assert.equal(victim.password_hash, "victim-hash");
+    assert.equal(victim.tenant_id, BETA);
+  });
+
+  it("does not show an unassigned reviewer another customer's details", async () => {
+    const { getCustomerDetails } = await import("../lib/onboarding/index.ts");
+    await assert.rejects(getCustomerDetails(UNASSIGNED_REVIEWER, BETA), (err: unknown) =>
+      err instanceof OnboardingError && err.statusCode === 404
+    );
   });
 });

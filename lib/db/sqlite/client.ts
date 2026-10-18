@@ -73,6 +73,17 @@ class AsyncMutex {
 
 interface UnitOfWork {
   transactionDepth: number;
+  /** Set when the unit releases the connection; a finished unit can never be joined again. */
+  finished: boolean;
+}
+
+/** Returns the caller's active unit of work. Work that outlives its unit (un-awaited promises) fails. */
+function activeUnit(): UnitOfWork | undefined {
+  const unit = currentUnit.getStore();
+  if (unit?.finished) {
+    throw new Error("Database work attempted after its unit of work finished (un-awaited promise?).");
+  }
+  return unit;
 }
 
 const mutex = new AsyncMutex();
@@ -204,13 +215,13 @@ function executeStatementUnchecked<Row>(
  * work re-use it instead of waiting (which would deadlock).
  */
 export async function withConnection<T>(work: (db: SqliteDatabase, unit: UnitOfWork) => Promise<T>): Promise<T> {
-  const existing = currentUnit.getStore();
+  const existing = activeUnit();
   const db = getDatabase();
   if (existing) {
     return work(db, existing);
   }
   const release = await mutex.acquire();
-  const unit: UnitOfWork = { transactionDepth: 0 };
+  const unit: UnitOfWork = { transactionDepth: 0, finished: false };
   try {
     return await currentUnit.run(unit, () => work(db, unit));
   } finally {
@@ -218,6 +229,7 @@ export async function withConnection<T>(work: (db: SqliteDatabase, unit: UnitOfW
       // A unit of work must never leave a transaction open on the shared connection.
       db.exec("ROLLBACK");
     }
+    unit.finished = true;
     release();
   }
 }
@@ -235,7 +247,7 @@ class SqlitePoolClient implements PoolClient {
   }
 
   async query<Row = any>(sql: string, params?: readonly unknown[]): Promise<QueryResult<Row>> {
-    if (this.released) {
+    if (this.released || this.unit.finished) {
       throw new Error("Database client used after release.");
     }
     return currentUnit.run(this.unit, () => executeStatement<Row>(this.db, this.unit, sql, params));
@@ -259,18 +271,19 @@ export const pool = {
    * as one unit of work; an unfinished transaction is rolled back on release.
    */
   async connect(): Promise<PoolClient> {
-    const existing = currentUnit.getStore();
+    const existing = activeUnit();
     const db = getDatabase();
     if (existing) {
       return new SqlitePoolClient(db, existing, () => undefined);
     }
     const releaseLock = await mutex.acquire();
-    const unit: UnitOfWork = { transactionDepth: 0 };
+    const unit: UnitOfWork = { transactionDepth: 0, finished: false };
     return new SqlitePoolClient(db, unit, () => {
       if (unit.transactionDepth > 0 && db.inTransaction) {
         db.exec("ROLLBACK");
       }
       unit.transactionDepth = 0;
+      unit.finished = true;
       releaseLock();
     });
   },
