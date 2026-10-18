@@ -1,0 +1,51 @@
+# CloudE5 — single-server deployment.
+#   docker compose build
+#   docker compose run --rm cloude5 migrate                       # first install and every upgrade
+#   docker compose run --rm cloude5 admin:create --email=you@example.com --name="Your Name"
+#   docker compose up -d
+# All persistent data (SQLite database, evidence files, backups) lives in the cloude5-data volume.
+services:
+  cloude5:
+    build: .
+    image: cloude5:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CLOUDE5_DATABASE_PATH: /data/db/cloude5.db
+      CLOUDE5_EVIDENCE_DIR: /data/evidence
+    volumes:
+      - cloude5-data:/data
+    # Bound to localhost only; publish through the HTTPS reverse proxy below or your own.
+    ports:
+      - "127.0.0.1:3000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # Optional HTTPS reverse proxy with automatic certificates:
+  #   CLOUDE5_DOMAIN=cloude5.example.com docker compose --profile proxy up -d
+  caddy:
+    image: caddy:2
+    profiles: ["proxy"]
+    restart: unless-stopped
+    depends_on:
+      - cloude5
+    environment:
+      CLOUDE5_DOMAIN: ${CLOUDE5_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  cloude5-data:
+  caddy-data:
+  caddy-config:

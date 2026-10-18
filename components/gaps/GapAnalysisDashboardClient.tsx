@@ -374,7 +374,7 @@ export function GapAnalysisDashboardClient({
               Multi-Metric Evaluation Ledger
             </h3>
             <p className="text-xs text-slate-500">
-              Under TLI forensic standards, assessment completeness, evidence coverage, readiness scoring, and gap counts are evaluated as independent measures.
+              Under the CloudE5 methodology, assessment completeness, evidence coverage, readiness scoring, and gap counts are evaluated as independent measures.
             </p>
           </div>
           <span className="font-mono text-[11px] text-slate-400">
@@ -916,12 +916,12 @@ export function GapAnalysisDashboardClient({
                                 )}
                               </div>
 
-                              {/* 4. Assessor Review Findings (Segregated: TLI only) */}
+                              {/* 4. Assessor Review Findings (Segregated: CloudE5 assessors only) */}
                               {item.assessorReview && isAssessor && (
                                 <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200/80 space-y-1.5">
                                   <div className="flex items-center justify-between">
                                     <span className="text-[10px] uppercase font-bold text-blue-900 block tracking-wider">
-                                      TLI Assessor Review Notes (Confidential Internal View)
+                                      Assessor Review Notes (Confidential Internal View)
                                     </span>
                                     <span className="font-mono text-[10px] text-blue-700 font-semibold">
                                       Status: {item.assessorReview.reviewStatus || "Under Evaluation"}

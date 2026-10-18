@@ -93,7 +93,7 @@ export function CustomerDetailClient({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("CLIENT_ADMIN");
-  const [password, setPassword] = useState("SyntheticTestPassword123!");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [generatedActivationUrl, setGeneratedActivationUrl] = useState<string | null>(null);
@@ -172,7 +172,7 @@ export function CustomerDetailClient({
     setFullName("");
     setEmail("");
     setRole("CLIENT_ADMIN");
-    setPassword("SyntheticTestPassword123!");
+    setPassword("");
     setFormError(null);
     setGeneratedActivationUrl(null);
   };

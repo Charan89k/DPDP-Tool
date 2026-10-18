@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Clarifications Management API
+ * CloudE5 — Clarifications Management API
  *
  * GET /api/assessments/[id]/clarifications
  * - Retrieves all clarification threads and threaded messages for an assessment under RLS.

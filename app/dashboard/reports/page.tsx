@@ -152,7 +152,7 @@ export default async function ReportsListPage() {
                   <User className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                   <div>
                     <span className="text-stone-400 block text-[10px] uppercase font-mono font-semibold">Lead Consultant</span>
-                    <span className="font-medium text-stone-800">{a.lead_consultant_name || "TLI Advisory"}</span>
+                    <span className="font-medium text-stone-800">{a.lead_consultant_name || "CloudE5"}</span>
                   </div>
                 </div>
 

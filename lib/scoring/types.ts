@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Engine Types
+ * CloudE5 — Deterministic Scoring Engine Types
  *
  * Grounded in canonical questionnaire manifest (60 questions), 13 statutory domains,
  * and non-compensatory dual-metric governance specifications (DEC-01, DEC-08, DEC-10).

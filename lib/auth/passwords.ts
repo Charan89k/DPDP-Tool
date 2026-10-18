@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Password Security Module
+ * CloudE5 — Password Security Module
  *
  * Implements secure password verification and hashing using bcryptjs.
  * Handles synthetic development test fixtures safely without compromising production rules.

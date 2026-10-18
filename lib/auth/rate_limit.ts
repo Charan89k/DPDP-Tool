@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — In-Memory Login Rate Limiter
+ * CloudE5 — In-Memory Login Rate Limiter
  *
  * Implements a sliding-window rate limiter protecting POST /api/auth/login
  * against brute-force password guessing and credential stuffing attacks.

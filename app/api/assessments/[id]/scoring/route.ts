@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Engine API
+ * CloudE5 — Deterministic Scoring Engine API
  *
  * GET /api/assessments/[id]/scoring
  * Computes and returns deterministic assessment scoring, including:
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Forbidden: Only authorized TLI assessors or admins may snapshot scores." },
+      { error: "Forbidden: Only authorized CloudE5 assessors or admins may snapshot scores." },
       { status: 403 }
     );
   }

@@ -62,7 +62,7 @@ storage_local/
 .neon
 
 # CloudE5 local data
-/data/
+/.cloude5/
 .test-db/
 *.db
 *.db-wal

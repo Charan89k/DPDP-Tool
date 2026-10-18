@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessor Review Workspace API
+ * CloudE5 — Assessor Review Workspace API
  *
  * GET /api/assessments/[id]/reviews
  * Retrieves comprehensive review workspace state:
@@ -13,7 +13,7 @@
  *
  * PUT /api/assessments/[id]/reviews
  * Updates assessor review status, findings, deficiency notes, and validation flags.
- * Enforces RBAC: Only TLI assessors can review.
+ * Enforces RBAC: Only CloudE5 assessors can review.
  * Records immutable version history in questionnaire_assessor_review_history.
  */
 
@@ -377,7 +377,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
   // RBAC: Only authorized assessors can record review evaluations
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Access denied. Only authorized TLI assessors can record review evaluations." },
+      { error: "Access denied. Only authorized CloudE5 assessors can record review evaluations." },
       { status: 403 }
     );
   }

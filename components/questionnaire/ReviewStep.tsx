@@ -260,7 +260,7 @@ export function ReviewStep({
             <span>{unansweredList.length} Unanswered Questions Remaining</span>
           </div>
           <p className="text-xs text-amber-700 leading-relaxed">
-            All questions must be reviewed before final submission to Truth Labs.
+            All questions must be reviewed before final submission to CloudE5.
           </p>
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {unansweredList.slice(0, 5).map((item) => (
@@ -289,7 +289,7 @@ export function ReviewStep({
             Submit Assessment for Consultant Validation
           </h4>
           <p className="text-xs text-slate-500 mt-0.5">
-            Responses and attached artifacts will be locked and routed to Truth Labs International lead assessors.
+            Responses and attached artifacts will be locked and routed to CloudE5 lead assessors.
           </p>
         </div>
 

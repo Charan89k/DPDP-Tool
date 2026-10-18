@@ -479,7 +479,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start space-x-3 text-xs text-amber-900">
           <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <strong className="font-semibold">Client Review Mode:</strong> You are viewing assessor findings in transparent read-only mode ({userRole}). You can inspect assessor evaluations and respond to clarification queries, but review statuses and findings can only be recorded by certified TLI assessors.
+            <strong className="font-semibold">Client Review Mode:</strong> You are viewing assessor findings in transparent read-only mode ({userRole}). You can inspect assessor evaluations and respond to clarification queries, but review statuses and findings can only be recorded by authorised CloudE5 assessors.
           </div>
         </div>
       )}
@@ -880,7 +880,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                     {/* Internal Assessor Notes Header Badge */}
                     <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Internal Assessor Notes (Confidential TLI Advisory)
+                        Internal Assessor Notes (Confidential: CloudE5 assessors only)
                       </span>
                       <span className="text-[10px] text-slate-400">
                         Segregated from client view

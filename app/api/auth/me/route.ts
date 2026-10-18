@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Current Session Context
+ * CloudE5 — Current Session Context
  *
  * GET /api/auth/me
  * Returns the currently authenticated user's session profile.

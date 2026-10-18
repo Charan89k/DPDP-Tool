@@ -52,6 +52,9 @@ const consultantSession: SessionUser = {
   fullName: "TLI Consultant Demo",
   role: "TLI_LEAD_CONSULTANT",
   tenantType: "TLI",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const customerAlphaSession: SessionUser = {
@@ -61,6 +64,9 @@ const customerAlphaSession: SessionUser = {
   fullName: "Alpha Health Demo Admin",
   role: "CLIENT_ADMIN",
   tenantType: "CLIENT",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const customerBetaSession: SessionUser = {
@@ -70,6 +76,9 @@ const customerBetaSession: SessionUser = {
   fullName: "Rohan Kapoor",
   role: "CLIENT_ADMIN",
   tenantType: "CLIENT",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 describe("Phase 3D.4: Deterministic Scoring Engine & Governance Verification", () => {

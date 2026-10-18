@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Onboarding Types
+ * CloudE5 — Customer Onboarding Types
  */
 
 import type { UserRole } from "../auth/types.ts";

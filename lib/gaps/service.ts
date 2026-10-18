@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Database-Backed Gap Analysis Service
+ * CloudE5 — Database-Backed Gap Analysis Service
  *
  * Implements tenant-scoped retrieval of questionnaire responses, assessor reviews,
  * evidence items, clarification threads, and historical re-audit cycles strictly
@@ -8,6 +8,7 @@
 
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
+import { isClientRole } from "../auth/rbac.ts";
 import { evaluateAssessmentGaps } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
 import type { ScoringModelConfig } from "../scoring/types.ts";
@@ -33,6 +34,33 @@ export async function getAssessmentGapAnalysis(
   sessionUser: SessionUser,
   assessmentId: string,
   config: ScoringModelConfig = DEFAULT_PROVISIONAL_CONFIG
+): Promise<GapAnalysisOutput> {
+  const result = await computeAssessmentGapAnalysis(sessionUser, assessmentId, config);
+  return isClientRole(sessionUser.role) ? redactInternalAssessorNotes(result) : result;
+}
+
+/**
+ * Removes internal assessor working notes before results reach customer users. Applied inside
+ * the service so every caller (API routes and server-rendered pages) gets the same segregation.
+ */
+export function redactInternalAssessorNotes(result: GapAnalysisOutput): GapAnalysisOutput {
+  const redact = <T extends { assessorReview?: { reviewFindings?: string | null; evidenceDeficiencyNotes?: string | null } | null }>(
+    item: T
+  ): T =>
+    item.assessorReview
+      ? { ...item, assessorReview: { ...item.assessorReview, reviewFindings: null, evidenceDeficiencyNotes: null } }
+      : item;
+  return {
+    ...result,
+    gaps: result.gaps.map(redact),
+    unresolvedMappingItems: result.unresolvedMappingItems.map(redact),
+  };
+}
+
+async function computeAssessmentGapAnalysis(
+  sessionUser: SessionUser,
+  assessmentId: string,
+  config: ScoringModelConfig
 ): Promise<GapAnalysisOutput> {
   if (!assessmentId) {
     throw new GapsServiceError("Assessment ID is required", "INVALID_INPUT", 400);

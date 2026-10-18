@@ -12,7 +12,7 @@ export default async function NewCustomerPage() {
     redirect("/login?redirect=/dashboard/customers/new");
   }
 
-  // RBAC: Only authorized TLI roles (TLI Super Admin) can onboard new customer organizations
+  // RBAC: Only authorized TLI roles (Platform Administrator) can onboard new customer organizations
   if (!canCreateCustomer(sessionUser.role)) {
     redirect("/dashboard/customers");
   }

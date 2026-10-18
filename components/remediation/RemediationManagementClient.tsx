@@ -269,7 +269,7 @@ export function RemediationManagementClient({
       <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-700 flex items-start gap-2.5">
         <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong>Independent Post-Assessment Remediation:</strong> Remediation workflows track organizational action plans. In accordance with TLI governance principles, marking a remediation task complete does <em>not</em> retroactively mutate historical questionnaire responses or alter officially issued report snapshots.
+          <strong>Independent Post-Assessment Remediation:</strong> Remediation workflows track organizational action plans. In line with the CloudE5 methodology, marking a remediation task complete does <em>not</em> retroactively mutate historical questionnaire responses or alter officially issued report snapshots.
         </div>
       </div>
 
@@ -400,7 +400,7 @@ export function RemediationManagementClient({
                 >
                   <div className="flex items-center justify-between font-mono text-[10px] text-stone-600">
                     <span className="font-bold">
-                      Assessor Validation ({task.closureValidatedByName || "TLI Consultant"}):
+                      Assessor Validation ({task.closureValidatedByName || "CloudE5 Consultant"}):
                     </span>
                     <span>{task.validatedAt ? new Date(task.validatedAt).toLocaleString("en-IN") : ""}</span>
                   </div>
@@ -601,7 +601,7 @@ export function RemediationManagementClient({
                   <option value="OPEN">OPEN (Not yet active)</option>
                   <option value="IN_REMEDIATION">IN_REMEDIATION (Remediation active)</option>
                   <option value="SUBMITTED_FOR_CLOSURE">
-                    SUBMITTED_FOR_CLOSURE (Ready for TLI assessor validation)
+                    SUBMITTED_FOR_CLOSURE (Ready for CloudE5 assessor validation)
                   </option>
                 </select>
               </div>

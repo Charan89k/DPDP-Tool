@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Session Management Module
+ * CloudE5 — Session Management Module
  *
  * Implements cryptographically signed, stateless session cookies using 'jose'.
  * Generates HMAC-SHA256 tokens with strict expiry and security attributes.

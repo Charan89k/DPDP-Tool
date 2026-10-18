@@ -20,7 +20,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         {
           error:
-            "Authority violation: Only TLI Lead Consultant or Super Administrator can approve and issue final reports (DEC-01).",
+            "Authority violation: Only Lead Consultant or Super Administrator can approve and issue final reports (DEC-01).",
         },
         { status: 403 }
       );

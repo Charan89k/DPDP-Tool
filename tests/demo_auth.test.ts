@@ -19,7 +19,7 @@ describe("Phase 3D: Demo Authentication & Tenant Scoping Tests", () => {
   it("should configure and verify demo password via DEMO_USER_PASSWORD in non-production", async () => {
     const originalEnv = process.env.NODE_ENV;
     const originalDemoPass = process.env.DEMO_USER_PASSWORD;
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
 
     try {
       // Default dev password verification
@@ -33,7 +33,7 @@ describe("Phase 3D: Demo Authentication & Tenant Scoping Tests", () => {
       assert.equal(await verifyPassword("CustomLocalSecretPass2026!", SYNTHETIC_SEED_HASH), true);
       assert.equal(await verifyPassword("WrongPassword123!", SYNTHETIC_SEED_HASH), false);
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       if (originalDemoPass !== undefined) {
         process.env.DEMO_USER_PASSWORD = originalDemoPass;
       } else {
@@ -45,14 +45,14 @@ describe("Phase 3D: Demo Authentication & Tenant Scoping Tests", () => {
   it("should unconditionally reject DEMO_USER_PASSWORD in production mode", async () => {
     const originalEnv = process.env.NODE_ENV;
     const originalDemoPass = process.env.DEMO_USER_PASSWORD;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.DEMO_USER_PASSWORD = "CustomLocalSecretPass2026!";
 
     try {
       const valid = await verifyPassword("CustomLocalSecretPass2026!", SYNTHETIC_SEED_HASH);
       assert.equal(valid, false, "Production mode must reject any synthetic seed or demo password");
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       if (originalDemoPass !== undefined) {
         process.env.DEMO_USER_PASSWORD = originalDemoPass;
       } else {

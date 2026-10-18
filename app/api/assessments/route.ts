@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — RLS-Scoped Assessments Endpoint
+ * CloudE5 — RLS-Scoped Assessments Endpoint
  *
  * GET /api/assessments
  * Fetches assessment records accessible to the authenticated user.
@@ -105,10 +105,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // RBAC Enforcement: Only TLI Lead Consultant or TLI Super Admin can initiate assessments
+  // RBAC Enforcement: Only Lead Consultant or Platform Administrator can initiate assessments
   if (!canCreateAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Insufficient permissions. Only TLI Lead Consultants or Super Administrators can initiate assessments." },
+      { error: "Insufficient permissions. Only Lead Consultants or Super Administrators can initiate assessments." },
       { status: 403 }
     );
   }
@@ -127,7 +127,14 @@ export async function POST(req: NextRequest) {
       body.engagementCode ||
       `DPDP-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
     const targetDate = body.targetCompletionDate || null;
-    const requestedTenantId = body.tenantId;
+    const isSelfAssessment = sessionUser.role === "CLIENT_ADMIN";
+    if (isSelfAssessment && body.tenantId && body.tenantId !== sessionUser.tenantId) {
+      return NextResponse.json(
+        { error: "You can only start assessments for your own organisation." },
+        { status: 403 }
+      );
+    }
+    const requestedTenantId = isSelfAssessment ? sessionUser.tenantId : body.tenantId;
     if (!requestedTenantId) {
       return NextResponse.json(
         { error: "Select the customer organization this assessment is for." },
@@ -175,11 +182,14 @@ export async function POST(req: NextRequest) {
       }
 
       // 2. Resolve lead consultant
-      const leadConsultantId = body.leadConsultantId || sessionUser.userId;
-      const consultantRes = await client.query(
-        "SELECT id, role FROM users WHERE id = $1 AND is_active = TRUE AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;",
-        [leadConsultantId]
-      );
+      // Self-assessments are led by the customer administrator who starts them.
+      const leadConsultantId = isSelfAssessment ? sessionUser.userId : body.leadConsultantId || sessionUser.userId;
+      const consultantRes = isSelfAssessment
+        ? { rows: [{ id: sessionUser.userId }] }
+        : await client.query(
+            "SELECT id, role FROM users WHERE id = $1 AND is_active = TRUE AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN') LIMIT 1;",
+            [leadConsultantId]
+          );
       const resolvedLeadId = consultantRes.rows[0]?.id || sessionUser.userId;
 
       // 3. Insert assessment
@@ -208,12 +218,12 @@ export async function POST(req: NextRequest) {
 
       const newAssessment = res.rows[0];
 
-      // 4. Bind consultant in assessment_assignments
+      // 4. Bind the engagement lead (or, for a self-assessment, the customer coordinator)
       await client.query(
         `INSERT INTO assessment_assignments (assessment_id, user_id, assignment_role)
-         VALUES ($1, $2, 'ENGAGEMENT_LEAD')
+         VALUES ($1, $2, $3)
          ON CONFLICT (assessment_id, user_id) DO NOTHING;`,
-        [newAssessment.id, resolvedLeadId]
+        [newAssessment.id, resolvedLeadId, isSelfAssessment ? "CLIENT_COORDINATOR" : "ENGAGEMENT_LEAD"]
       );
 
       // 5. Validate and assign client coordinators if provided
@@ -258,7 +268,7 @@ export async function POST(req: NextRequest) {
 
       // Audit log entry
       const clientIp = req.headers.get("x-forwarded-for") || "127.0.0.1";
-      const userAgent = req.headers.get("user-agent") || "TLI-App";
+      const userAgent = req.headers.get("user-agent") || "CloudE5-App";
       await client.query(
         `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, ip_address, user_agent, new_state)
          VALUES ($1, $2, 'ASSESSMENT_CREATED', 'assessments', $3, $4, $5, $6);`,

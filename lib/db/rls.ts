@@ -107,7 +107,7 @@ export async function assertSessionMatchesDatabase(
 
   if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
     throw new DatabaseAuthorizationError(
-      "Database identity verification failed: TLI_SUPER_ADMIN must belong to a TLI advisory tenant."
+      "Database identity verification failed: TLI_SUPER_ADMIN must belong to the platform operator tenant."
     );
   }
 

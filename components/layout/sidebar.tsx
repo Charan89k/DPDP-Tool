@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -47,7 +48,14 @@ export function Sidebar({ user }: SidebarProps) {
             exact: false,
           },
         ]
-      : []),
+      : [
+          {
+            label: "Team",
+            href: `/dashboard/customers/${user.tenantId}`,
+            icon: Users,
+            exact: false,
+          },
+        ]),
     {
       label: "Questionnaire",
       href: "/dashboard/questionnaire",
@@ -78,15 +86,12 @@ export function Sidebar({ user }: SidebarProps) {
     <aside className="w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F]">
       {/* Brand Header */}
       <div className="p-6 pb-5">
-        <Link href="/dashboard" className="block group">
-          <div className="flex flex-col">
-            <span className="font-serif text-xl font-bold tracking-tight text-white group-hover:text-blue-200 transition-colors">
-              Truth Labs
-            </span>
-            <span className="text-[10px] tracking-[0.25em] font-semibold text-slate-400 uppercase mt-0.5">
-              International
-            </span>
-          </div>
+        <Link
+          href="/dashboard"
+          aria-label="CloudE5 dashboard"
+          className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+        >
+          <BrandMark variant="dark" size="sm" showTagline />
         </Link>
       </div>
 

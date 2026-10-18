@@ -6,7 +6,7 @@
  * caller is told so; tokens and links are never written to logs or returned in API responses.
  *
  * Development only (NODE_ENV !== "production"): without SMTP, messages are written as .eml files
- * to the dev outbox (CLOUDE5_DEV_OUTBOX_DIR, default ./data/dev-outbox) so flows can be tested
+ * to the dev outbox (CLOUDE5_DEV_OUTBOX_DIR, default ./.cloude5/dev-outbox) so flows can be tested
  * locally. This fallback is never active in production.
  */
 
@@ -49,7 +49,7 @@ function getTransporter(env: Env): Transporter {
 }
 
 export function devOutboxDir(env: Env = process.env): string {
-  return path.resolve(env.CLOUDE5_DEV_OUTBOX_DIR || path.join(process.cwd(), "data", "dev-outbox"));
+  return path.resolve(env.CLOUDE5_DEV_OUTBOX_DIR || path.join(process.cwd(), ".cloude5", "dev-outbox"));
 }
 
 function writeToDevOutbox(message: EmailMessage, env: Env): void {

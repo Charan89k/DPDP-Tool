@@ -73,11 +73,11 @@ export function Topbar({ user }: TopbarProps) {
       <div>
         <div className="flex items-center space-x-2.5">
           <h2 className="text-base font-bold text-slate-900 tracking-tight">
-            DPDP Gap Assessment (Pilot)
+            {user.tenantName}
           </h2>
         </div>
         <p className="text-[11px] text-slate-500 font-medium">
-          Assess. Advise. Enable. | Data Protection | Privacy | Trust
+          CloudE5 · DPDP compliance workspace
         </p>
       </div>
 

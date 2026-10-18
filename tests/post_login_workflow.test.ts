@@ -333,9 +333,8 @@ describe("Phase 3D: Post-Login Workspace Flow & Live RLS Enforcement", () => {
   });
 
   it("should fail closed if session context is missing, invalid, or forged", async () => {
-    // @ts-expect-error invalid context test
     await assert.rejects(
-      async () => executeWithRls(null, async () => {}),
+      async () => executeWithRls(null as unknown as SessionUser, async () => {}),
       DatabaseAuthorizationError
     );
 

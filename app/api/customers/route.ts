@@ -1,8 +1,8 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Organization API
+ * CloudE5 — Customer Organization API
  *
  * GET  /api/customers - List customer organizations accessible to authenticated user
- * POST /api/customers - Create a new customer organization (TLI Super Admin only)
+ * POST /api/customers - Create a new customer organization (Platform Administrator only)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     const { customer, initialUser } = await createCustomerOrganization(
       sessionUser,

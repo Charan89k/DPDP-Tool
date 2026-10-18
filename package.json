@@ -9,18 +9,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --experimental-strip-types scripts/prepare-test-db.ts && CLOUDE5_TEST_DATABASE_TEMPLATE=.test-db/template.db node --experimental-strip-types --test tests/**/*.test.ts",
+    "test": "node --experimental-strip-types scripts/prepare-test-db.ts && CLOUDE5_TEST_DATABASE_TEMPLATE=.test-db/template.db CLOUDE5_DEV_OUTBOX_DIR=.test-db/outbox CLOUDE5_EVIDENCE_DIR=.test-db/evidence node --experimental-strip-types --test tests/**/*.test.ts",
     "db:migrate": "node --experimental-strip-types scripts/cloude5-db.ts migrate",
     "db:status": "node --experimental-strip-types scripts/cloude5-db.ts status",
     "db:verify": "node --experimental-strip-types scripts/cloude5-db.ts verify",
     "db:backup": "node --experimental-strip-types scripts/cloude5-db.ts backup",
     "db:restore": "node --experimental-strip-types scripts/cloude5-db.ts restore",
     "db:seed-demo": "node --experimental-strip-types scripts/cloude5-db.ts seed-demo",
-    "admin:create": "node --experimental-strip-types scripts/create-platform-admin.ts"
+    "admin:create": "node --experimental-strip-types scripts/create-platform-admin.ts",
+    "db:verify-email": "node --experimental-strip-types scripts/cloude5-db.ts verify-email",
+    "db:import-postgres": "node --experimental-strip-types scripts/import-postgres.ts"
   },
   "dependencies": {
-    "@neon/config": "^1.8.6",
-    "@neon/env": "^1.5.3",
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.11.1",
     "docx": "^9.10.0",

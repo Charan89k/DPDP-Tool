@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — User Invitations API
+ * CloudE5 — User Invitations API
  *
  * POST /api/customers/[id]/invitations
  * Generates a cryptographically secure, single-use, time-limited invitation token.
@@ -14,6 +14,8 @@ import { CLIENT_ROLES } from "@/lib/auth/rbac";
 import { pool } from "@/lib/db/pool";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError } from "@/lib/db/rls";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
+import { publicBaseUrl, sendEmail } from "@/lib/email/mailer";
+import { invitationEmail } from "@/lib/email/templates";
 
 const inviteUserSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters.").max(255),
@@ -35,7 +37,7 @@ export async function POST(
 
   const { id: customerId } = await context.params;
 
-  // Authorization check: Only TLI Super Admin or Client Admin of this tenant
+  // Authorization check: Only Platform Administrator or Client Admin of this tenant
   const isAuthorized =
     sessionUser.role === "TLI_SUPER_ADMIN" ||
     (sessionUser.role === "CLIENT_ADMIN" && sessionUser.tenantId === customerId);
@@ -73,7 +75,7 @@ export async function POST(
     }
 
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     const client = await pool.connect();
     try {
@@ -170,17 +172,31 @@ export async function POST(
 
       await client.query("COMMIT;");
 
+      const activationPath = `/activate?token=${rawToken}`;
+      const emailDelivery = await sendEmail(
+        invitationEmail(
+          normalizedEmail,
+          tenantCheck.rows[0].name,
+          sessionUser.fullName,
+          `${publicBaseUrl()}${activationPath}`
+        )
+      );
+      const isProduction = process.env.NODE_ENV === "production";
+
       return NextResponse.json(
         {
           success: true,
           invitation: newInvitation,
-          emailDelivery: {
-            sent: false,
-            reason: "SMTP_NOT_CONFIGURED",
-            message:
-              "Email delivery is not configured in this environment. The activation link below is available for local and pilot evaluation.",
-          },
-          activationUrl: `/activate?token=${rawToken}`,
+          emailDelivery: emailDelivery.sent
+            ? { sent: true, message: `An invitation email was sent to ${normalizedEmail}.` }
+            : {
+                sent: false,
+                reason: emailDelivery.reason,
+                message:
+                  "The invitation was created but the email could not be sent. Configure SMTP for this installation, then re-send the invitation.",
+              },
+          // Activation links are never returned by production servers; they travel only by email.
+          ...(isProduction ? {} : { activationUrl: activationPath }),
         },
         { status: 201 }
       );

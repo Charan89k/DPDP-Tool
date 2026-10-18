@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Service
+ * CloudE5 — Deterministic Scoring Service
  *
  * Provides database-backed calculation and persistence of assessment scoring
  * strictly under PostgreSQL Row-Level Security (RLS) and trusted session context.

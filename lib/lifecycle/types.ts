@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Types
+ * CloudE5 — Assessment Lifecycle Types
  *
  * Canonical 14-state assessment lifecycle types as defined in:
  * - docs/03_assessment_workflow_and_state_machine.md

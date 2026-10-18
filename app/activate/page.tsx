@@ -13,7 +13,7 @@ import {
   ArrowRight,
   User,
 } from "lucide-react";
-import { TliBrandMark } from "@/components/ui/tli-brand-mark";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 function ActivateAccountForm() {
   const router = useRouter();
@@ -81,7 +81,7 @@ function ActivateAccountForm() {
     <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-8 sm:p-10">
         <div className="flex flex-col items-center text-center mb-6">
-          <TliBrandMark variant="light" size="md" className="mb-4" />
+          <BrandMark variant="light" size="md" className="mb-4" />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Activate Your Account
           </h1>

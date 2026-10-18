@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Invitation Acceptance & Account Activation API
+ * CloudE5 — Invitation Acceptance & Account Activation API
  *
  * POST /api/auth/invitations/accept
  * Verifies the single-use token, validates expiration, creates the user account,
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const { token, password, fullName: nameOverride } = parseResult.data;
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     // Compute SHA-256 hash of the provided raw token
     const tokenHash = crypto.createHash("sha256").update(token.trim()).digest("hex");
@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
       // Insert new user
       const insertUserSql = `
         INSERT INTO users (
-          tenant_id, email, password_hash, full_name, role, is_active
+          tenant_id, email, password_hash, full_name, role, is_active, email_verified_at
         ) VALUES (
-          $1, $2, $3, $4, $5, TRUE
+          $1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP
         )
         RETURNING id, email, full_name, role, tenant_id;
       `;

@@ -14,7 +14,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type { SqliteDatabase } from "./connection.ts";
 
-export const MIGRATIONS_DIR = path.resolve(process.cwd(), "migrations", "sqlite");
+export const MIGRATIONS_DIR = path.resolve(
+  process.env.CLOUDE5_MIGRATIONS_DIR || path.join(process.cwd(), "migrations", "sqlite")
+);
 
 export interface MigrationFile {
   version: string;
@@ -93,12 +95,18 @@ export function getMigrationStatus(db: SqliteDatabase, files = loadMigrationFile
   };
 }
 
-/** Writes a consistent online backup of the database to `destination`. */
+/**
+ * Writes a consistent online backup of the database to `destination`, converts it to a single
+ * self-contained file (rollback journal instead of WAL), verifies its integrity, and restricts it to
+ * the owning OS user because backups contain all customer data.
+ */
 export async function backupDatabase(db: SqliteDatabase, destination: string): Promise<void> {
   fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o750 });
   await db.backup(destination);
-  const copy = new (db.constructor as typeof import("better-sqlite3"))(destination, { readonly: true });
+  const Database = db.constructor as typeof import("better-sqlite3");
+  const copy = new Database(destination, { fileMustExist: true });
   try {
+    copy.pragma("journal_mode = DELETE");
     const result = copy.pragma("integrity_check", { simple: true });
     if (result !== "ok") {
       throw new MigrationError(`Backup integrity check failed: ${String(result)}`);
@@ -106,6 +114,10 @@ export async function backupDatabase(db: SqliteDatabase, destination: string): P
   } finally {
     copy.close();
   }
+  for (const suffix of ["-wal", "-shm"]) {
+    fs.rmSync(`${destination}${suffix}`, { force: true });
+  }
+  fs.chmodSync(destination, 0o600);
 }
 
 export interface MigrateResult {

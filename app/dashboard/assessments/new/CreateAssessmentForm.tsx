@@ -507,9 +507,9 @@ export function CreateAssessmentForm({
               </div>
               <ol className="space-y-2 text-xs text-slate-700 list-none pl-0">
                 {[
-                  "The assessment is created in DRAFT and is visible only to its customer, assigned TLI staff and super administrators.",
+                  "The assessment is created in DRAFT and is visible only to its customer, assigned CloudE5 staff and super administrators.",
                   "Assigned coordinators answer the 60 canonical questions and upload supporting evidence.",
-                  "TLI reviewers evaluate responses and evidence, raise clarifications, and prepare the report.",
+                  "CloudE5 reviewers evaluate responses and evidence, raise clarifications, and prepare the report.",
                 ].map((step, index) => (
                   <li key={step} className="flex items-start space-x-2.5">
                     <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] flex-shrink-0 mt-0.5">

@@ -154,7 +154,7 @@ with zipfile.ZipFile('${tempFilePath}', 'r') as z:
     assert 'word/document.xml' in names, 'Missing word/document.xml'
     assert '[Content_Types].xml' in names, 'Missing [Content_Types].xml'
     doc_xml = z.read('word/document.xml').decode('utf-8')
-    assert 'Truth Labs International' in doc_xml, 'Missing brand header'
+    assert 'CloudE5' in doc_xml, 'Missing brand header'
     assert 'DRAFT ASSESSMENT REPORT' in doc_xml, 'Missing draft banner'
     assert 'Alpha Healthcare Technologies' in doc_xml, 'Missing client name'
     assert 'SEC-001' in doc_xml, 'Missing canonical question code'

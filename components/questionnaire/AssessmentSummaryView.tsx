@@ -358,7 +358,7 @@ export function AssessmentSummaryView({
               disabled={isSubmitting}
               className="px-4 py-1.5 text-xs font-semibold text-white bg-[#0066FF] hover:bg-[#0052CC] disabled:opacity-50 rounded-lg shadow-sm transition-colors flex items-center space-x-1"
             >
-              <span>{isSubmitting ? "Submitting..." : "Submit for TLI Review"}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit for CloudE5 Review"}</span>
             </button>
           )}
 
@@ -623,7 +623,7 @@ export function AssessmentSummaryView({
               </div>
 
               <div className="text-[9px] text-slate-400 italic text-center border-t border-slate-100 pt-1">
-                Diagnostic baseline pending formal TLI methodology ratification (DEC-01).
+                Diagnostic baseline pending formal methodology ratification (DEC-01).
               </div>
             </div>
 
@@ -925,7 +925,7 @@ export function AssessmentSummaryView({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   2
                 </span>
-                <span>Submit engagement for formal TLI Assessor Review.</span>
+                <span>Submit engagement for formal CloudE5 Assessor Review.</span>
               </li>
               <li className="flex items-start space-x-2.5">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
@@ -937,7 +937,7 @@ export function AssessmentSummaryView({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   4
                 </span>
-                <span>TLI Lead Consultant approves and issues final cryptographic compliance report.</span>
+                <span>Lead Consultant approves and issues final cryptographic compliance report.</span>
               </li>
             </ol>
           </div>

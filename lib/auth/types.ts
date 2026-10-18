@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Authentication & Identity Types
+ * CloudE5 — Authentication & Identity Types
  *
  * Defines the 7 application roles, session context structures, and authentication contracts.
  */

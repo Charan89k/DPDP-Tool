@@ -33,6 +33,15 @@ export default async function DashboardPage() {
     redirect("/login?redirect=/dashboard");
   }
 
+  if (sessionUser.role === "CLIENT_ADMIN") {
+    const onboarding = await executeWithRls(sessionUser, async (client) =>
+      (await client.query("SELECT onboarding_completed_at FROM tenants WHERE id = $1;", [sessionUser.tenantId])).rows[0]
+    );
+    if (onboarding && !onboarding.onboarding_completed_at) {
+      redirect("/dashboard/onboarding");
+    }
+  }
+
   const isTli = isTliRole(sessionUser.role);
   const sections = getCanonicalQuestionnaireSections();
 

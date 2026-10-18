@@ -45,7 +45,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
 
   it("should support synthetic development test fixtures safely in dev mode", async () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
     try {
       const valid = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
       assert.equal(valid, true, "Should recognize synthetic seed password in development");
@@ -53,13 +53,13 @@ describe("Phase 3C: Authentication & Session Tests", () => {
       const invalid = await verifyPassword("IncorrectPassword123!", SYNTHETIC_SEED_HASH);
       assert.equal(invalid, false, "Should reject incorrect password for synthetic seed");
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
     }
   });
 
   it("should unconditionally reject synthetic development credentials in production mode", async () => {
     const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     try {
       // 1. Synthetic hash with synthetic password must fail closed in production
       const attempt1 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
@@ -70,7 +70,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
       const attempt2 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, realHash);
       assert.equal(attempt2, false, "Production mode must reject synthetic test password");
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
     }
   });
 
@@ -85,7 +85,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
   it("should enforce mandatory strong signing secret in production mode", () => {
     const originalEnv = process.env.NODE_ENV;
     const originalSecret = process.env.SESSION_SECRET;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     try {
       // Missing secret fails closed
@@ -110,7 +110,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
       assert.ok(key instanceof Uint8Array);
       assert.ok(key.length >= 32);
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       if (originalSecret !== undefined) {
         process.env.SESSION_SECRET = originalSecret;
       } else {

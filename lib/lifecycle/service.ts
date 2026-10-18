@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Service
+ * CloudE5 — Assessment Lifecycle Service
  *
  * Implements server-side lifecycle transitions, precondition guards,
  * role authorization, audit logging, and immutable snapshot enforcement
@@ -335,7 +335,7 @@ export async function validateTransitionGuards(
       sessionUser.role !== "TLI_SUPER_ADMIN"
     ) {
       errors.push(
-        "Authority violation: Only the assigned TLI Lead Consultant or Super Administrator can grant formal approval (DEC-01)."
+        "Authority violation: Only the assigned Lead Consultant or Super Administrator can grant formal approval (DEC-01)."
       );
     }
   }
@@ -347,7 +347,7 @@ export async function validateTransitionGuards(
       sessionUser.role !== "TLI_SUPER_ADMIN"
     ) {
       errors.push(
-        "Authority violation: Only TLI Lead Consultant or Super Administrator can issue the final assessment report."
+        "Authority violation: Only Lead Consultant or Super Administrator can issue the final assessment report."
       );
     }
   }
@@ -602,13 +602,13 @@ export async function cloneAssessmentForReaudit(
   parentAssessmentId: string,
   request: ReauditCloneRequest = {}
 ): Promise<AssessmentStateSummary> {
-  // Authorization: Only TLI Lead Consultant or Super Admin can initiate re-audit
+  // Authorization: Only Lead Consultant or Super Admin can initiate re-audit
   if (
     sessionUser.role !== "TLI_LEAD_CONSULTANT" &&
     sessionUser.role !== "TLI_SUPER_ADMIN"
   ) {
     throw new LifecycleError(
-      "Insufficient permissions: Only TLI Lead Consultants or Super Administrators can initiate re-audit cycles.",
+      "Insufficient permissions: Only Lead Consultants or Super Administrators can initiate re-audit cycles.",
       "UNAUTHORIZED",
       403
     );

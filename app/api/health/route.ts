@@ -1,40 +1,22 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — System Health Endpoint
- *
- * GET /api/health
- * Verifies system readiness and database connectivity.
- * Redacts internal hostnames, credentials, and topology details.
+ * GET /api/health — liveness probe. Healthy only when a query against the database succeeds.
  */
 
 import { NextResponse } from "next/server";
-import { pool } from "@/lib/db/pool";
+import { checkDatabase } from "@/lib/ops/readiness";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    const startTime = Date.now();
-    await pool.query("SELECT 1;");
-    const responseTimeMs = Date.now() - startTime;
-
-    return NextResponse.json(
-      {
-        status: "healthy",
-        database: "connected",
-        responseTimeMs,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 200 }
-    );
-  } catch (err) {
-    console.error("Health check database probe failed:", err instanceof Error ? err.message : "Unknown error");
-
-    return NextResponse.json(
-      {
-        status: "degraded",
-        database: "unreachable",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 503 }
-    );
-  }
+  const startTime = Date.now();
+  const database = await checkDatabase();
+  return NextResponse.json(
+    {
+      status: database.ok ? "healthy" : "degraded",
+      database: database.ok ? "connected" : "unreachable",
+      responseTimeMs: Date.now() - startTime,
+      timestamp: new Date().toISOString(),
+    },
+    { status: database.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } }
+  );
 }
-

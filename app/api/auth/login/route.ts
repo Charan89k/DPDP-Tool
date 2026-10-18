@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Authentication Login Endpoint
+ * CloudE5 — Authentication Login Endpoint
  *
  * POST /api/auth/login
  * Validates user credentials, issues cryptographically signed session tokens,
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
 
     // 7. Emit audit log entry
     try {
-      const userAgent = request.headers.get("user-agent") || "TLI-App";
+      const userAgent = request.headers.get("user-agent") || "CloudE5-App";
       await pool.query(
         `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, ip_address, user_agent, new_state)
          VALUES ($1, $2, 'USER_LOGIN', 'users', $2, $3, $4, $5);`,

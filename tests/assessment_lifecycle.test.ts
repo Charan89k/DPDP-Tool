@@ -47,6 +47,9 @@ const testClientAdminSession: SessionUser = {
   fullName: "Gamma Test Admin",
   role: "CLIENT_ADMIN",
   tenantType: "CLIENT",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const testLeadConsultantSession: SessionUser = {
@@ -56,6 +59,9 @@ const testLeadConsultantSession: SessionUser = {
   fullName: "Gamma Lead Consultant",
   role: "TLI_LEAD_CONSULTANT",
   tenantType: "TLI",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const testReviewerSession: SessionUser = {
@@ -65,6 +71,9 @@ const testReviewerSession: SessionUser = {
   fullName: "Gamma Reviewer",
   role: "TLI_REVIEWER",
   tenantType: "TLI",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const testSuperAdminSession: SessionUser = {
@@ -74,6 +83,9 @@ const testSuperAdminSession: SessionUser = {
   fullName: "TLI Super Admin",
   role: "TLI_SUPER_ADMIN",
   tenantType: "TLI",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 let testAssessmentId = "";

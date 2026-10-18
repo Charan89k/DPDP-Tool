@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Scoring Module
+ * CloudE5 — Scoring Module
  *
  * Public entrypoint for the deterministic, non-compensatory scoring engine.
  */

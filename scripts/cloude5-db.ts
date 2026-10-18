@@ -7,6 +7,8 @@
  *   npm run db:backup -- [file]         Online, consistent backup (default: <db dir>/backups/cloude5-<time>.db).
  *   npm run db:restore -- <file> --confirm
  *                                       Replace the database with a verified backup (stop the app first).
+ *   npm run db:verify-email -- <email> --confirm
+ *                                       Operator override: mark an address verified (when SMTP is unavailable).
  *   npm run db:seed-demo                Load synthetic demo tenants/users (refused in production).
  *
  * The database path comes from CLOUDE5_DATABASE_PATH (required in production). Output never
@@ -151,6 +153,40 @@ async function main(): Promise<number> {
       return 0;
     }
 
+    case "verify-email": {
+      // Operator override when email delivery is unavailable: confirm the address out of band first.
+      const email = args.find((a) => !a.startsWith("--"))?.trim().toLowerCase();
+      if (!email || !args.includes("--confirm")) {
+        console.error(
+          "Usage: npm run db:verify-email -- <email> --confirm   (confirm the address out of band first)"
+        );
+        return 2;
+      }
+      const db = open(databasePath);
+      try {
+        const user = db.prepare("SELECT id, tenant_id FROM users WHERE LOWER(email) = ?").get(email) as
+          | { id: string; tenant_id: string }
+          | undefined;
+        if (!user) {
+          console.error("No account with that email address.");
+          return 1;
+        }
+        db.transaction(() => {
+          db.prepare(
+            "UPDATE users SET email_verified_at = COALESCE(email_verified_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) WHERE id = ?"
+          ).run(user.id);
+          db.prepare(
+            `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, new_state)
+             VALUES (?, ?, 'EMAIL_VERIFIED_BY_OPERATOR', 'users', ?, '{}')`
+          ).run(user.tenant_id, user.id, user.id);
+        })();
+        console.log(`Marked ${email} as verified.`);
+      } finally {
+        db.close();
+      }
+      return 0;
+    }
+
     case "seed-demo": {
       if (process.env.NODE_ENV === "production") {
         console.error("Refusing to load synthetic demo data with NODE_ENV=production.");
@@ -176,7 +212,7 @@ async function main(): Promise<number> {
 
     default:
       console.error(
-        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | seed-demo"
+        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | verify-email <email> --confirm | seed-demo"
       );
       return 2;
   }

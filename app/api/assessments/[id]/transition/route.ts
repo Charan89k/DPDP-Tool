@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Transition API
+ * CloudE5 — Assessment Lifecycle Transition API
  *
  * GET /api/assessments/[id]/transition
  * Retrieves current lifecycle state, permitted transitions for authenticated caller,

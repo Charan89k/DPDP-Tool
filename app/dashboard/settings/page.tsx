@@ -69,7 +69,7 @@ export default async function SettingsPage() {
               </span>
               <p className="text-slate-600 mt-0.5">
                 {isConsultant
-                  ? "Authorized Truth Labs International forensic reviewer. Cross-tenant assessment evaluation privileges active."
+                  ? "Authorized CloudE5 platform reviewer. Cross-tenant assessment evaluation privileges active."
                   : "Authorized client organization contributor. Access strictly restricted to tenant boundary."}
               </p>
             </div>
@@ -120,7 +120,7 @@ export default async function SettingsPage() {
               </span>
               <span className="text-slate-700 font-medium">
                 {sessionUser.tenantType === "TLI"
-                  ? "Advisory Firm Platform Tenant"
+                  ? "CloudE5 Platform Operator"
                   : sessionUser.isSdf
                   ? "Significant Data Fiduciary (Section 10 Additional Obligations)"
                   : "Standard Data Fiduciary"}
@@ -177,7 +177,7 @@ export default async function SettingsPage() {
               </span>
             </div>
             <p className="text-blue-800">
-              In accordance with <code className="text-blue-900 font-semibold">docs/09_unresolved_decisions_and_tl_assumptions.md (DEC-04)</code>, production launch will adopt TLI-approved Enterprise SAML 2.0 / OIDC federation. The current runtime provides secure password verification with bcrypt and session validation.
+              In accordance with <code className="text-blue-900 font-semibold">docs/09_unresolved_decisions_and_tl_assumptions.md (DEC-04)</code>, production launch will adopt operator-approved Enterprise SAML 2.0 / OIDC federation. The current runtime provides secure password verification with bcrypt and session validation.
             </p>
           </div>
         </CardContent>

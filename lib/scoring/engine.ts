@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Engine
+ * CloudE5 — Deterministic Scoring Engine
  *
  * Pure, side-effect-free calculation domain engine implementing the non-compensatory
  * dual-metric evaluation model.
@@ -299,7 +299,7 @@ export function calculateAssessmentScores(
               description: `Unapproved exclusion on question ${normCode}: ${explanation}`,
               remediationSummary: !hasValidJustification
                 ? "Provide detailed written factual justification explaining why this statutory requirement does not apply."
-                : "Submit to assigned TLI Lead Consultant for exclusion verification review.",
+                : "Submit to assigned Lead Consultant for exclusion verification review.",
             });
           }
           break;
@@ -499,7 +499,7 @@ export function calculateAssessmentScores(
 
   if (config.methodologyStatus === "PROVISIONAL_PENDING_APPROVAL") {
     notices.push(
-      "PROVISIONAL METHODOLOGY: Scoring values (Implemented=100, Partially=50, Not Implemented=0) represent an unratified engineering baseline pending formal methodology sign-off by TLI Executive Leadership (DEC-08, DEC-09). Results are indicative diagnostic measures and NOT an official statutory compliance rating."
+      "PROVISIONAL METHODOLOGY: Scoring values (Implemented=100, Partially=50, Not Implemented=0) represent an unratified engineering baseline pending formal methodology sign-off (DEC-08, DEC-09). Results are indicative diagnostic measures and NOT an official statutory compliance rating."
     );
   }
 

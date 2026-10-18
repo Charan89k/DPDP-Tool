@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Report Service
+ * CloudE5 — Report Service
  *
  * Coordinates draft compilation, document generation, formal lead approval,
  * immutable report snapshots, and download retrieval under PostgreSQL RLS.
@@ -111,7 +111,7 @@ export async function generateReportDocument(
 
 /**
  * Issues the official final compliance assessment report.
- * Strictly gated: Only authorized TLI Lead Consultant or Super Admin can issue.
+ * Strictly gated: Only authorized Lead Consultant or Super Admin can issue.
  * Client users are blocked with an authority error.
  * Enforces lifecycle progression to FINAL_ISSUED and stores immutable snapshot in report_snapshots.
  */

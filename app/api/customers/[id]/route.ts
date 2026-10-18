@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Organization Detail API
+ * CloudE5 — Customer Organization Detail API
  *
  * GET /api/customers/[id]
  * Fetches organization details, provisioned users, invitations, and assessments.

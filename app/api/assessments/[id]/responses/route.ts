@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Responses API
+ * CloudE5 — Assessment Responses API
  *
  * GET /api/assessments/[id]/responses
  * Fetches saved questionnaire responses for the assessment.

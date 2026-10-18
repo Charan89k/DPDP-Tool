@@ -591,7 +591,7 @@ export function QuestionCard({
                     type="text"
                     value={replyText[thread.id] || ""}
                     onChange={(e) => setReplyText((prev) => ({ ...prev, [thread.id]: e.target.value }))}
-                    placeholder="Type clarification response to the TLI assessor..."
+                    placeholder="Type clarification response to the CloudE5 assessor..."
                     className="flex-1 px-3 py-1.5 text-xs bg-white border border-purple-200 rounded-lg focus:outline-none focus:border-purple-600"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {

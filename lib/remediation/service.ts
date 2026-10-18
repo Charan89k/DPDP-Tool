@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Remediation Workflow Service
+ * CloudE5 — Remediation Workflow Service
  *
  * Implements Corrective and Preventive Action (CAPA) tracking, assignment,
  * closure submissions by clients, and independent assessor validation under RLS.
@@ -189,7 +189,7 @@ export async function updateRemediationProgress(
   // Client cannot directly validate and close without assessor validation
   if (!isConsultant && input.status === "VALIDATED_CLOSED") {
     throw new Error(
-      "Authority violation: Clients cannot mark remediation tasks as VALIDATED_CLOSED. Submission for closure requires independent TLI assessor validation."
+      "Authority violation: Clients cannot mark remediation tasks as VALIDATED_CLOSED. Submission for closure requires independent CloudE5 assessor validation."
     );
   }
 
@@ -263,7 +263,7 @@ export async function updateRemediationProgress(
 }
 
 /**
- * Validates a remediation task closure (TLI Assessors & Lead Consultants only).
+ * Validates a remediation task closure (CloudE5 Assessors & Lead Consultants only).
  * Sets status to VALIDATED_CLOSED or REJECTED_REOPENED.
  */
 export async function validateRemediationClosure(
@@ -273,7 +273,7 @@ export async function validateRemediationClosure(
 ): Promise<RemediationTask> {
   if (!isTliRole(sessionUser.role)) {
     throw new Error(
-      `Authority violation: Role ${sessionUser.role} is not authorized to validate remediation closures. Independent TLI assessor review required.`
+      `Authority violation: Role ${sessionUser.role} is not authorized to validate remediation closures. Independent CloudE5 assessor review required.`
     );
   }
 

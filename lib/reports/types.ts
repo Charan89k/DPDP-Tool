@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Reporting Types & Schemas
+ * CloudE5 — Reporting Types & Schemas
  *
  * Provides type contracts for compiled report data, Word (.docx) generation,
  * cryptographic seals, and immutable report snapshots.

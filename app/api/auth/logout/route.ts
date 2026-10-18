@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Logout Endpoint
+ * CloudE5 — Logout Endpoint
  *
  * POST /api/auth/logout
  * Clears the authenticated session cookie.

@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Onboarding Module Index
+ * CloudE5 — Onboarding Module Index
  */
 
 export * from "./types.ts";

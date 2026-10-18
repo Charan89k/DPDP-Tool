@@ -18,7 +18,7 @@ export default async function AssessorReviewPage({ params }: AssessorReviewPageP
     redirect(`/login?redirect=/dashboard/assessments/${id}/review`);
   }
 
-  // Role boundary: Only TLI assessors and super admins can access the review workspace
+  // Role boundary: Only CloudE5 assessors and super admins can access the review workspace
   if (!canReviewAssessment(sessionUser.role)) {
     redirect(`/dashboard/assessments/${id}/summary`);
   }

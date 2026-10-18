@@ -293,10 +293,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     // Cross-tenant download block: Beta Admin cannot access Gamma evidence under RLS (hidden fail-closed)
     await assert.rejects(
       async () => {
-        await vaultService.getEvidenceForDownload({
-          sessionUser: BETA_ADMIN_USER,
-          evidenceId: uploaded.id,
-        });
+        await vaultService.getEvidenceForDownload(BETA_ADMIN_USER, uploaded.id);
       },
       (err: any) =>
         err instanceof ValidationError &&
@@ -461,7 +458,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     // 2. Client logs progress and submits for closure
     const progressUpdated = await updateRemediationProgress(PILOT_CLIENT_USER, task.id, {
       status: "SUBMITTED_FOR_CLOSURE",
-      progressNotes: "Upgraded Cisco AnyConnect gateway with Duo SAML MFA. Ready for assessor verification.",
+      closureSubmissionNotes: "Upgraded Cisco AnyConnect gateway with Duo SAML MFA. Ready for assessor verification.",
     });
     assert.equal(progressUpdated.status, "SUBMITTED_FOR_CLOSURE");
 
@@ -470,7 +467,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
       async () => {
         await updateRemediationProgress(PILOT_CLIENT_USER, task.id, {
           status: "VALIDATED_CLOSED" as any,
-          progressNotes: "Self-closing task",
+          closureSubmissionNotes: "Self-closing task",
         });
       },
       (err: any) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
