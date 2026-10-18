@@ -50,6 +50,10 @@ async function freshUser(): Promise<SessionUser> {
   };
 }
 
+async function currentVersion(userId: string): Promise<number> {
+  return Number((await pool.query("SELECT session_version FROM users WHERE id = $1", [userId])).rows[0].session_version);
+}
+
 async function storedSecret(userId: string): Promise<string> {
   const row = (await pool.query("SELECT mfa_secret_encrypted FROM users WHERE id = $1", [userId])).rows[0];
   return decryptSecret(row.mfa_secret_encrypted);
@@ -78,6 +82,8 @@ describe("CloudE5 two-factor authentication", () => {
     const result = await confirmMfaEnrolment(user, codeAt(secret));
     recoveryCodes = result.recoveryCodes;
     assert.equal(recoveryCodes.length, 10);
+    assert.equal(await currentVersion(user.userId), 1, "Enabling MFA revokes existing sessions");
+    user = { ...user, sessionVersion: 1 };
     assert.deepEqual(await getMfaStatus(user), { enabled: true, recoveryCodesRemaining: 10 });
     const hashes = (await pool.query("SELECT code_hash FROM mfa_recovery_codes WHERE user_id = $1", [user.userId])).rows;
     assert.ok(hashes.every((h) => /^[0-9a-f]{64}$/.test(h.code_hash) && !recoveryCodes.includes(h.code_hash)));
@@ -85,7 +91,7 @@ describe("CloudE5 two-factor authentication", () => {
 
   it("completes a sign-in challenge once and rejects code replay", async () => {
     const secret = await storedSecret(user.userId);
-    const challenge = await createMfaChallenge(user.userId, 0);
+    const challenge = await createMfaChallenge(user.userId, await currentVersion(user.userId));
     const next = codeAt(secret, 1);
     assert.equal(await completeMfaChallenge(challenge, next), user.userId);
     await assert.rejects(completeMfaChallenge(challenge, next), (err: unknown) =>
@@ -103,7 +109,7 @@ describe("CloudE5 two-factor authentication", () => {
   });
 
   it("accepts each recovery code exactly once", async () => {
-    const challenge = await createMfaChallenge(user.userId, 0);
+    const challenge = await createMfaChallenge(user.userId, await currentVersion(user.userId));
     assert.equal(await completeMfaChallenge(challenge, recoveryCodes[1].toUpperCase()), user.userId);
     await assert.rejects(completeMfaChallenge(challenge, recoveryCodes[1]), MfaError);
     assert.equal((await getMfaStatus(user)).recoveryCodesRemaining, 9);
@@ -113,18 +119,22 @@ describe("CloudE5 two-factor authentication", () => {
     const other = await freshUser();
     const setup = await beginMfaEnrolment(other);
     await confirmMfaEnrolment(other, codeAt(setup.manualEntryKey.replace(/ /g, "")));
-    const challenge = await createMfaChallenge(other.userId, 0);
-    for (let i = 0; i < 5; i++) {
-      await assert.rejects(completeMfaChallenge(challenge, "000000"), MfaError);
-    }
-    await assert.rejects(completeMfaChallenge(challenge, "000000"), (err: unknown) =>
-      err instanceof MfaError && err.code === "RATE_LIMITED"
+    const challenge = await createMfaChallenge(other.userId, await currentVersion(other.userId));
+    // Concurrent guesses must not bypass the limit: at most 5 are evaluated.
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: 20 }, () => completeMfaChallenge(challenge, "000000"))
     );
+    const codes = outcomes.map((o) => (o.status === "rejected" ? (o.reason as MfaError).code : "OK"));
+    assert.equal(codes.filter((c) => c === "INVALID_CODE").length, 5);
+    assert.equal(codes.filter((c) => c === "RATE_LIMITED").length, 15);
   });
 
   it("turns off only with the password and a valid code", async () => {
     await assert.rejects(disableMfa(user, "wrong-password-123", recoveryCodes[2]), MfaError);
     await disableMfa(user, PASSWORD, recoveryCodes[3]);
+    assert.equal(await currentVersion(user.userId), 2, "Disabling MFA revokes existing sessions");
+    await assert.rejects(getMfaStatus(user), /signed out/, "The pre-change session no longer works");
+    user = { ...user, sessionVersion: 2 };
     const row = (await pool.query("SELECT mfa_enabled, mfa_secret_encrypted FROM users WHERE id = $1", [user.userId])).rows[0];
     assert.equal(row.mfa_enabled, false);
     assert.equal(row.mfa_secret_encrypted, null);

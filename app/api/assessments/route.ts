@@ -17,7 +17,7 @@ import {
   DatabaseAuthorizationError,
   executeWithRls,
 } from "@/lib/db/rls";
-import { canCreateAssessment, isTliRole } from "@/lib/auth/rbac";
+import { canCreateAssessment } from "@/lib/auth/rbac";
 
 const createAssessmentSchema = z.object({
   title: z.string().trim().min(3).max(255).optional(),

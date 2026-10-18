@@ -24,9 +24,6 @@ import {
   getAllowedTransitionsForRole,
   isAssessmentImmutable,
 } from "./rules.ts";
-import { calculateAssessmentScores } from "../scoring/engine.ts";
-import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
-import type { QuestionResponseInput, AssessorReviewInput } from "../scoring/types.ts";
 
 export class LifecycleError extends Error {
   code: string;
@@ -636,10 +633,18 @@ export async function cloneAssessmentForReaudit(
       );
     }
 
-    // 2. Generate new engagement code
+    // 2. Generate new engagement code (same format rules as assessment creation; it is used in
+    //    storage keys and download filenames)
     const newEngagementCode =
-      request.engagementCode ||
+      request.engagementCode?.trim() ||
       `${parent.engagement_code}-REAUDIT-${Date.now().toString().slice(-4)}`;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$/.test(newEngagementCode) || newEngagementCode.includes("..")) {
+      throw new LifecycleError(
+        "Engagement code may only contain letters, numbers, '.', '_' and '-' (3-100 characters).",
+        "INVALID_ENGAGEMENT_CODE",
+        400
+      );
+    }
 
     const newTitle =
       request.title ||

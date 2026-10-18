@@ -118,6 +118,33 @@ export class PersistentRateLimiter {
     return { limited: true, retryAfterSeconds: Math.max(Math.ceil(this.windowSeconds - elapsedSeconds), 1) };
   }
 
+  /**
+   * Atomically counts one attempt and reports whether the caller is over the limit. Call this
+   * BEFORE doing the guarded work (checking a password or code) so concurrent requests cannot
+   * all pass a separate "check" step; reset on success.
+   */
+  public async hit(key: string): Promise<{ limited: boolean; retryAfterSeconds: number }> {
+    const now = new Date().toISOString();
+    const row = (
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (key_hash, attempts, window_started_at, updated_at)
+         VALUES ($1, 1, $2, $2)
+         ON CONFLICT (key_hash) DO UPDATE SET
+           attempts = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN 1 ELSE rate_limit_buckets.attempts + 1 END,
+           window_started_at = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN $2 ELSE rate_limit_buckets.window_started_at END,
+           updated_at = $2
+         RETURNING attempts, window_started_at;`,
+        [this.hash(key), now, this.cutoff()]
+      )
+    ).rows[0];
+    await this.pruneIfDue();
+    if (Number(row.attempts) <= this.maxAttempts) {
+      return { limited: false, retryAfterSeconds: 0 };
+    }
+    const elapsedSeconds = (Date.now() - new Date(row.window_started_at).getTime()) / 1000;
+    return { limited: true, retryAfterSeconds: Math.max(Math.ceil(this.windowSeconds - elapsedSeconds), 1) };
+  }
+
   public async recordFailedAttempt(key: string): Promise<void> {
     const now = new Date().toISOString();
     const cutoff = this.cutoff();

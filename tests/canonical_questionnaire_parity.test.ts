@@ -9,7 +9,6 @@ import type { SessionUser } from "../lib/auth/types.ts";
 import {
   getCanonicalQuestionnaireSections,
   calculateQuestionnaireProgress,
-  QUESTIONNAIRE_METADATA,
   CANONICAL_OPTIONS,
   CANONICAL_FOLLOWUP_PROMPT,
 } from "../lib/questionnaire/data.ts";

@@ -12,11 +12,9 @@ import {
   BarChart3,
   Settings,
   Shield,
-  Building2,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
-import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
-import { Badge } from "@/components/ui/badge";
+import { isTliRole } from "@/lib/auth/rbac";
 
 interface SidebarProps {
   user: SessionUser;
@@ -27,7 +25,6 @@ interface SidebarProps {
 
 export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const roleBadge = getRoleBadgeLabel(user.role);
 
   const navItems = [
     {

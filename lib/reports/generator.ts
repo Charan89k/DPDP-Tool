@@ -24,7 +24,7 @@ import type {
 export async function compileReportDocumentData(
   sessionUser: SessionUser,
   assessmentId: string,
-  isDraft: boolean = true
+  _requestedDraft: boolean = true
 ): Promise<ReportDocumentData> {
   const isConsultant = isTliRole(sessionUser.role);
 
@@ -193,8 +193,10 @@ export async function compileReportDocumentData(
   });
   const datasetSha256 = createHash("sha256").update(datasetDigestPayload).digest("hex");
 
-  // If assessment is formally issued, isDraft is strictly false
-  const effectiveIsDraft = dbData.assessment.status === "FINAL_ISSUED" ? false : isDraft;
+  // A report is final only once the assessment has actually been issued; before that every
+  // document is a draft regardless of what the caller asked for.
+  const ISSUED_STATUSES = ["FINAL_ISSUED", "REMEDIATION_ACTIVE", "ARCHIVED"];
+  const effectiveIsDraft = !ISSUED_STATUSES.includes(dbData.assessment.status);
 
   return {
     assessment: {

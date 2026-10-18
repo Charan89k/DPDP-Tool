@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { errorMessage } from "@/lib/http/errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -124,8 +125,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       assessmentId,
       threads: result,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -133,7 +134,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     console.error("Failed to fetch clarifications:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to retrieve clarification threads." },
+      { error: "Failed to retrieve clarification threads." },
       { status: 500 }
     );
   }
@@ -289,8 +290,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       assessmentId,
       ...result,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -299,7 +300,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     console.error("Failed to process clarification:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to process clarification under security boundary." },
+      { error: "Failed to process clarification under security boundary." },
       { status: 500 }
     );
   }

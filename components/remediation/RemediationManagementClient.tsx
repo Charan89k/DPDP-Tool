@@ -4,23 +4,17 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck,
-  AlertTriangle,
-  Clock,
   CheckCircle2,
   XCircle,
   Plus,
   ArrowLeft,
-  FileText,
-  User,
   Calendar,
   Filter,
-  Check,
-  Send,
-  AlertCircle,
   ShieldAlert,
 } from "lucide-react";
 import type { RemediationTask, RemediationStatus, RemediationPriority } from "@/lib/remediation/types";
 import type { SessionUser } from "@/lib/auth/types";
+import { errorMessage } from "@/lib/http/errors";
 
 interface Props {
   assessment: {
@@ -112,8 +106,8 @@ export function RemediationManagementClient({
       setNewDesc("");
       setNewQuestionCode("");
       setNewTargetDate("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -147,8 +141,8 @@ export function RemediationManagementClient({
       );
       setSelectedTaskForUpdate(null);
       setClosureNotes("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -186,8 +180,8 @@ export function RemediationManagementClient({
       );
       setSelectedTaskForValidation(null);
       setValidationNotes("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }

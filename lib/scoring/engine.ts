@@ -22,7 +22,6 @@ import {
   DEFAULT_PROVISIONAL_CONFIG,
   PROVISIONAL_ASSUMPTIONS,
   STATUTORY_DOMAIN_WEIGHTS,
-  STATUTORY_PENALTY_TIERS,
 } from "./config.ts";
 import type {
   ScoringCalculationInput,

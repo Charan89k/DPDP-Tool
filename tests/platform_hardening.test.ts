@@ -29,6 +29,7 @@ import { LocalStorageAdapter } from "../lib/storage/local_adapter.ts";
 import { EvidenceVaultService } from "../lib/storage/service.ts";
 import { ValidationError } from "../lib/storage/validation.ts";
 import { assertPersistentEvidenceStorage, StorageConfigurationError } from "../lib/storage/object_store.ts";
+import { checkConfiguration } from "../lib/ops/readiness.ts";
 
 const TLI_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000001";
 const SUITE_ID = Date.now().toString(36);
@@ -367,8 +368,41 @@ describe("Platform hardening: credential columns", () => {
     }
     for (const invitation of rows.invitations) assert.equal(invitation.token_hash, null);
 
+    // Naming the base table or the policy context explicitly is refused in a tenant context.
+    for (const sql of [
+      "SELECT password_hash FROM main.users",
+      "SELECT * FROM temp._ctx",
+      "UPDATE temp._ctx SET bypass = 1",
+      "PRAGMA table_info(users)",
+    ]) {
+      await assert.rejects(executeWithRls(admin, (client) => client.query(sql)), /permission denied/, sql);
+    }
+
     // Privileged authentication paths still see them.
     const privileged = (await pool.query("SELECT password_hash FROM users WHERE id = $1", [admin.userId])).rows[0];
     assert.ok(privileged.password_hash);
+  });
+});
+
+describe("Platform hardening: readiness configuration", () => {
+  const baseEnv = {
+    NODE_ENV: "production",
+    SESSION_SECRET: "x".repeat(48),
+    CLOUDE5_DATABASE_PATH: "/data/cloude5.db",
+    CLOUDE5_PUBLIC_URL: "https://cloude5.example.com",
+    SMTP_HOST: "smtp.example.com",
+    SMTP_FROM: "CloudE5 <no-reply@example.com>",
+  };
+
+  it("rejects a malformed CLOUDE5_ENCRYPTION_KEY before MFA enrolment can fail", () => {
+    const result = checkConfiguration({ ...baseEnv, CLOUDE5_ENCRYPTION_KEY: "too-short" });
+    assert.equal(result.ok, false);
+    assert.match(result.detail ?? "", /CLOUDE5_ENCRYPTION_KEY/);
+  });
+
+  it("accepts a 32-byte base64 key and an absent key (derived from SESSION_SECRET)", () => {
+    const key = Buffer.alloc(32, 7).toString("base64");
+    assert.equal(checkConfiguration({ ...baseEnv, CLOUDE5_ENCRYPTION_KEY: key }).ok, true);
+    assert.equal(checkConfiguration(baseEnv).ok, true);
   });
 });

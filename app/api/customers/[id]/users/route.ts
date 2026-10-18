@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
-import { canManageTenantUsers, CLIENT_ROLES } from "@/lib/auth/rbac";
+import { CLIENT_ROLES } from "@/lib/auth/rbac";
 import crypto from "node:crypto";
 import { describePasswordProblem, hashPassword } from "@/lib/auth/passwords";
 import { issueToken } from "@/lib/auth/account";

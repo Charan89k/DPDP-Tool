@@ -3,13 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { readJsonResponse } from "@/lib/http/responses";
 import {
-  Shield,
-  FileText,
-  Upload,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Download,
   Eye,
   Trash2,
   Plus,
@@ -75,11 +68,8 @@ export function QuestionCard({
   evidenceItems = [],
   isAssessor = false,
   canEdit = true,
-  userRole,
   onUpdateResponse,
   onAttachEvidence,
-  onNextQuestion,
-  onPrevQuestion,
   questionNumber = 1,
   totalQuestions = 60,
 }: QuestionCardProps) {

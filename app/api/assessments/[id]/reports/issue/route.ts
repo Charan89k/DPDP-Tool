@@ -30,10 +30,10 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     const snapshot = await issueOfficialFinalReport(session, id);
 
     return NextResponse.json({ ok: true, snapshot }, { status: 200 });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Report issuance error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to issue final report" },
+      { error: "Failed to issue final report" },
       { status: 500 }
     );
   }

@@ -17,16 +17,16 @@
  */
 
 import { describe, it, before, after } from "node:test";
+import type { RemediationStatus } from "../lib/remediation/types.ts";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { pool } from "../lib/db/pool.ts";
 import { executeWithRls } from "../lib/db/rls.ts";
 import { createSessionToken, verifySessionToken } from "../lib/auth/session.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
-import { FileValidator, ValidationError } from "../lib/storage/validation.ts";
+import { ValidationError } from "../lib/storage/validation.ts";
 import { EvidenceVaultService } from "../lib/storage/service.ts";
 import { evaluateAssessmentGaps } from "../lib/gaps/engine.ts";
-import { calculateAssessmentScores } from "../lib/scoring/engine.ts";
 import { generateReportDocument, issueOfficialFinalReport } from "../lib/reports/service.ts";
 import { generateWordReport } from "../lib/reports/docx.ts";
 import {
@@ -284,7 +284,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
           content: fakePdfBuffer,
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         (err.message.includes("signature does not match") ||
           err.message.includes("forbidden content signature"))
@@ -295,7 +295,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
       async () => {
         await vaultService.getEvidenceForDownload(BETA_ADMIN_USER, uploaded.id);
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         (err.message.includes("Tenant isolation policy prohibits") ||
           err.message.includes("Evidence record not found"))
@@ -466,11 +466,11 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     await assert.rejects(
       async () => {
         await updateRemediationProgress(PILOT_CLIENT_USER, task.id, {
-          status: "VALIDATED_CLOSED" as any,
+          status: "VALIDATED_CLOSED" as RemediationStatus,
           closureSubmissionNotes: "Self-closing task",
         });
       },
-      (err: any) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
+      (err: Error) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
     );
 
     // 4. Authorized TLI Consultant validates closure
@@ -493,7 +493,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
             [testAssessmentId]
           );
         },
-        (err: any) =>
+        (err: Error) =>
           err.message.includes("Report snapshots are immutable") ||
           err.message.includes("permission denied for table report_snapshots")
       );
@@ -508,7 +508,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
             [testAssessmentId]
           );
         },
-        (err: any) =>
+        (err: Error) =>
           err.message.includes("Report snapshots are immutable") ||
           err.message.includes("permission denied for table report_snapshots")
       );

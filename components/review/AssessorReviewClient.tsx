@@ -3,12 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  ShieldCheck,
-  CheckCircle2,
   AlertTriangle,
   XCircle,
   HelpCircle,
-  Clock,
   MessageSquare,
   Paperclip,
   Save,
@@ -25,9 +22,9 @@ import {
   Building,
   Check,
   RefreshCw,
-  ExternalLink,
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
+import { errorMessage } from "@/lib/http/errors";
 
 interface CanonicalQuestion {
   code: string;
@@ -169,16 +166,19 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         };
       }
       setReviewDrafts(drafts);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to load review workspace.");
+      setError(errorMessage(err) || "Failed to load review workspace.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used by refresh actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
   const handleDraftChange = (code: string, field: string, value: any) => {
@@ -226,8 +226,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         setQuestions(refreshData.questions);
         setMetrics(refreshData.metrics);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to persist review evaluation.");
+    } catch (err) {
+      setError(errorMessage(err) || "Failed to persist review evaluation.");
     } finally {
       setSavingCode(null);
     }
@@ -260,8 +260,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       setClarificationTitle("");
       setClarificationMessage("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to create clarification thread.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to create clarification thread.");
     } finally {
       setSendingClarification(false);
     }
@@ -288,8 +288,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
 
       setReplyMessage("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to post reply.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to post reply.");
     } finally {
       setSendingClarification(false);
     }
@@ -311,8 +311,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         throw new Error(data.error || "Failed to update thread status.");
       }
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to update thread status.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to update thread status.");
     }
   };
 

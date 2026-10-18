@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
     } finally {
       client.release();
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to accept invitation:", err);
     return NextResponse.json(
       { error: "Failed to process invitation acceptance." },

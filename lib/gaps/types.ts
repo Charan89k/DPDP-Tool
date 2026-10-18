@@ -6,7 +6,6 @@
  */
 
 import type { CanonicalResponseOption } from "../questionnaire/types.ts";
-import type { QuestionEvaluationDetail, StatutoryDeficitItem } from "../scoring/types.ts";
 
 export type GapType =
   | "NEGATIVE_RESPONSE"        // Not implemented

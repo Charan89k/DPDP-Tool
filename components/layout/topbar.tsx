@@ -9,7 +9,6 @@ import {
   ChevronDown,
   LogOut,
   Building,
-  User as UserIcon,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
 import { getRoleBadgeLabel } from "@/lib/auth/rbac";

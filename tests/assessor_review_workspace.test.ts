@@ -63,7 +63,7 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
     assert.equal(manifest.questions.length, 60, "Must contain exactly 60 canonical questions");
 
     const expectedSections = ["GOV", "DAT", "NOT", "RGT", "SEC", "RET", "TPR", "APP"];
-    const sectionCodes = manifest.sections.map((s: any) => s.code);
+    const sectionCodes = manifest.sections.map((s: { code: string }) => s.code);
     assert.deepEqual(sectionCodes, expectedSections);
 
     for (const q of manifest.questions) {
@@ -219,10 +219,10 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
             [ASSESSMENT_ALPHA_ID, DEMO_CUSTOMER.userId]
           );
         },
-        (err: any) => {
+        (err: Error) => {
           return (
             err.message.includes("row-level security policy") ||
-            err.code === "42501"
+            (err as Error & { code?: string }).code === "42501"
           );
         },
         "Client user must be rejected when attempting to insert assessor review"
@@ -300,10 +300,10 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
             [ASSESSMENT_BETA_ID, UNASSIGNED_REVIEWER.userId]
           );
         },
-        (err: any) => {
+        (err: Error) => {
           return (
             err.message.includes("row-level security policy") ||
-            err.code === "42501"
+            (err as Error & { code?: string }).code === "42501"
           );
         },
         "Unassigned reviewer must be blocked by RLS from inserting reviews on unassigned assessment"

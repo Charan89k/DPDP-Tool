@@ -16,7 +16,37 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { SqliteDatabase } from "./connection.ts";
 import { getDatabase } from "./connection.ts";
-import { columnKind, fromSqliteValue, translateStatement } from "./translate.ts";
+import { bypassesPolicyLayer, columnKind, fromSqliteValue, translateStatement } from "./translate.ts";
+import { SET_SYSTEM_CONTEXT_SQL } from "./policies.ts";
+
+function inTenantContext(db: SqliteDatabase): boolean {
+  const row = db.prepare("SELECT bypass FROM temp._ctx").get() as { bypass: number } | undefined;
+  return row?.bypass === 0;
+}
+
+/** Every unit of work ends in the system context, whatever a caller left behind. */
+function resetContext(db: SqliteDatabase): void {
+  db.prepare(SET_SYSTEM_CONTEXT_SQL).run();
+}
+
+/**
+ * Runs `work` inside the caller's active unit with policy enforcement suspended (the SQLite
+ * equivalent of a PostgreSQL SECURITY DEFINER function), restoring the previous context afterwards.
+ * Only for operations the calling service has already authorized.
+ */
+export async function withDefinerRights<T>(work: () => Promise<T>): Promise<T> {
+  if (!activeUnit()) {
+    throw new Error("Definer rights can only be used inside an active unit of work.");
+  }
+  const db = getDatabase();
+  const previous = (db.prepare("SELECT bypass FROM temp._ctx").get() as { bypass: number }).bypass;
+  db.prepare("UPDATE temp._ctx SET bypass = 1").run();
+  try {
+    return await work();
+  } finally {
+    db.prepare("UPDATE temp._ctx SET bypass = ?").run(previous);
+  }
+}
 
 export interface QueryResult<Row = any> {
   rows: Row[];
@@ -184,6 +214,9 @@ function executeStatementUnchecked<Row>(
     return runTransactionControl(db, unit, sql);
   }
 
+  if (inTenantContext(db) && bypassesPolicyLayer(sql)) {
+    throw new Error("permission denied: statement addresses the database outside the tenant policy layer");
+  }
   const translated = translateStatement(sql, params);
   const statement = prepare(db, translated.sql);
 
@@ -230,6 +263,7 @@ export async function withConnection<T>(work: (db: SqliteDatabase, unit: UnitOfW
       db.exec("ROLLBACK");
     }
     unit.finished = true;
+    resetContext(db);
     release();
   }
 }
@@ -284,6 +318,7 @@ export const pool = {
       }
       unit.transactionDepth = 0;
       unit.finished = true;
+      resetContext(db);
       releaseLock();
     });
   },

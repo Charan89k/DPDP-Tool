@@ -6,16 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   Users,
-  ShieldAlert,
   ArrowRight,
   AlertCircle,
-  CheckCircle2,
-  Mail,
-  Phone,
-  MapPin,
-  Lock,
   User,
-  Info,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
 
@@ -23,7 +16,7 @@ interface CreateCustomerFormProps {
   sessionUser: SessionUser;
 }
 
-export function CreateCustomerForm({ sessionUser }: CreateCustomerFormProps) {
+export function CreateCustomerForm(_props: CreateCustomerFormProps) {
   const router = useRouter();
 
   // Organization fields
@@ -114,7 +107,7 @@ export function CreateCustomerForm({ sessionUser }: CreateCustomerFormProps) {
       } else {
         router.push("/dashboard/customers");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to onboard customer:", err);
       setErrorMessage("Network error connecting to customer provisioning service.");
       setIsSubmitting(false);

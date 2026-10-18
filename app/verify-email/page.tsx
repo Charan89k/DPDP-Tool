@@ -15,12 +15,8 @@ function VerifyEmail() {
   const started = useRef(false);
 
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || !token) return;
     started.current = true;
-    if (!token) {
-      setState({ status: "failed", message: "This verification link is incomplete. Open the link from your email again." });
-      return;
-    }
     fetch("/api/auth/verify-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -33,13 +29,17 @@ function VerifyEmail() {
       .catch(() => setState({ status: "failed", message: "Unable to reach CloudE5. Please try again." }));
   }, [token]);
 
+  const view = token
+    ? state
+    : { status: "failed" as const, message: "This verification link is incomplete. Open the link from your email again." };
+
   return (
     <AuthShell title="Email verification">
-      <FormAlert tone={state.status === "failed" ? "error" : state.status === "done" ? "success" : "info"}>
-        {state.message}
+      <FormAlert tone={view.status === "failed" ? "error" : view.status === "done" ? "success" : "info"}>
+        {view.message}
       </FormAlert>
-      {state.status !== "working" && (
-        <Link href={state.status === "done" ? "/login?notice=verified" : "/login"} className="font-semibold text-sm text-[#0066FF] hover:underline">
+      {view.status !== "working" && (
+        <Link href={view.status === "done" ? "/login?notice=verified" : "/login"} className="font-semibold text-sm text-[#0066FF] hover:underline">
           Continue to sign in
         </Link>
       )}

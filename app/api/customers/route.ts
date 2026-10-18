@@ -9,9 +9,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { pool } from "@/lib/db/pool";
-import { canCreateCustomer, isTliRole, CLIENT_ROLES } from "@/lib/auth/rbac";
-import { hashPassword } from "@/lib/auth/passwords";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 
 const createCustomerSchema = z.object({
@@ -73,7 +70,7 @@ export async function GET(req: NextRequest) {
       count: customers.length,
       customers,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to query customers:", err);
     return NextResponse.json(
       { error: "Unable to retrieve customers. Please verify your permissions." },
@@ -125,7 +122,7 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof OnboardingError) {
       return NextResponse.json(
         { error: err.message, code: err.code },
@@ -134,7 +131,7 @@ export async function POST(req: NextRequest) {
     }
     console.error("Failed to onboard customer organisation:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create customer organisation." },
+      { error: "Failed to create customer organisation." },
       { status: 500 }
     );
   }

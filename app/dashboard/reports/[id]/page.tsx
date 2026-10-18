@@ -1,26 +1,18 @@
 import React from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
 import { getAssessmentGapAnalysis } from "@/lib/gaps";
 import { getAssessmentReportSnapshots } from "@/lib/reports";
 import { CANONICAL_DOMAINS } from "@/lib/questionnaire/data";
-import { Badge } from "@/components/ui/badge";
 import {
   FileText,
   Shield,
   ShieldAlert,
   AlertCircle,
   CheckCircle2,
-  Calendar,
-  Building,
-  User,
   ArrowLeft,
-  Lock,
-  Printer,
-  FileCheck,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -37,8 +29,6 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     redirect(`/login?redirect=/dashboard/reports/${id}`);
   }
 
-  const isConsultant = isTliRole(sessionUser.role);
-  const canFinalize = canFinalizeAssessment(sessionUser.role);
 
   // Fetch assessment under PostgreSQL RLS
   let assessment: any = null;

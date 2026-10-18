@@ -17,21 +17,16 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
-import { executeWithRls } from "../lib/db/rls.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 import {
   CANONICAL_ASSESSMENT_STATUSES,
-  type AssessmentStatus,
-  getAllowedTransitionsForRole,
   isAssessmentImmutable,
   findTransitionRule,
-  getAssessmentLifecycleState,
   getAssessmentTransitionHistory,
   executeAssessmentTransition,
   cloneAssessmentForReaudit,
   LifecycleError,
 } from "../lib/lifecycle/index.ts";
-import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
 
 // Dedicated Test Tenant & Users (Isolated from Alpha and Beta to preserve other test suites)
 const TEST_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000088";
@@ -76,17 +71,6 @@ const testReviewerSession: SessionUser = {
   isSdf: false,
 };
 
-const testSuperAdminSession: SessionUser = {
-  userId: "018f3a5b-7c8d-7e90-8000-000000000101",
-  tenantId: TLI_TENANT_ID,
-  email: "super.admin@tli.local",
-  fullName: "TLI Super Admin",
-  role: "TLI_SUPER_ADMIN",
-  tenantType: "TLI",
-  tenantName: "Test Organisation",
-  tenantSlug: "test-organisation",
-  isSdf: false,
-};
 
 let testAssessmentId = "";
 let frameworkVersionId = "";
@@ -184,7 +168,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "SCOPING",
         });
       },
-      (err: any) => err instanceof LifecycleError && err.statusCode === 422
+      (err: Error) => err instanceof LifecycleError && err.statusCode === 422
     );
 
     // Reviewer cannot approve report (Lead Consultant ONLY)
@@ -235,7 +219,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "SUBMITTED_FOR_REVIEW",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof LifecycleError &&
         err.validationErrors?.some((v) => v.includes("Submission blocked: Only 0 of 60 canonical questions answered"))
     );
@@ -258,7 +242,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "SUBMITTED_FOR_REVIEW",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof LifecycleError &&
         err.validationErrors?.some((v) => v.includes("Approved Partial Assessment submission requires a documented business rationale"))
     );
@@ -326,7 +310,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           reason: "Attempting withdrawal during active audit.",
         });
       },
-      (err: any) => err instanceof LifecycleError
+      (err: Error) => err instanceof LifecycleError
     );
   });
 
@@ -341,7 +325,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "CLARIFICATION_PENDING",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof LifecycleError &&
         err.validationErrors?.some((v) => v.includes("No active or open clarification threads exist"))
     );
@@ -370,7 +354,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "UNDER_REVIEW",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof LifecycleError &&
         err.validationErrors?.some((v) => v.includes("clarification thread(s) remain unresolved"))
     );
@@ -408,7 +392,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "REVIEW_COMPLETED",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof LifecycleError &&
         err.validationErrors?.some((v) => v.includes("Proposed N/A exclusion for question(s) [NOT-003] has not been verified"))
     );
@@ -451,7 +435,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           targetStatus: "LEAD_APPROVED",
         });
       },
-      (err: any) => err instanceof LifecycleError && err.statusCode === 422
+      (err: Error) => err instanceof LifecycleError && err.statusCode === 422
     );
 
     // Lead Consultant approves (succeeds)
@@ -501,7 +485,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           [testAssessmentId]
         );
       },
-      (err: any) =>
+      (err: Error) =>
         err.message.includes("FORENSIC_INTEGRITY_VIOLATION") &&
         err.message.includes("cannot be modified for assessment in status FINAL_ISSUED")
     );
@@ -516,7 +500,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           [testAssessmentId]
         );
       },
-      (err: any) =>
+      (err: Error) =>
         err.message.includes("FORENSIC_INTEGRITY_VIOLATION") &&
         err.message.includes("cannot be modified for assessment in status FINAL_ISSUED")
     );
@@ -529,7 +513,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           [testAssessmentId]
         );
       },
-      (err: any) =>
+      (err: Error) =>
         err.message.includes("FORENSIC_INTEGRITY_VIOLATION") &&
         err.message.includes("Core assessment metadata is immutable")
     );
@@ -589,7 +573,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           [testAssessmentId]
         );
       },
-      (err: any) => err.message.includes("FORENSIC_INTEGRITY_VIOLATION")
+      (err: Error) => err.message.includes("FORENSIC_INTEGRITY_VIOLATION")
     );
 
     await assert.rejects(
@@ -599,7 +583,7 @@ describe("Phase 3D.5: Assessment Lifecycle & Approval Controls Verification", ()
           [testAssessmentId]
         );
       },
-      (err: any) => err.message.includes("FORENSIC_INTEGRITY_VIOLATION")
+      (err: Error) => err.message.includes("FORENSIC_INTEGRITY_VIOLATION")
     );
   });
 });

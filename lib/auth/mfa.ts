@@ -6,7 +6,7 @@
  *   base64) when set, otherwise derived from SESSION_SECRET with HKDF. Changing the key source
  *   makes existing enrolments unreadable, so users would need to enrol again.
  * - Each accepted code's time step is recorded; a code (or an older one) can never be reused.
- * - Ten single-use recovery codes are issued at enrolment; only SHA-256 hashes are stored.
+ * - Ten single-use recovery codes are issued at enrolment; only keyed HMAC-SHA-256 hashes are stored.
  * - Sign-in with MFA is two steps: the password step returns a short-lived signed challenge
  *   (HttpOnly cookie); the session is issued only after a valid code.
  */
@@ -30,7 +30,7 @@ const CHALLENGE_AUDIENCE = "cloude5-mfa-challenge";
 export const MFA_CHALLENGE_COOKIE = "cloude5_mfa_challenge";
 export const MFA_CHALLENGE_MAX_AGE_SECONDS = CHALLENGE_TTL_SECONDS;
 
-/** At most 5 wrong codes per user per 15 minutes. */
+/** At most 5 code attempts per user per 15 minutes (counted before verification; reset on success). */
 export const mfaRateLimiter = new PersistentRateLimiter("mfa", 5, 15 * 60);
 
 export class MfaError extends Error {
@@ -84,8 +84,18 @@ function totpFor(secretBase32: string, label: string): OTPAuth.TOTP {
   });
 }
 
+/**
+ * Recovery codes are stored as HMAC-SHA256 under a server-held key, so a copy of the database
+ * alone is not enough to brute-force them offline.
+ */
 const hashCode = (code: string) =>
-  crypto.createHash("sha256").update(code.replace(/[\s-]/g, "").toLowerCase()).digest("hex");
+  crypto
+    .createHmac(
+      "sha256",
+      Buffer.from(crypto.hkdfSync("sha256", encryptionKey(), "cloude5", "cloude5:mfa-recovery-codes:v1", 32))
+    )
+    .update(code.replace(/[\s-]/g, "").toLowerCase())
+    .digest("hex");
 
 function generateRecoveryCodes(): string[] {
   const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -119,7 +129,7 @@ async function inTransaction<T>(work: (client: PoolClient) => Promise<T>): Promi
 }
 
 async function enforceAttemptLimit(userId: string): Promise<void> {
-  const status = await mfaRateLimiter.isRateLimited(userId);
+  const status = await mfaRateLimiter.hit(userId);
   if (status.limited) {
     throw new MfaError(
       "Too many incorrect codes. Please wait a few minutes and try again.",
@@ -176,7 +186,16 @@ async function acceptTotp(client: PoolClient, userId: string, email: string, cod
     await client.query("SELECT mfa_secret_encrypted, mfa_last_used_step FROM users WHERE id = $1;", [userId])
   ).rows[0];
   if (!user?.mfa_secret_encrypted || !/^\d{6}$/.test(code)) return false;
-  const delta = totpFor(decryptSecret(user.mfa_secret_encrypted), email).validate({ token: code, window: 1 });
+  let secret: string;
+  try {
+    secret = decryptSecret(user.mfa_secret_encrypted);
+  } catch {
+    // Encryption key changed: the authenticator can no longer be verified, but recovery codes
+    // still work so the user is not locked out. Operators can also run db:reset-mfa.
+    console.error("MFA secret could not be decrypted (encryption key changed?) for a user.");
+    return false;
+  }
+  const delta = totpFor(secret, email).validate({ token: code, window: 1 });
   if (delta === null) return false;
   const step = Math.floor(Date.now() / 1000 / 30) + delta;
   if (user.mfa_last_used_step !== null && step <= Number(user.mfa_last_used_step)) return false;
@@ -208,9 +227,12 @@ export async function confirmMfaEnrolment(
       throw new MfaError("Two-factor authentication is already enabled.", "MFA_ALREADY_ENABLED", 409);
     }
     if (!(await acceptTotp(client, sessionUser.userId, sessionUser.email, code.trim()))) return false;
-    await client.query("UPDATE users SET mfa_enabled = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $1;", [
-      sessionUser.userId,
-    ]);
+    // Enabling MFA revokes every existing session; the caller re-issues the current one.
+    await client.query(
+      `UPDATE users SET mfa_enabled = TRUE, session_version = session_version + 1, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1;`,
+      [sessionUser.userId]
+    );
     await client.query("DELETE FROM mfa_recovery_codes WHERE user_id = $1;", [sessionUser.userId]);
     for (const recovery of recoveryCodes) {
       await client.query("INSERT INTO mfa_recovery_codes (id, user_id, code_hash) VALUES ($1, $2, $3);", [
@@ -223,7 +245,6 @@ export async function confirmMfaEnrolment(
     return true;
   });
   if (!ok) {
-    await mfaRateLimiter.recordFailedAttempt(sessionUser.userId);
     throw new MfaError(
       "That code is not valid. Check your authenticator app's time and try again.",
       "INVALID_CODE"
@@ -252,7 +273,7 @@ export async function disableMfa(sessionUser: SessionUser, password: string, cod
     if (!valid) return false;
     await client.query(
       `UPDATE users SET mfa_enabled = FALSE, mfa_secret_encrypted = NULL, mfa_last_used_step = NULL,
-                        updated_at = CURRENT_TIMESTAMP
+                        session_version = session_version + 1, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1;`,
       [sessionUser.userId]
     );
@@ -261,7 +282,6 @@ export async function disableMfa(sessionUser: SessionUser, password: string, cod
     return true;
   });
   if (!ok) {
-    await mfaRateLimiter.recordFailedAttempt(sessionUser.userId);
     throw new MfaError("Password or code is not valid.", "INVALID_CODE");
   }
   await mfaRateLimiter.resetAttempts(sessionUser.userId);
@@ -323,7 +343,6 @@ export async function completeMfaChallenge(challenge: string | undefined, code: 
     return valid;
   });
   if (!ok) {
-    await mfaRateLimiter.recordFailedAttempt(userId);
     throw new MfaError("That code is not valid.", "INVALID_CODE", 401);
   }
   await mfaRateLimiter.resetAttempts(userId);

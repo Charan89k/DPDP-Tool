@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { errorMessage } from "@/lib/http/errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -243,8 +244,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       assessmentId,
       savedCount: result.savedCount,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -252,7 +253,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to persist questionnaire responses:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to persist responses under tenant boundary." },
+      { error: "Failed to persist responses under tenant boundary." },
       { status: 500 }
     );
   }

@@ -60,6 +60,10 @@ export function checkConfiguration(env: Record<string, string | undefined> = pro
   if (missing.length > 0) {
     return { name: "configuration", ok: false, detail: `Missing required settings: ${missing.join(", ")}.` };
   }
+  const encryptionKey = env.CLOUDE5_ENCRYPTION_KEY?.trim();
+  if (encryptionKey && Buffer.from(encryptionKey, "base64").length !== 32) {
+    return { name: "configuration", ok: false, detail: "CLOUDE5_ENCRYPTION_KEY must be 32 bytes, base64-encoded." };
+  }
   if (!isSmtpConfigured(env)) {
     // Registration, verification, password reset and invitations all depend on email.
     return { name: "configuration", ok: false, detail: "SMTP is not configured: account emails cannot be delivered." };

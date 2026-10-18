@@ -15,7 +15,6 @@ import {
   TableRow,
   TableCell,
   WidthType,
-  BorderStyle,
   AlignmentType,
   HeadingLevel,
   Header,
@@ -31,9 +30,7 @@ const BRAND_STONE_MUTED = "78716C";
 const BRAND_AMBER_BG = "FEF3C7";
 const BRAND_AMBER_BORDER = "F59E0B";
 const BRAND_ROSE_BG = "FFE4E6";
-const BRAND_ROSE_BORDER = "E11D48";
 const BG_HEADER_GRAY = "F5F5F4";
-const BORDER_LIGHT_GRAY = "E7E5E4";
 
 type AlignmentValue = (typeof AlignmentType)[keyof typeof AlignmentType];
 

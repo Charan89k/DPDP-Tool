@@ -43,9 +43,10 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = email.trim().toLowerCase();
     const clientIp = resolveClientIp(request);
 
-    // 1. Enforce login rate limiting (max 5 failed attempts per IP / email per 15 min)
-    const ipRateLimit = await loginRateLimiter.isRateLimited(`ip:${clientIp}`);
-    const emailRateLimit = await loginRateLimiter.isRateLimited(`email:${normalizedEmail}`);
+    // 1. Count this attempt atomically before checking the password (max 5 per IP / email per
+    //    15 min). A successful sign-in resets both counters.
+    const ipRateLimit = await loginRateLimiter.hit(`ip:${clientIp}`);
+    const emailRateLimit = await loginRateLimiter.hit(`email:${normalizedEmail}`);
 
     if (ipRateLimit.limited || emailRateLimit.limited) {
       const retryAfter = Math.max(ipRateLimit.retryAfterSeconds, emailRateLimit.retryAfterSeconds);
@@ -76,16 +77,11 @@ export async function POST(request: NextRequest) {
 
     // Uniform failure message to prevent account enumeration
     const AUTH_FAILED_MSG = "Invalid email or password.";
-    const recordFailure = async () => {
-      await loginRateLimiter.recordFailedAttempt(`ip:${clientIp}`);
-      await loginRateLimiter.recordFailedAttempt(`email:${normalizedEmail}`);
-    };
 
     // 3. Verify the password before revealing anything about the account. Unknown emails still
     // pay the bcrypt cost so response timing does not disclose which accounts exist.
     if (!row) {
       await consumePasswordVerificationTime(password);
-      await recordFailure();
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
@@ -95,13 +91,11 @@ export async function POST(request: NextRequest) {
       !isSyntheticAccountInProduction && (await verifyPassword(password, row.password_hash));
 
     if (!isValidPassword) {
-      await recordFailure();
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
     // Account status is only disclosed to callers who proved knowledge of the password
     if (!row.is_active || row.tenant_status !== "ACTIVE") {
-      await recordFailure();
       return NextResponse.json(
         { error: "Account or organization is inactive. Please contact your administrator." },
         { status: 403 }

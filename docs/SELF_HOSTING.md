@@ -84,6 +84,7 @@ without email.
 |---|---|---|
 | `CLOUDE5_PUBLIC_URL` | yes | Public base URL used in email links and same-origin checks |
 | `SESSION_SECRET` | yes | ≥ 32 random characters; changing it signs everyone out |
+| `CLOUDE5_ENCRYPTION_KEY` | recommended | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts MFA secrets; if unset a key is derived from `SESSION_SECRET`. Set it before users enrol and never change it afterwards (enrolments become unreadable). Checked by `/api/ready`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | yes | Email delivery |
 | `CLOUDE5_DATABASE_PATH` | set by image | SQLite file (`/data/db/cloude5.db`) |
 | `CLOUDE5_EVIDENCE_DIR` | set by image | Evidence directory (`/data/evidence`) |
@@ -164,6 +165,7 @@ downgrade); always restore the pre-migration backup when rolling back across mig
 | `backup [file]` | Database backup |
 | `backup-all` | Database backup plus evidence archive |
 | `restore <file> --confirm` | Restore a database backup (stop the app first) |
+| `reset-mfa <email> --confirm` | Remove a user's MFA enrolment when they have lost their authenticator and recovery codes (confirm their identity out of band first) |
 | `verify-email <email> --confirm` | Mark an address verified when email is unavailable (confirm the address out of band first) |
 | `admin:create --email=… --name="…" [--reset-password]` | Create the platform administrator, or reset its password |
 
@@ -197,4 +199,6 @@ verified.
 | Users cannot sign in after registering | Email verification is required. Check SMTP settings and `/api/ready`; as a fallback use `verify-email`. |
 | Sign-in works but you are immediately signed out | The site is served over plain HTTP; serve it over HTTPS. |
 | "Cross-site request rejected" | The browser's origin does not match. Set `CLOUDE5_PUBLIC_URL` to the exact public URL and make the proxy forward `Host`. |
+| User lost their authenticator | They can sign in with one of their recovery codes. If those are lost too, verify their identity and run `reset-mfa`. |
+| "Too many attempts" | Sign-in, email and MFA limits are stored in the database and expire after their window (15 minutes for sign-in and MFA). |
 | "The database is busy" | A long operation held the database. Retry; persistent occurrences indicate a stuck process — restart the container. |

@@ -19,13 +19,12 @@
  * 14. Verification of immutable audit log entries (TENANT_CREATED, USER_PROVISIONED, USER_INVITED, INVITATION_ACCEPTED, ASSESSMENT_CREATED).
  */
 
-import { describe, it, before, after } from "node:test";
+import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { pool } from "../lib/db/pool.ts";
 import { executeWithRls } from "../lib/db/rls.ts";
-import { createSessionToken } from "../lib/auth/session.ts";
-import type { SessionUser } from "../lib/auth/types.ts";
+import type { SessionUser, UserRole } from "../lib/auth/types.ts";
 import {
   createCustomerOrganization,
   getCustomerDetails,
@@ -142,7 +141,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           slug: `rogue-${SUITE_ID}`,
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 403);
         assert.equal(err.code, "FORBIDDEN");
@@ -158,7 +157,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           slug: `rogue-2-${SUITE_ID}`,
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 403);
         return true;
@@ -174,7 +173,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           slug: createdCustomerSlug, // Exact same slug
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 409);
         assert.equal(err.code, "CONFLICT");
@@ -192,7 +191,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
       {
         fullName: "Ravi Coordinator",
         email: userEmail,
-        role: "CLIENT_ADMIN" as any,
+        role: "CLIENT_ADMIN" as UserRole,
         phone: "+91 98765 00001",
         password: "CorporatePassword123!@#",
       },
@@ -224,10 +223,10 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
         await provisionCustomerUser(SUPER_ADMIN_USER, createdCustomerId, {
           fullName: "Rogue TLI Admin Attempt",
           email: `rogue.${SUITE_ID}@acmefincorp.test`,
-          role: "TLI_SUPER_ADMIN" as any, // Disallowed role for customer organization
+          role: "TLI_SUPER_ADMIN" as UserRole, // Disallowed role for customer organization
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 400);
         assert.equal(err.code, "INVALID_ROLE");
@@ -242,10 +241,10 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
         await provisionCustomerUser(SUPER_ADMIN_USER, createdCustomerId, {
           fullName: "Duplicate User Attempt",
           email: `coordinator.${SUITE_ID}@acmefincorp.test`, // Existing email
-          role: "CLIENT_CONTRIBUTOR" as any,
+          role: "CLIENT_CONTRIBUTOR" as UserRole,
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 409);
         return true;
@@ -261,7 +260,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
       createdCustomerId,
       {
         email: invitedUserEmail,
-        role: "CLIENT_CONTRIBUTOR" as any,
+        role: "CLIENT_CONTRIBUTOR" as UserRole,
       },
       "http://localhost:3000",
       "127.0.0.1",
@@ -347,7 +346,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           password: "AnotherPassword123!@#",
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 400);
         assert.equal(err.code, "TOKEN_ALREADY_USED");
@@ -364,7 +363,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           password: "AnotherPassword123!@#",
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 400);
         return true;
@@ -421,7 +420,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
           assignedUserIds: [CLIENT_ADMIN_ALPHA.userId], // Attacker assigns user from Alpha to Acme!
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 400);
         assert.equal(err.code, "CROSS_TENANT_VIOLATION");
@@ -494,7 +493,7 @@ describe("Phase 7: Secure Customer Onboarding, User Invitations & Assessment Ass
       async () => {
         await getCustomerDetails(customerUserSession, ALPHA_TENANT_ID);
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(err instanceof OnboardingError);
         assert.equal(err.statusCode, 403);
         return true;

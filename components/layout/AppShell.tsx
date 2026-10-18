@@ -10,10 +10,13 @@ import { Topbar } from "./topbar";
 export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
   const pathname = usePathname();
+  const [navPathname, setNavPathname] = useState(pathname);
 
-  useEffect(() => {
+  // Close the drawer when the route changes (adjusting state during render, not in an effect).
+  if (navPathname !== pathname) {
+    setNavPathname(pathname);
     setNavOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!navOpen) return;

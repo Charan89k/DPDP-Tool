@@ -176,3 +176,14 @@ export function fromSqliteValue(value: unknown, kind: ColumnKind): unknown {
       return value;
   }
 }
+
+const FORBIDDEN_IN_TENANT_CONTEXT = /\b(main|temp)\s*\.|\b(ATTACH|DETACH|PRAGMA|VACUUM)\b/i;
+
+/**
+ * True when a statement explicitly names a schema (main./temp.) or uses connection-level commands.
+ * Such statements could address base tables behind the tenant policy views (for example to read
+ * masked credential columns) or alter the policy context, so they are refused in tenant contexts.
+ */
+export function bypassesPolicyLayer(sql: string): boolean {
+  return splitQuoted(sql).some((segment) => segment.isCode && FORBIDDEN_IN_TENANT_CONTEXT.test(segment.text));
+}

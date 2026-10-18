@@ -18,15 +18,12 @@ import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
 import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
-import controlsData from "../data/dpdp_controls.json" with { type: "json" };
 import { evaluateAssessmentGaps } from "../lib/gaps/engine.ts";
 import { getAssessmentGapAnalysis } from "../lib/gaps/service.ts";
-import { DEFAULT_PROVISIONAL_CONFIG } from "../lib/scoring/config.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
-import type { QuestionResponseInput, AssessorReviewInput } from "../lib/scoring/types.ts";
+import type { QuestionResponseInput } from "../lib/scoring/types.ts";
 
 const DEMO_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000002"; // Alpha Healthcare
-const DEMO_BETA_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000003"; // Beta Express
 const DEMO_CONSULTANT_USER_ID = "018f3a5b-7c8d-7e90-8000-000000000191"; // TLI Lead Consultant Demo
 const DEMO_CUSTOMER_USER_ID = "018f3a5b-7c8d-7e90-8000-000000000192"; // Alpha Customer Demo
 const ASSESSMENT_ALPHA_ID = "018f3a5b-7c8d-7e90-8000-000000000201";
@@ -332,10 +329,10 @@ describe("Phase 4: Gap Analysis Engine & Risk Prioritization Verification", () =
       async () => {
         await getAssessmentGapAnalysis(customerSession, ASSESSMENT_BETA_ID);
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("not found or access denied") ||
-            err.code === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN"
+            (err as Error & { code?: string }).code === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN"
         );
         return true;
       }

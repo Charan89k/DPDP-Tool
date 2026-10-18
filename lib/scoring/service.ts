@@ -13,7 +13,7 @@
 
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
-import { calculateAssessmentScores, normalizeQuestionCode } from "./engine.ts";
+import { calculateAssessmentScores } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "./config.ts";
 import type {
   ScoringCalculationInput,

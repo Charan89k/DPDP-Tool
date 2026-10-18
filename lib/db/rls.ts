@@ -14,7 +14,7 @@
  *    another request's identity.
  */
 
-import { executeStatement, withConnection } from "./sqlite/client.ts";
+import { executeStatement, withConnection, withDefinerRights } from "./sqlite/client.ts";
 import type { PoolClient, Queryable } from "./sqlite/client.ts";
 import { GET_CONTEXT_SQL, SET_CONTEXT_SQL } from "./sqlite/policies.ts";
 import type { SessionUser } from "../auth/types.ts";
@@ -170,12 +170,6 @@ export async function executeWithRls<T>(
  * SECURITY DEFINER function and must only wrap operations the calling service has already
  * authorized (currently: copying questionnaire responses into an authorized re-audit).
  */
-export async function runWithDefinerRights<T>(client: PoolClient, work: () => Promise<T>): Promise<T> {
-  const previous = (await client.query("SELECT bypass FROM temp._ctx;")).rows[0]?.bypass ?? 1;
-  await client.query("UPDATE temp._ctx SET bypass = 1;");
-  try {
-    return await work();
-  } finally {
-    await client.query("UPDATE temp._ctx SET bypass = $1;", [previous]);
-  }
+export async function runWithDefinerRights<T>(_client: PoolClient, work: () => Promise<T>): Promise<T> {
+  return withDefinerRights(work);
 }

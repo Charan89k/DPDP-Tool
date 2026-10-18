@@ -2,9 +2,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentSession } from "@/lib/auth/session";
 import { disableMfa } from "@/lib/auth/mfa";
 import { mfaErrorResponse } from "@/lib/http/mfa_routes";
+import { loadSessionUser } from "@/lib/auth/signin";
+import { createSessionToken, getCurrentSession, setSessionCookie } from "@/lib/auth/session";
 import { parseBody } from "@/lib/http/account_routes";
 
 const schema = z.object({
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest) {
   if ("response" in parsed) return parsed.response;
   try {
     await disableMfa(sessionUser, parsed.data.password, parsed.data.code);
+    const fresh = await loadSessionUser(sessionUser.userId);
+    if (fresh) await setSessionCookie(await createSessionToken(fresh));
     return NextResponse.json({ success: true });
   } catch (err) {
     return mfaErrorResponse(err, "MFA disable");

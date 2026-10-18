@@ -1,25 +1,16 @@
 "use client";
 
+import type { UserRole } from "@/lib/auth/types";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  Building2,
-  Users,
-  ShieldCheck,
   Plus,
   Mail,
-  User,
   CheckCircle2,
   AlertCircle,
   Copy,
-  ExternalLink,
   ArrowRight,
-  FileCheck2,
-  Calendar,
-  Lock,
   Clock,
-  ShieldAlert,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
 import { getRoleBadgeLabel, canManageTenantUsers } from "@/lib/auth/rbac";
@@ -82,7 +73,6 @@ export function CustomerDetailClient({
   invitations: initialInvitations,
   assessments,
 }: CustomerDetailClientProps) {
-  const router = useRouter();
   const [users, setUsers] = useState<UserRecord[]>(initialUsers);
   const [invitations, setInvitations] = useState<InvitationRecord[]>(initialInvitations);
   const [activeTab, setActiveTab] = useState<"users" | "invitations" | "assessments">("users");
@@ -160,7 +150,7 @@ export function CustomerDetailClient({
         setGeneratedActivationUrl(data.activationUrl);
         setActiveTab("invitations");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("User management error:", err);
       setFormError("Network error contacting server.");
     } finally {
@@ -340,7 +330,7 @@ export function CustomerDetailClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {users.map((u) => {
-                    const badge = getRoleBadgeLabel(u.role as any);
+                    const badge = getRoleBadgeLabel(u.role as UserRole);
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-4">

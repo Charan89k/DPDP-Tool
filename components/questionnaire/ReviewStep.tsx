@@ -1,19 +1,15 @@
 "use client";
 
+import { errorMessage } from "@/lib/http/errors";
 import React, { useState } from "react";
-import Link from "next/link";
 import {
   CheckCircle2,
   AlertCircle,
   Clock,
   Send,
-  Shield,
   FileText,
   XCircle,
   MinusCircle,
-  Eye,
-  Edit2,
-  FileDown,
 } from "lucide-react";
 import type {
   CanonicalQuestionnaireSection,
@@ -46,8 +42,8 @@ export function ReviewStep({
     try {
       await onSubmitAssessment();
       setSubmissionSuccess(true);
-    } catch (err: any) {
-      setSubmitError(err.message || "Failed to submit assessment.");
+    } catch (err) {
+      setSubmitError(errorMessage(err) || "Failed to submit assessment.");
     }
   };
 
@@ -310,6 +306,11 @@ export function ReviewStep({
           </button>
         )}
       </div>
+      {submitError && (
+        <p className="mt-3 text-xs font-medium text-rose-700" role="alert">
+          {submitError}
+        </p>
+      )}
     </div>
   );
 }

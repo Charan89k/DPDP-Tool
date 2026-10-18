@@ -16,7 +16,6 @@
 
 import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import { executeWithRls } from "../lib/db/rls.ts";
 import { pool } from "../lib/db/pool.ts";
 import { EvidenceVaultService } from "../lib/storage/service.ts";
@@ -60,7 +59,6 @@ const DEMO_CONSULTANT: SessionUser = {
 };
 
 const ASSESSMENT_ALPHA_ID = "018f3a5b-7c8d-7e90-8000-000000000201";
-const ASSESSMENT_BETA_ID = "018f3a5b-7c8d-7e90-8000-000000000202";
 
 // Helper to generate a valid PDF byte buffer
 function createValidPdfBuffer(contentStr = "DPDP Compliance Test Document"): Buffer {
@@ -106,13 +104,13 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
     // Undersized (< 100 bytes)
     assert.throws(
       () => validator.validateMetadata("tiny.pdf", "application/pdf", 50),
-      (err: any) => err instanceof ValidationError && err.message.includes("below minimum allowed")
+      (err: Error) => err instanceof ValidationError && err.message.includes("below minimum allowed")
     );
 
     // Oversized (> 50 MB)
     assert.throws(
       () => validator.validateMetadata("huge.pdf", "application/pdf", 55 * 1024 * 1024),
-      (err: any) => err instanceof ValidationError && err.message.includes("exceeds maximum allowed")
+      (err: Error) => err instanceof ValidationError && err.message.includes("exceeds maximum allowed")
     );
 
     // Allowed size (e.g. 500 KB)
@@ -133,7 +131,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
     fakePdfExe.write("MZ\x90\x00", 0, "binary");
     assert.throws(
       () => validator.verifyMagicBytes(fakePdfExe, "application/pdf"),
-      (err: any) => err instanceof ValidationError && err.message.includes("Detected forbidden content signature")
+      (err: Error) => err instanceof ValidationError && err.message.includes("Detected forbidden content signature")
     );
 
     // Linux ELF binary disguised as DOCX
@@ -145,7 +143,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
           fakeDocxElf,
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
-      (err: any) => err instanceof ValidationError && err.message.includes("Detected forbidden content signature")
+      (err: Error) => err instanceof ValidationError && err.message.includes("Detected forbidden content signature")
     );
   });
 
@@ -168,7 +166,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
           content: pdfBuf,
         });
       },
-      (err: any) => {
+      (err: Error) => {
         return (
           err instanceof ValidationError &&
           err.message.includes("Target assessment not found or not accessible under your security profile")
@@ -228,7 +226,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
       async () => {
         await vault.getEvidenceForDownload(BETA_CUSTOMER, createdEvidenceId);
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         (err.message.includes("Access denied") || err.message.includes("not found"))
     );
@@ -246,7 +244,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
       async () => {
         await vault.getEvidenceForDownload(DEMO_CUSTOMER, createdEvidenceId);
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError && err.message.includes("Quarantined, deleted, or unverified payloads")
     );
 
@@ -305,7 +303,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
           ]);
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err.message.includes("permission denied") ||
         err.message.includes("prevent_immutable_record_modification")
     );
@@ -317,7 +315,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
           await client.query("DELETE FROM evidence_review_history WHERE id = $1;", [reviewHistoryId]);
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err.message.includes("permission denied") ||
         err.message.includes("prevent_immutable_record_modification")
     );
@@ -335,7 +333,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
           verificationNotes: "Attempting unauthorized self-verification",
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         err.message.includes("Only authorized CloudE5 assessors can record evidence review decisions")
     );
@@ -495,7 +493,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
       async () => {
         await vault.getEvidenceForDownload(DEMO_CUSTOMER, createdEvidenceId);
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         err.message.includes("Quarantined, deleted, or unverified payloads are blocked")
     );

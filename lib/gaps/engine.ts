@@ -20,16 +20,12 @@ import controlsData from "../../data/dpdp_controls.json" with { type: "json" };
 import { normalizeQuestionCode, calculateAssessmentScores } from "../scoring/engine.ts";
 import {
   DEFAULT_PROVISIONAL_CONFIG,
-  STATUTORY_PENALTY_TIERS,
-  STATUTORY_DOMAIN_WEIGHTS,
   STATUTORY_LEGAL_DISCLAIMER,
-  UNMAPPED_QUESTION_CODES,
 } from "../scoring/config.ts";
 import type {
   ScoringModelConfig,
   QuestionResponseInput,
   AssessorReviewInput,
-  EvidenceCoverageInput,
   CanonicalResponseOption,
 } from "../scoring/types.ts";
 import type {
@@ -219,7 +215,6 @@ export function evaluateAssessmentGaps(
   let highCount = 0;
   let mediumCount = 0;
   let lowCount = 0;
-  let infoCount = 0;
   let unapprovedNaCount = 0;
   let unknownCount = 0;
   let evidenceDeficiencyCount = 0;
@@ -380,7 +375,6 @@ export function evaluateAssessmentGaps(
           unknownCount++;
           gapType = "INFORMATION_UNCERTAINTY";
           gapSeverity = "INFORMATIONAL";
-          infoCount++;
           factualObservation = `Respondent recorded posture as 'Unknown / not verified'.`;
           explanation = `Uncertainty gap on question ${normCode}. Factual discovery required to determine whether safeguards exist.`;
           remediationGuidance =

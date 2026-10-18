@@ -4,7 +4,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Key, Building2, User } from "lucide-react";
+import { Shield, Building2, User } from "lucide-react";
 import { getMfaStatus } from "@/lib/auth/mfa";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
 

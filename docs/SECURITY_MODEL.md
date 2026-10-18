@@ -44,6 +44,14 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   context can never apply to another request's statements.
 - Forensic tables (audit logs, response and review history, report snapshots) are append-only via
   triggers; finalised assessments are immutable.
+- Credential columns (`users.password_hash`, `users.mfa_secret_encrypted`,
+  `users.mfa_last_used_step`, `user_invitations.token_hash`) read as NULL in every tenant context;
+  only the system context (sign-in, MFA, account recovery) can read them.
+- Tables that only the system context uses (`auth_tokens`, `rate_limit_buckets`,
+  `mfa_recovery_codes`) are deny-all in tenant contexts.
+- In a tenant context, statements that name a schema explicitly (`main.`, `temp.`) or use
+  `ATTACH`, `DETACH`, `PRAGMA` or `VACUUM` are refused, so no query can reach the base tables behind
+  the policy views or alter the policy context.
 
 ## Accounts and sessions
 
@@ -57,16 +65,44 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   (24 hours, 1 hour and 7 days).
 - Registration, verification resend and password reset return identical responses whether or not
   an account exists. Login takes the same time for unknown and known emails.
-- Rate limiting: failed logins and account emails are limited per IP and per email address, and new
-  registrations are capped installation-wide (30 per hour), all in memory per server process.
+- Multi-factor authentication (optional, per user, under Settings → Security): TOTP (RFC 6238,
+  30-second codes, ±1 step). Secrets are encrypted with AES-256-GCM using `CLOUDE5_ENCRYPTION_KEY`
+  (32 bytes, base64) or, if unset, a key derived from `SESSION_SECRET` with HKDF; changing the key
+  source makes existing enrolments unreadable (users then sign in with a recovery code or an operator
+  runs `reset-mfa`). A used time step is recorded so a code cannot be replayed. Ten single-use
+  recovery codes are issued at enrolment and stored only as keyed HMAC-SHA-256 hashes. Sign-in is two
+  steps: the password step returns a 5-minute signed challenge in an HttpOnly, SameSite=Strict
+  cookie scoped to `/api/auth/mfa`; the session is issued only after a valid code. Code attempts are
+  limited to 5 per 15 minutes per account. Enabling or disabling MFA (disabling requires the password
+  and a current code) revokes all other sessions.
+- Rate limiting: failed logins and account emails are limited per IP and per email address, new
+  registrations are capped installation-wide (30 per hour), and MFA codes per account. Counters are
+  stored in the database (`rate_limit_buckets`, keyed by SHA-256 hashes, never raw emails or IPs), so
+  they survive restarts. Each attempt is counted atomically *before* the password or code is checked,
+  so concurrent requests cannot exceed the limit.
   Client IPs come only from headers the deployment trusts: the rightmost `X-Forwarded-For` entry
   (appended by the reverse proxy); `X-Real-IP` only with `CLOUDE5_TRUST_X_REAL_IP=true`;
   `CF-Connecting-IP` only with `TRUST_CLOUDFLARE_IP_HEADER=true`. Expose CloudE5 only through a
-  reverse proxy so clients cannot write the rightmost entry themselves.
+  reverse proxy so clients cannot write the rightmost entry themselves. If no trusted header carries
+  a valid address, all such requests share the bucket `127.0.0.1`; running without a proxy therefore
+  makes per-IP limits installation-wide (per-email limits still apply).
 - Signing out clears the session cookie on that device; "sign out everywhere" (and any password
   reset) revokes every session. `/api/auth/me` re-checks the database on each call.
 - CSRF: in addition to SameSite cookies, every state-changing API request must come from this site's
   origin.
+
+## HTTP hardening
+
+- Response headers on every route: `Content-Security-Policy` (only this origin for scripts, styles,
+  images, fonts and connections; no plugins; no framing; forms post only to this origin),
+  `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
+  `Permissions-Policy` (camera, microphone, geolocation off), `Cross-Origin-Opener-Policy:
+  same-origin`, and in production `Strict-Transport-Security` (one year, including subdomains).
+- The CSP allows `'unsafe-inline'` for scripts and styles because Next.js emits inline bootstrap
+  scripts; moving to per-request nonces would remove this. The development server also allows
+  `'unsafe-eval'` and WebSocket connections for hot reload.
+- Unexpected server errors return a generic message; details go to the server log only. Expected
+  validation and permission errors (4xx) return their specific message.
 
 ## Evidence files
 
@@ -78,12 +114,15 @@ scanner is configured by default; do not describe uploads as virus-scanned unles
 
 ## Out of scope / known limitations
 
-- Rate limits are per process and reset on restart; place CloudE5 behind a reverse proxy with its own
-  rate limiting for internet-facing deployments.
+- Application rate limits are coarse (sign-in, account email, registration, MFA). Put a reverse
+  proxy with request-rate limiting in front of internet-facing deployments as well.
 - Per-email limits mean someone who knows a user's email can temporarily (15 minutes) block that
   user's sign-in attempts or reset emails. This is the usual trade-off against password guessing.
 - Inviting or adding a user whose email already exists elsewhere reports that the email is taken,
   because email addresses are unique across the installation.
-- Multi-factor authentication is not implemented.
+- MFA is optional per user; administrators cannot yet require it for a whole organisation.
+- Issuing a final report moves the assessment to FINAL_ISSUED before the report file is written. If
+  writing the file fails, issuance reports an error and records no snapshot; issuing again retries
+  the file and snapshot (the lifecycle step is not repeated).
 - SQLite suits a single application server. Running several app servers against one database file,
   or placing the file on a network filesystem, is not supported.

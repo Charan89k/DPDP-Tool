@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         { error: err.message, code: err.code },
@@ -56,7 +56,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to initiate assessment re-audit cycle:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to initiate re-audit cycle." },
+      { error: "Failed to initiate re-audit cycle." },
       { status: 500 }
     );
   }

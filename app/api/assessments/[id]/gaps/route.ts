@@ -33,7 +33,7 @@ export async function GET(
 
     // Customer roles receive results with internal assessor notes removed (done in the service).
     return NextResponse.json(gapResult, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/assessments/[id]/gaps error:", error);
 
     if (error instanceof GapsServiceError) {

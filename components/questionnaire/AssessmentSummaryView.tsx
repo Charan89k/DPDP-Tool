@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserRole } from "@/lib/auth/types";
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
@@ -8,25 +9,16 @@ import {
   Clock,
   XCircle,
   MinusCircle,
-  Eye,
-  FileDown,
-  ArrowLeft,
-  ChevronDown,
-  Building,
-  Check,
   Search,
-  Filter,
-  Shield,
   ShieldCheck,
-  AlertTriangle,
   Paperclip,
-  User,
   AlertCircle,
   ExternalLink,
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
 import { isTliRole } from "@/lib/auth/rbac";
+import { errorMessage } from "@/lib/http/errors";
 
 interface AssessmentSummaryViewProps {
   assessmentId: string;
@@ -51,7 +43,7 @@ export function AssessmentSummaryView({
   assessmentStatus = "DATA_GATHERING",
   userRole = "CLIENT_ADMIN",
 }: AssessmentSummaryViewProps) {
-  const isConsultant = isTliRole(userRole as any);
+  const isConsultant = isTliRole(userRole as UserRole);
 
   // Real backend states
   const [loading, setLoading] = useState(true);
@@ -134,16 +126,19 @@ export function AssessmentSummaryView({
           setCurrentStatus(trData.state.status);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to load summary data:", err);
-      setError(err.message || "Failed to load assessment summary data.");
+      setError(errorMessage(err) || "Failed to load assessment summary data.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used by refresh actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSummaryData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
   // Handle Client Submission to SUBMITTED_FOR_REVIEW
@@ -170,8 +165,8 @@ export function AssessmentSummaryView({
 
       setCurrentStatus("SUBMITTED_FOR_REVIEW");
       await loadSummaryData();
-    } catch (err: any) {
-      setSubmitError(err.message || "Network error while submitting assessment.");
+    } catch (err) {
+      setSubmitError(errorMessage(err) || "Network error while submitting assessment.");
     } finally {
       setIsSubmitting(false);
     }
@@ -273,7 +268,12 @@ export function AssessmentSummaryView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={loading}>
+      {error && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">
+          {error}
+        </div>
+      )}
       {/* 1. Top Context Bar & 4-Step Stepper */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>

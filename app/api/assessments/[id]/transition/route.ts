@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         { error: err.message, code: err.code },
@@ -107,7 +107,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         {
@@ -120,7 +120,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to execute lifecycle transition:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to execute lifecycle transition." },
+      { error: "Failed to execute lifecycle transition." },
       { status: 500 }
     );
   }

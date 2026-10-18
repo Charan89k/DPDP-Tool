@@ -3,29 +3,21 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
   Save,
   Info,
-  Circle,
-  FileCheck,
 } from "lucide-react";
 import {
   getCanonicalQuestionnaireSections,
   calculateQuestionnaireProgress,
-  QUESTIONNAIRE_METADATA,
 } from "@/lib/questionnaire/data";
 import type {
   RespondentQuestionResponse,
-  CanonicalQuestionnaireSection,
   CanonicalQuestion,
 } from "@/lib/questionnaire/types";
 import { QuestionCard } from "./QuestionCard";
 import { SectionNavigator } from "./SectionNavigator";
 import { ReviewStep } from "./ReviewStep";
+import { errorMessage } from "@/lib/http/errors";
 
 interface QuestionnaireClientProps {
   assessmentId: string;
@@ -54,7 +46,6 @@ function formatDisplayDate(iso: string): string {
 
 export function QuestionnaireClient({
   assessmentId,
-  assessmentTitle,
   tenantName,
   engagementCode,
   startedAt,
@@ -153,9 +144,9 @@ export function QuestionnaireClient({
           setSaveMessage(errData.error || "Failed to save response to server");
           setTimeout(() => setSaveStatus("idle"), 4000);
         }
-      } catch (err: any) {
+      } catch (err) {
         setSaveStatus("error");
-        setSaveMessage(err.message || "Network error while saving response");
+        setSaveMessage(errorMessage(err) || "Network error while saving response");
         setTimeout(() => setSaveStatus("idle"), 4000);
       }
     },

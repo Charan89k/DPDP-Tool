@@ -32,10 +32,10 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         "X-Document-SHA256": report.sha256,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Report download error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to generate report document" },
+      { error: "Failed to generate report document" },
       { status: 500 }
     );
   }

@@ -43,7 +43,7 @@ export async function parseBody<T>(
 export async function limitAccountEmail(req: NextRequest, email: string): Promise<NextResponse | null> {
   const keys = [`ip:${resolveClientIp(req)}`, `email:${email.trim().toLowerCase()}`];
   for (const key of keys) {
-    const status = await accountEmailRateLimiter.isRateLimited(key);
+    const status = await accountEmailRateLimiter.hit(key);
     if (status.limited) {
       return NextResponse.json(
         { error: "Too many requests. Please wait a few minutes and try again." },
@@ -51,7 +51,6 @@ export async function limitAccountEmail(req: NextRequest, email: string): Promis
       );
     }
   }
-  for (const key of keys) await accountEmailRateLimiter.recordFailedAttempt(key);
   return null;
 }
 

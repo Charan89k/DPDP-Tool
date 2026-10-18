@@ -56,7 +56,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error("Scoring engine error:", error);
     return NextResponse.json(
       {
-        error: error.message || "An unexpected error occurred while calculating assessment scores.",
+        error: "An unexpected error occurred while calculating assessment scores.",
         code: "INTERNAL_SCORING_ERROR",
       },
       { status: 500 }
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error("Persist scoring snapshot error:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to persist score snapshot.",
+        error: "Failed to persist score snapshot.",
         code: "PERSIST_SNAPSHOT_ERROR",
       },
       { status: 500 }

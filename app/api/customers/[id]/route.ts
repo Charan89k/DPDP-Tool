@@ -96,7 +96,7 @@ export async function GET(
       success: true,
       ...data,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error(`Failed to fetch customer ${customerId}:`, err);
     return NextResponse.json(
       { error: "Unable to retrieve customer details." },

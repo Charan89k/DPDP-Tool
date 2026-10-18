@@ -1,7 +1,7 @@
 {
   "name": "tli-dpdp-tool",
   "version": "1.0.0",
-  "description": "TLI DPDP Compliance Gap Analysis Tool \u2014 Truth Labs International",
+  "description": "TLI DPDP Compliance Gap Analysis Tool — Truth Labs International",
   "private": true,
   "type": "module",
   "scripts": {
@@ -48,6 +48,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3"

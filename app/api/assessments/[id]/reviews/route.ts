@@ -23,6 +23,7 @@ import { executeWithRls } from "@/lib/db/rls";
 import { canReviewAssessment } from "@/lib/auth/rbac";
 import fs from "fs";
 import path from "path";
+import { errorMessage } from "@/lib/http/errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -354,7 +355,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       userRole: sessionUser.role,
       isAssessor: canReviewAssessment(sessionUser.role),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to load assessor review workspace:", err);
     return NextResponse.json(
       { error: "Failed to retrieve review workspace under tenant boundary." },
@@ -521,8 +522,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       assessmentId,
       updatedCount: result.updatedCount,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -530,7 +531,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to persist assessor review findings:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to persist review findings under RLS security boundary." },
+      { error: "Failed to persist review findings under RLS security boundary." },
       { status: 500 }
     );
   }

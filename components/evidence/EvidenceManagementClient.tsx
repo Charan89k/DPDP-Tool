@@ -8,18 +8,13 @@ import {
   UploadCloud,
   FileText,
   FileCheck,
-  FileSpreadsheet,
   Eye,
   Download,
   Trash2,
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Minimize2,
   X,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
   AlertCircle,
   Clock,
   ChevronRight,
@@ -157,7 +152,10 @@ export function EvidenceManagementClient({
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used by refresh actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvidence();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
   // Status Counts

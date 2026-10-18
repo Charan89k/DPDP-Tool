@@ -7,7 +7,6 @@
  * - docs/31_phase_3d_assessment_workflow_implementation_plan.md
  */
 
-import type { UserRole } from "../auth/types.ts";
 
 export const CANONICAL_ASSESSMENT_STATUSES = [
   "DRAFT",

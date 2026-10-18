@@ -8,10 +8,8 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
-  Clock,
   FileText,
   Search,
-  Filter,
   ArrowRight,
   ExternalLink,
   ChevronDown,
@@ -22,14 +20,9 @@ import {
   TrendingDown,
   Minus,
   Paperclip,
-  Eye,
-  MessageSquare,
-  Lock,
   Layers,
-  ArrowLeft,
-  RefreshCw,
 } from "lucide-react";
-import type { GapAnalysisOutput, ComplianceGapItem } from "@/lib/gaps/types";
+import type { GapAnalysisOutput } from "@/lib/gaps/types";
 import { isTliRole } from "@/lib/auth/rbac";
 import type { UserRole } from "@/lib/auth/types";
 
@@ -42,9 +35,8 @@ interface GapDashboardProps {
 export function GapAnalysisDashboardClient({
   initialData,
   userRole,
-  userName,
 }: GapDashboardProps) {
-  const [data, setData] = useState<GapAnalysisOutput>(initialData);
+  const data = initialData;
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
   const [sectionFilter, setSectionFilter] = useState<string>("ALL");

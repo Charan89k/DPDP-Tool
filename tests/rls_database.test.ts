@@ -245,7 +245,7 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
         0,
         "Connection reused without RLS context must see 0 rows (fail-closed)"
       );
-      await client.query("UPDATE temp._ctx SET bypass = 1;");
+      // Releasing the client always returns the connection to the system context.
     } finally {
       client.release();
     }
@@ -279,13 +279,10 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
     assert.deepEqual(betaRes, ["018f3a5b-7c8d-7e90-8000-000000000202"]);
     assert.ok(!betaRes.includes("018f3a5b-7c8d-7e90-8000-000000000201"));
 
-    // 4. Verify context on Beta query is strictly Beta's role and tenant
+    // 4. Verify the bound context is strictly Beta's tenant (observed through visible tenants)
     await executeWithRls(BETA_USER, async (client) => {
-      const roleCheck = await client.query(
-        "SELECT role, tenant_id AS tid FROM temp._ctx;"
-      );
-      assert.equal(roleCheck.rows[0].role, "CLIENT_ADMIN");
-      assert.equal(roleCheck.rows[0].tid, BETA_USER.tenantId);
+      const tenants = await client.query("SELECT id FROM tenants;");
+      assert.deepEqual(tenants.rows.map((r) => r.id), [BETA_USER.tenantId]);
     });
   });
 });

@@ -63,17 +63,6 @@ const CLIENT_ALPHA_SESSION: SessionUser = {
   isSdf: true,
 };
 
-const CLIENT_BETA_SESSION: SessionUser = {
-  userId: "018f3a5b-7c8d-7e90-8000-000000000121",
-  tenantId: "018f3a5b-7c8d-7e90-8000-000000000003",
-  email: "admin@betaexpress.example.com",
-  fullName: "Rohan Kapoor",
-  role: "CLIENT_ADMIN",
-  tenantType: "CLIENT",
-  tenantName: "Beta Express Supply Chain Solutions Ltd",
-  tenantSlug: "beta-express",
-  isSdf: false,
-};
 
 describe("Phase 5: Reporting, Approval & Remediation Management", () => {
   it("1. should compile comprehensive report data traceable to source questions and provisions", async () => {
@@ -125,6 +114,10 @@ describe("Phase 5: Reporting, Approval & Remediation Management", () => {
     const clientSec = clientData.questionFindings.find((q) => q.questionCode === "SEC-001");
     assert.ok(clientSec);
     assert.equal(clientSec.assessorFindings, null, "Client role must not see internal assessor notes");
+
+    // Guard against a vacuous pass: the consultant view of the same question carries the notes.
+    const consultantSec = consultantData.questionFindings.find((q) => q.questionCode === "SEC-001");
+    assert.ok(consultantSec?.assessorFindings, "Seeded SEC-001 must have assessor notes for consultants");
   });
 
   it("3. should generate a valid Word document (.docx) and verify OpenXML structure and contents", async () => {
@@ -174,7 +167,7 @@ print('VALID_OPENXML_DOCX')
       async () => {
         await issueOfficialFinalReport(CLIENT_ALPHA_SESSION, ASSESSMENT_ALPHA_ID);
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("Authority violation") ||
             err.message.includes("not authorized to approve or issue")
@@ -221,7 +214,7 @@ print('VALID_OPENXML_DOCX')
           );
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("FORENSIC_INTEGRITY_VIOLATION") ||
             err.message.includes("permission denied") ||
@@ -239,7 +232,7 @@ print('VALID_OPENXML_DOCX')
           await client.query(`DELETE FROM report_snapshots WHERE id = $1;`, [testSnapshotId]);
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("FORENSIC_INTEGRITY_VIOLATION") ||
             err.message.includes("permission denied") ||
@@ -301,7 +294,7 @@ print('VALID_OPENXML_DOCX')
           status: "VALIDATED_CLOSED",
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("Authority violation") ||
             err.message.includes("cannot mark remediation tasks as VALIDATED_CLOSED")
@@ -400,7 +393,7 @@ print('VALID_OPENXML_DOCX')
           targetDate: "2026-12-31",
         });
       },
-      (err: any) => {
+      (err: Error) => {
         assert.ok(
           err.message.includes("not found or access denied") ||
             err.message.includes("access denied")

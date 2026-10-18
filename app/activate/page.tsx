@@ -2,9 +2,8 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
-  Shield,
   Lock,
   Eye,
   EyeOff,
@@ -16,7 +15,6 @@ import {
 import { BrandMark } from "@/components/ui/brand-mark";
 
 function ActivateAccountForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
 
@@ -70,7 +68,7 @@ function ActivateAccountForm() {
 
       setIsSuccess(true);
       setIsLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Activation request error:", err);
       setErrorMessage("Network error connecting to activation service.");
       setIsLoading(false);

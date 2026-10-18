@@ -12,6 +12,8 @@ and receive an explainable gap register, provisional readiness metrics, and a co
 ## Features
 
 - Organisation self-registration with email verification, password reset and invitations
+- Optional two-factor sign-in (authenticator app codes and single-use recovery codes), database-backed
+  rate limits, CSRF checks and strict security headers
 - Role-based access: organisation administrators, business-unit leads, contributors and viewers;
   platform administrators, lead consultants and reviewers for assisted assessments
 - Guided questionnaire (8 areas, 60 questions) with autosave and mandatory justification for
