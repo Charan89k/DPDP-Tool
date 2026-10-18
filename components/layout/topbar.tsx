@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bell,
-  HelpCircle,
   ChevronDown,
   LogOut,
   Building,
   User as UserIcon,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
-import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
+import { getRoleBadgeLabel } from "@/lib/auth/rbac";
 
 interface TopbarProps {
   user: SessionUser;
@@ -21,6 +21,26 @@ export function Topbar({ user }: TopbarProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close the account menu on outside click or Escape
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handlePointer = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowDropdown(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [showDropdown]);
   const roleBadge = getRoleBadgeLabel(user.role);
 
   // Compute initials for avatar (e.g. "AS" for "Anita Sharma")
@@ -33,7 +53,7 @@ export function Topbar({ user }: TopbarProps) {
   };
 
   const initials = getInitials(user.fullName || "User");
-  const displayRole = isTliRole(user.role) ? "Assessor" : roleBadge.label;
+  const displayRole = roleBadge.label;
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -63,34 +83,24 @@ export function Topbar({ user }: TopbarProps) {
 
       {/* Right: Actions, Notifications & User Profile */}
       <div className="flex items-center space-x-5">
-        {/* Help Icon */}
-        <button
-          type="button"
-          title="DPDP Knowledge Base & Guidance"
-          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors"
+        {/* Tasks shortcut (counts are computed on the dashboard from live data) */}
+        <Link
+          href="/dashboard#my-tasks"
+          title="My tasks"
+          aria-label="My tasks"
+          className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/40"
         >
-          <HelpCircle className="w-5 h-5" />
-        </button>
-
-        {/* Notification Bell with Badge */}
-        <div className="relative">
-          <button
-            type="button"
-            title="Notifications (3 unread)"
-            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
-          <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border-2 border-white">
-            3
-          </span>
-        </div>
+          <Bell className="w-5 h-5" aria-hidden="true" />
+        </Link>
 
         {/* User Pill / Profile Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={menuRef}>
           <button
             type="button"
             onClick={() => setShowDropdown(!showDropdown)}
+            aria-haspopup="menu"
+            aria-expanded={showDropdown}
+            aria-label={`Account menu for ${user.fullName}`}
             className="flex items-center space-x-3 p-1 pl-1.5 pr-2.5 rounded-full hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-colors"
           >
             {/* Avatar Circle */}

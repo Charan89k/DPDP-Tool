@@ -3,7 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { isTliRole } from "@/lib/auth/rbac";
+import { canCreateAssessment, isTliRole } from "@/lib/auth/rbac";
+import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
+import {
+  bucketAssessmentStatus,
+  countAssessmentsByBucket,
+  groupResponsesByAssessment,
+  summarizePortfolioProgress,
+} from "@/lib/dashboard/metrics";
 import {
   Plus,
   ClipboardList,
@@ -11,12 +18,11 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileText,
-  Calendar,
   Users,
   BarChart3,
   ChevronRight,
-  MoreHorizontal,
-  ShieldCheck,
+  MessageSquare,
+  Wrench,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -27,56 +33,79 @@ export default async function DashboardPage() {
     redirect("/login?redirect=/dashboard");
   }
 
+  const isTli = isTliRole(sessionUser.role);
+  const sections = getCanonicalQuestionnaireSections();
+
   // Fetch real database metrics and assessments under RLS
   const dbData = await executeWithRls(sessionUser, async (client) => {
-    // 1. Status metric counts from live assessments table
-    const countsRes = await client.query(`
-      SELECT 
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE status IN ('DATA_GATHERING', 'SCOPING', 'SCOPE_LOCKED', 'UNDER_REVIEW'))::int AS in_progress,
-        COUNT(*) FILTER (WHERE status IN ('SUBMITTED_FOR_REVIEW', 'CLARIFICATION_PENDING'))::int AS pending_val,
-        COUNT(*) FILTER (WHERE status IN ('DRAFT', 'DRAFT_REPORT_GENERATED', 'REVIEW_COMPLETED'))::int AS draft,
-        COUNT(*) FILTER (WHERE status IN ('LEAD_APPROVED', 'FINAL_ISSUED', 'REMEDIATION_ACTIVE', 'ARCHIVED'))::int AS completed
-      FROM assessments;
-    `);
+    const statusRes = await client.query(`SELECT id, status FROM assessments;`);
 
-    const counts = countsRes.rows[0] || {
-      total: 0,
-      in_progress: 0,
-      pending_val: 0,
-      draft: 0,
-      completed: 0,
-    };
-
-    // 2. Fetch accessible assessments under RLS
     const listRes = await client.query(`
-      SELECT 
-        a.id, 
+      SELECT
+        a.id,
         a.engagement_code,
-        a.title, 
-        a.status, 
+        a.title,
+        a.status,
         t.name AS customer_name,
-        COALESCE(t.industry, 'IT / ITES') AS industry,
-        a.created_at AS visit_date,
-        u.full_name AS assessor_name
+        t.industry,
+        a.created_at,
+        a.target_completion_date
       FROM assessments a
       LEFT JOIN tenants t ON t.id = a.tenant_id
-      LEFT JOIN users u ON u.id = a.lead_consultant_id
+      WHERE a.status <> 'CANCELLED'
       ORDER BY a.created_at DESC
       LIMIT 10;
     `);
 
+    // Questionnaire responses for assessments still being answered or reviewed
+    const activeIds = statusRes.rows
+      .filter((row) => ["IN_PROGRESS", "PENDING_VALIDATION"].includes(bucketAssessmentStatus(row.status)))
+      .map((row) => row.id as string);
+    const progressIds = Array.from(new Set([...activeIds, ...listRes.rows.map((row) => row.id as string)]));
+    const responsesRes = progressIds.length
+      ? await client.query(
+          `SELECT assessment_id, question_code, selected_option, comments_and_justification
+           FROM assessment_questionnaire_responses
+           WHERE assessment_id = ANY($1::uuid[]);`,
+          [progressIds]
+        )
+      : { rows: [] };
+
+    const taskRes = await client.query(`
+      SELECT
+        (SELECT COUNT(*)::int FROM evidence_items
+          WHERE status = 'ACTIVE' AND deleted_at IS NULL) AS evidence_awaiting_review,
+        (SELECT COUNT(*)::int FROM clarification_threads
+          WHERE status <> 'RESOLVED') AS open_clarifications,
+        (SELECT COUNT(*)::int FROM remediation_tasks
+          WHERE status <> 'VALIDATED_CLOSED') AS open_remediations,
+        (SELECT COUNT(*)::int FROM remediation_tasks
+          WHERE status <> 'VALIDATED_CLOSED' AND target_date < CURRENT_DATE) AS overdue_remediations;
+    `);
+
     return {
-      counts,
+      statuses: statusRes.rows.map((row) => row.status as string),
+      activeIds,
       assessments: listRes.rows,
+      responseRows: responsesRes.rows,
+      tasks: taskRes.rows[0],
     };
   });
 
-  const { counts, assessments } = dbData;
+  const { assessments, tasks } = dbData;
+  const counts = countAssessmentsByBucket(dbData.statuses);
+  const responsesByAssessment = groupResponsesByAssessment(dbData.responseRows);
+  const listProgress = summarizePortfolioProgress(
+    sections,
+    assessments.map((a) => a.id),
+    responsesByAssessment
+  );
+  const activeProgress = summarizePortfolioProgress(sections, dbData.activeIds, responsesByAssessment);
+
   const totalCount = counts.total;
-  const inProgressCount = counts.in_progress;
-  const pendingValidationCount = counts.pending_val;
-  const reportDraftCount = counts.draft;
+  const inProgressCount = counts.inProgress;
+  const pendingValidationCount = counts.pendingValidation;
+  const reportDraftCount = counts.reportDraft;
   const completedCount = counts.completed;
 
   // Compute percentages for status donut chart
@@ -86,6 +115,20 @@ export default async function DashboardPage() {
   const draftPct = Math.round((reportDraftCount / denom) * 100);
   const completedPct = Math.round((completedCount / denom) * 100);
 
+  const taskItems = isTli
+    ? [
+        { label: "Evidence items awaiting review", count: tasks.evidence_awaiting_review, href: "/dashboard/evidence", icon: FileText, tone: "bg-blue-50 text-blue-600" },
+        { label: "Assessments awaiting validation", count: pendingValidationCount, href: "/dashboard/assessments", icon: AlertTriangle, tone: "bg-amber-50 text-amber-600" },
+        { label: "Open clarification threads", count: tasks.open_clarifications, href: "/dashboard/assessments", icon: MessageSquare, tone: "bg-sky-50 text-sky-600" },
+        { label: "Report drafts to finalise", count: reportDraftCount, href: "/dashboard/reports", icon: FileText, tone: "bg-purple-50 text-purple-600" },
+      ]
+    : [
+        { label: "Questions still to answer", count: activeProgress.unansweredQuestions, href: "/dashboard/assessments", icon: ClipboardList, tone: "bg-blue-50 text-blue-600" },
+        { label: "Open clarification requests", count: tasks.open_clarifications, href: "/dashboard/assessments", icon: MessageSquare, tone: "bg-sky-50 text-sky-600" },
+        { label: "Open remediation actions", count: tasks.open_remediations, href: "/dashboard/assessments", icon: Wrench, tone: "bg-purple-50 text-purple-600" },
+        { label: "Overdue remediation actions", count: tasks.overdue_remediations, href: "/dashboard/assessments", icon: AlertTriangle, tone: "bg-rose-50 text-rose-600" },
+      ];
+
   // Helper for status badge styling
   const getStatusPill = (status: string) => {
     switch (status) {
@@ -93,44 +136,35 @@ export default async function DashboardPage() {
       case "FINAL_ISSUED":
       case "REMEDIATION_ACTIVE":
       case "ARCHIVED":
-      case "FINALIZED":
-      case "COMPLETED":
         return {
           label: "Completed",
           pillClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
           barClass: "bg-emerald-500",
-          progress: 100,
         };
       case "SUBMITTED_FOR_REVIEW":
+      case "UNDER_REVIEW":
       case "CLARIFICATION_PENDING":
-      case "CONSULTANT_REVIEW":
-      case "PENDING_VALIDATION":
         return {
           label: "Pending Validation",
           pillClass: "bg-amber-50 text-amber-800 border-amber-200",
           barClass: "bg-amber-500",
-          progress: 80,
         };
       case "DRAFT_REPORT_GENERATED":
       case "REVIEW_COMPLETED":
-      case "DRAFT":
         return {
           label: "Report Draft",
           pillClass: "bg-purple-50 text-purple-700 border-purple-200",
           barClass: "bg-purple-500",
-          progress: 50,
         };
+      case "DRAFT":
       case "DATA_GATHERING":
       case "SCOPING":
       case "SCOPE_LOCKED":
-      case "UNDER_REVIEW":
-      case "IN_PROGRESS":
       default:
         return {
           label: "In Progress",
           pillClass: "bg-blue-50 text-blue-700 border-blue-200",
           barClass: "bg-[#0066FF]",
-          progress: 67,
         };
     }
   };
@@ -147,10 +181,13 @@ export default async function DashboardPage() {
               Welcome, {sessionUser.fullName}
             </h1>
             <p className="text-sm text-slate-600">
-              Manage your DPDP Gap Assessments from here.
+              {isTli
+                ? "Track your assigned DPDP assessments, reviews and reports."
+                : `Track ${sessionUser.tenantName}'s DPDP assessment progress and open actions.`}
             </p>
           </div>
 
+          {canCreateAssessment(sessionUser.role) && (
           <div className="flex items-center gap-3 self-start md:self-auto">
             <Link
               href="/dashboard/assessments/new"
@@ -160,19 +197,9 @@ export default async function DashboardPage() {
               <span>New Assessment</span>
             </Link>
           </div>
+          )}
         </div>
 
-        {/* Corporate architectural background watermark */}
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-20 pointer-events-none hidden md:flex items-center justify-end pr-8">
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-widest font-bold text-blue-900">
-              Data Protection Compliance
-            </p>
-            <p className="text-sm font-semibold text-blue-950">
-              Stronger Organizations
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* 2. Top 5 KPI Status Cards */}
@@ -290,12 +317,12 @@ export default async function DashboardPage() {
       {/* 3. Middle Row: Assessment Status Donut | Domain Completion | My Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Assessment Status Donut Card (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col">
           <h3 className="font-bold text-slate-900 text-sm mb-4">
             Assessment Status
           </h3>
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex-1 flex items-center justify-between gap-4">
             {/* SVG Donut Chart */}
             <div className="relative w-36 h-36 flex-shrink-0 flex items-center justify-center">
               <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -400,130 +427,90 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Domain-wise Completion Card (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-slate-900 text-sm">
-              Domain-wise Completion <span className="font-normal text-slate-500 text-xs">(All Assessments)</span>
-            </h3>
+        {/* Questionnaire Section Completion Card (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col">
+          <div className="mb-3">
+            <h3 className="font-bold text-slate-900 text-sm">Questionnaire Completion by Section</h3>
+            <p className="text-[11px] text-slate-500">
+              {dbData.activeIds.length > 0
+                ? `Across ${dbData.activeIds.length} active assessment${dbData.activeIds.length === 1 ? "" : "s"}`
+                : "No assessments are currently being answered"}
+            </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-medium text-slate-700">Governance & Accountability</span>
-                <div className="flex items-center space-x-2 text-slate-500">
-                  <span className="font-semibold text-slate-800">80%</span>
-                  <span>4 / 5</span>
-                </div>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: "80%" }} />
-              </div>
+          {dbData.activeIds.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-xs text-slate-400 py-6">
+              Completion appears here once an assessment is in progress.
             </div>
-
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-medium text-slate-700">Data Processing</span>
-                <div className="flex items-center space-x-2 text-slate-500">
-                  <span className="font-semibold text-slate-800">60%</span>
-                  <span>3 / 5</span>
-                </div>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-[#0066FF] h-2 rounded-full" style={{ width: "60%" }} />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <span className="font-medium text-slate-700">Security Safeguards</span>
-                <div className="flex items-center space-x-2 text-slate-500">
-                  <span className="font-semibold text-slate-800">40%</span>
-                  <span>2 / 5</span>
-                </div>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: "40%" }} />
-              </div>
-            </div>
-          </div>
+          ) : (
+            <ul className="space-y-2.5">
+              {activeProgress.sectionCompletion.map((section) => (
+                <li key={section.sectionCode}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium text-slate-700 truncate pr-2" title={section.sectionTitle}>
+                      {section.sectionTitle}
+                    </span>
+                    <span className="flex items-center space-x-2 text-slate-500 flex-shrink-0">
+                      <span className="font-semibold text-slate-800">{section.percentage}%</span>
+                      <span>
+                        {section.completed} / {section.total}
+                      </span>
+                    </span>
+                  </div>
+                  <div
+                    className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden"
+                    role="progressbar"
+                    aria-label={`${section.sectionTitle} completion`}
+                    aria-valuenow={section.percentage}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <div
+                      className={`h-1.5 rounded-full ${
+                        section.percentage >= 80
+                          ? "bg-emerald-500"
+                          : section.percentage >= 40
+                            ? "bg-[#0066FF]"
+                            : "bg-amber-500"
+                      }`}
+                      style={{ width: `${section.percentage}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* My Tasks Card (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-bold text-slate-900 text-sm">My Tasks</h3>
-            <Link href="/dashboard/assessments" className="text-xs font-semibold text-[#0066FF] hover:underline">
-              View All
-            </Link>
-          </div>
-
-          <div className="space-y-2.5">
-            <Link
-              href="/dashboard/assessments"
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-bold text-slate-900">2</span>
-                  <span className="text-xs text-slate-600 font-medium">Field Visits Scheduled</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-            </Link>
-
-            <Link
-              href="/dashboard/evidence"
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-bold text-slate-900">3</span>
-                  <span className="text-xs text-slate-600 font-medium">Evidence to Review</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-            </Link>
-
-            <Link
-              href="/dashboard/assessments"
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-bold text-slate-900">1</span>
-                  <span className="text-xs text-slate-600 font-medium">Assessments Pending Validation</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-            </Link>
-
-            <Link
-              href="/dashboard/reports"
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors group"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-bold text-slate-900">1</span>
-                  <span className="text-xs text-slate-600 font-medium">Draft Report to Finalise</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-            </Link>
-          </div>
+        <div id="my-tasks" className="lg:col-span-4 bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col">
+          <h3 className="font-bold text-slate-900 text-sm mb-2">My Tasks</h3>
+          <ul className="space-y-1.5">
+            {taskItems.map((task) => {
+              const Icon = task.icon;
+              return (
+                <li key={task.label}>
+                  <Link
+                    href={task.href}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF]/40 transition-colors group"
+                  >
+                    <span className="flex items-center space-x-3">
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${task.tone}`}>
+                        <Icon className="w-4 h-4" aria-hidden="true" />
+                      </span>
+                      <span className="flex items-center space-x-2">
+                        <span className={`text-sm font-bold ${task.count > 0 ? "text-slate-900" : "text-slate-400"}`}>
+                          {task.count}
+                        </span>
+                        <span className="text-xs text-slate-600 font-medium">{task.label}</span>
+                      </span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600" aria-hidden="true" />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </div>
 
@@ -544,13 +531,19 @@ export default async function DashboardPage() {
           <div className="overflow-x-auto">
             {assessments.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-500">
-                <p>No compliance assessments currently initialized.</p>
-                <Link
-                  href="/dashboard/assessments/new"
-                  className="mt-2 inline-flex items-center text-xs font-semibold text-[#0066FF] hover:underline"
-                >
-                  + Create New Assessment
-                </Link>
+                <p>
+                  {isTli
+                    ? "No assessments yet."
+                    : "No assessments have been assigned to your organization yet."}
+                </p>
+                {canCreateAssessment(sessionUser.role) && (
+                  <Link
+                    href="/dashboard/assessments/new"
+                    className="mt-2 inline-flex items-center text-xs font-semibold text-[#0066FF] hover:underline"
+                  >
+                    + Create New Assessment
+                  </Link>
+                )}
               </div>
             ) : (
               <table className="w-full text-left text-xs">
@@ -559,33 +552,32 @@ export default async function DashboardPage() {
                     <th className="py-3 px-4">Assessment ID</th>
                     <th className="py-3 px-4">Customer Name</th>
                     <th className="py-3 px-4">Industry</th>
-                    <th className="py-3 px-4">Visit Date</th>
+                    <th className="py-3 px-4">Created</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Progress</th>
+                    <th className="py-3 px-4">Questionnaire</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {assessments.map((item) => {
                     const statusInfo = getStatusPill(item.status);
-                    const formattedDate = item.visit_date
-                      ? new Date(item.visit_date).toLocaleDateString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "20 Aug 2024";
+                    const completion = listProgress.completionByAssessment.get(item.id) ?? 0;
+                    const formattedDate = new Date(item.created_at).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    });
 
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3.5 px-4 font-mono font-medium text-slate-900">
-                          {item.engagement_code || "DPDP-2024-006"}
+                          {item.engagement_code}
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-slate-800">
                           {item.customer_name}
                         </td>
                         <td className="py-3.5 px-4 text-slate-500">
-                          {item.industry}
+                          {item.industry || "—"}
                         </td>
                         <td className="py-3.5 px-4 text-slate-500 font-medium">
                           {formattedDate}
@@ -602,11 +594,11 @@ export default async function DashboardPage() {
                             <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
                                 className={`h-1.5 rounded-full ${statusInfo.barClass}`}
-                                style={{ width: `${statusInfo.progress}%` }}
+                                style={{ width: `${completion}%` }}
                               />
                             </div>
                             <span className="text-[11px] font-medium text-slate-600">
-                              {statusInfo.progress}%
+                              {completion}%
                             </span>
                           </div>
                         </td>
@@ -633,12 +625,6 @@ export default async function DashboardPage() {
                             >
                               Open
                             </Link>
-                            <button
-                              type="button"
-                              className="p-1 text-slate-400 hover:text-slate-600 rounded"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -656,6 +642,7 @@ export default async function DashboardPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             {/* 1. New Assessment */}
+            {canCreateAssessment(sessionUser.role) && (
             <Link
               href="/dashboard/assessments/new"
               className="p-3.5 rounded-xl border border-blue-100 bg-[#F0F7FF] hover:bg-[#E5F1FF] flex items-center justify-between group transition-colors"
@@ -675,6 +662,7 @@ export default async function DashboardPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 transition-transform" />
             </Link>
+            )}
 
             {/* 2. Manage Customers (TLI Roles) */}
             {isTliRole(sessionUser.role) && (
