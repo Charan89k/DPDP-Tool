@@ -66,6 +66,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     tenantSlug: user.tenantSlug,
     tenantType: user.tenantType,
     isSdf: user.isSdf,
+    sv: user.sessionVersion ?? 0,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(TOKEN_ISSUER)
@@ -112,6 +113,7 @@ export async function verifySessionToken(
       tenantSlug: (payload.tenantSlug as string) || "org",
       tenantType: (payload.tenantType as TenantType) || "CLIENT",
       isSdf: Boolean(payload.isSdf),
+      sessionVersion: typeof payload.sv === "number" ? payload.sv : 0,
     };
   } catch {
     // Fails closed on signature mismatch, expired token, issuer/audience mismatch, or malformed bytes

@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Native SQLite driver and SMTP client run only on the Node.js server runtime.
+  serverExternalPackages: ["better-sqlite3", "nodemailer"],
+  // Self-contained server bundle for the Docker image (node .next/standalone/server.js).
+  output: "standalone",
   async headers() {
     return [
       {

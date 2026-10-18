@@ -2,8 +2,8 @@
  * TLI DPDP Compliance Gap Analysis Tool — Platform Hardening Test Suite
  *
  * Verifies:
- * 1. Database TLS always verifies certificates for cloud targets unless explicitly overridden.
- * 2. Production never falls back to the local disposable test database URL.
+ * 1. Production requires an explicit SQLite path; missing or unmigrated databases are refused.
+ * 2. SQLite runs with foreign keys, WAL journaling and a busy timeout.
  * 3. Client IP resolution ignores client-supplied CF-Connecting-IP on Vercel.
  * 4. Signed sessions are re-verified against live account state (deactivation, role change).
  * 5. Privileged onboarding operations reject sessions of deactivated accounts.
@@ -14,7 +14,12 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { pool, resolveConnectionString, resolveSslConfig, LOCAL_TEST_DATABASE_URL } from "../lib/db/pool.ts";
+import { pool } from "../lib/db/pool.ts";
+import {
+  DatabaseConfigurationError,
+  openDatabase,
+  resolveDatabasePath,
+} from "../lib/db/sqlite/connection.ts";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError } from "../lib/db/rls.ts";
 import { resolveClientIp } from "../lib/auth/rate_limit.ts";
 import { consumePasswordVerificationTime } from "../lib/auth/passwords.ts";
@@ -44,37 +49,36 @@ function sessionFor(userId: string, role: SessionUser["role"]): SessionUser {
   };
 }
 
-describe("Platform hardening: database connection configuration", () => {
-  it("verifies TLS certificates for Neon and sslmode=require targets by default", () => {
-    const neonUrl = "postgresql://user:secret@ep-example.neon.tech/neondb";
-    assert.deepEqual(resolveSslConfig(neonUrl, {}), { rejectUnauthorized: true });
-    assert.deepEqual(
-      resolveSslConfig("postgresql://user:secret@db.example.com/app?sslmode=require", {}),
-      { rejectUnauthorized: true }
-    );
-  });
-
-  it("only disables certificate verification through the explicit escape hatch", () => {
-    const url = "postgresql://user:secret@db.example.com/app?sslmode=require";
-    assert.deepEqual(resolveSslConfig(url, { DATABASE_SSL_ALLOW_UNVERIFIED: "true" }), {
-      rejectUnauthorized: false,
-    });
-    assert.deepEqual(resolveSslConfig(url, { DATABASE_SSL_ALLOW_UNVERIFIED: "1" }), {
-      rejectUnauthorized: true,
-    });
-  });
-
-  it("does not enable TLS for the local disposable test cluster", () => {
-    assert.equal(resolveSslConfig(LOCAL_TEST_DATABASE_URL, {}), undefined);
-  });
-
-  it("never falls back to the local test database in production", () => {
-    assert.equal(resolveConnectionString({ NODE_ENV: "production" }), undefined);
-    assert.equal(resolveConnectionString({ NODE_ENV: "development" }), LOCAL_TEST_DATABASE_URL);
+describe("Platform hardening: SQLite database configuration", () => {
+  it("requires an explicit database path in production", () => {
+    assert.throws(() => resolveDatabasePath({ NODE_ENV: "production" }), DatabaseConfigurationError);
     assert.equal(
-      resolveConnectionString({ NODE_ENV: "production", DATABASE_URL: "postgresql://x@y/z" }),
-      "postgresql://x@y/z"
+      resolveDatabasePath({ NODE_ENV: "production", CLOUDE5_DATABASE_PATH: "/srv/cloude5/cloude5.db" }),
+      "/srv/cloude5/cloude5.db"
     );
+  });
+
+  it("never silently creates a database when the configured file is missing", () => {
+    const missing = path.join(os.tmpdir(), `cloude5-missing-${Date.now()}`, "cloude5.db");
+    assert.throws(() => openDatabase(missing), DatabaseConfigurationError);
+    assert.equal(fs.existsSync(missing), false, "No empty database file may be created");
+  });
+
+  it("refuses to serve requests from an unmigrated database", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cloude5-unmigrated-"));
+    const file = path.join(dir, "empty.db");
+    openDatabase(file, { create: true, withoutPolicies: true }).close();
+    assert.throws(() => openDatabase(file), /not up to date/);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("runs with foreign keys, WAL journaling and a busy timeout", async () => {
+    const pragmas = await pool.query(
+      "SELECT (SELECT foreign_keys FROM pragma_foreign_keys) AS fk, (SELECT journal_mode FROM pragma_journal_mode) AS jm, (SELECT timeout FROM pragma_busy_timeout) AS bt"
+    );
+    assert.equal(Number(pragmas.rows[0].fk), 1);
+    assert.equal(pragmas.rows[0].jm, "wal");
+    assert.ok(Number(pragmas.rows[0].bt) >= 1000);
   });
 });
 

@@ -103,7 +103,7 @@ export function resolveClientIp(
   return "127.0.0.1";
 }
 
-class MemoryRateLimiter {
+export class MemoryRateLimiter {
   private records: Map<string, RateLimitRecord> = new Map();
   private lastCleanup: number = Date.now();
 
@@ -196,3 +196,6 @@ class MemoryRateLimiter {
 }
 
 export const loginRateLimiter = new MemoryRateLimiter();
+
+/** Limits account emails (registration, verification resend, password reset) per IP and per email. */
+export const accountEmailRateLimiter = new MemoryRateLimiter();

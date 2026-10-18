@@ -25,6 +25,8 @@ export interface SessionUser {
   tenantSlug: string;
   tenantType: TenantType;
   isSdf: boolean;
+  /** users.session_version at sign-in; sessions with an older version are revoked. */
+  sessionVersion?: number;
 }
 
 export interface AuthSuccessResult {

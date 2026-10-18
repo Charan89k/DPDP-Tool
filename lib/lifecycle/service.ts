@@ -6,9 +6,9 @@
  * strictly under PostgreSQL Row-Level Security (RLS).
  */
 
-import type { PoolClient } from "pg";
+import type { PoolClient } from "../db/pool.ts";
 import crypto from "crypto";
-import { executeWithRls } from "../db/rls.ts";
+import { executeWithRls, runWithDefinerRights } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import type {
   AssessmentStatus,
@@ -683,9 +683,20 @@ export async function cloneAssessmentForReaudit(
 
     // 5. Optionally copy client responses
     if (request.copyResponses) {
-      await client.query(
-        `SELECT clone_assessment_questionnaire_responses($1, $2);`,
-        [parentAssessmentId, newAssessment.id]
+      // Authorized above (lead consultant on a finalized parent); runs with definer rights exactly
+      // as the former PostgreSQL SECURITY DEFINER clone function did.
+      await runWithDefinerRights(client, () =>
+        client.query(
+          `INSERT INTO assessment_questionnaire_responses (
+             assessment_id, tenant_id, question_code, questionnaire_version,
+             selected_option, comments_and_justification
+           )
+           SELECT $2, tenant_id, question_code, questionnaire_version,
+                  selected_option, comments_and_justification
+           FROM assessment_questionnaire_responses
+           WHERE assessment_id = $1;`,
+          [parentAssessmentId, newAssessment.id]
+        )
       );
     }
 

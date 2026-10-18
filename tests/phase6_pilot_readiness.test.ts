@@ -16,7 +16,7 @@
  * 12. PostgreSQL Row-Level Security (RLS) tenant isolation and assignment boundaries.
  */
 
-import { describe, it, after } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { pool } from "../lib/db/pool.ts";
@@ -109,6 +109,25 @@ const BETA_ADMIN_USER: SessionUser = {
 describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
   const testAssessmentId = crypto.randomUUID();
   const testEngagementCode = `PILOT-GAMMA-${Date.now()}`;
+
+  before(async () => {
+    // Dedicated Gamma pilot tenant and personas (idempotent; independent of other test files)
+    await pool.query(
+      `INSERT INTO tenants (id, type, name, slug, industry, status)
+       VALUES ($1, 'CLIENT', 'Gamma Health Test Systems', 'gamma-health-test', 'HealthTech', 'ACTIVE')
+       ON CONFLICT (id) DO NOTHING;`,
+      [PILOT_TENANT_ID]
+    );
+    await pool.query(
+      `INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, is_active)
+       VALUES
+         ($1, $2, 'admin@gammatest.local', 'synthetic_hash', 'Gamma Admin', 'CLIENT_ADMIN', TRUE),
+         ($3, $4, 'gamma.lead@truthlabs.in', 'synthetic_hash', 'Gamma Lead Consultant', 'TLI_LEAD_CONSULTANT', TRUE),
+         ($5, $4, 'gamma.reviewer@truthlabs.in', 'synthetic_hash', 'Gamma Reviewer', 'TLI_REVIEWER', TRUE)
+       ON CONFLICT (id) DO NOTHING;`,
+      [PILOT_CLIENT_ADMIN_ID, PILOT_TENANT_ID, PILOT_LEAD_CONSULTANT_ID, TLI_TENANT_ID, PILOT_REVIEWER_ID]
+    );
+  });
 
   after(async () => {
     try {

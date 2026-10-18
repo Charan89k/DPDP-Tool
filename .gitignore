@@ -60,3 +60,11 @@ storage_local/
 .local_evidence*/
 .moto/
 .neon
+
+# CloudE5 local data
+/data/
+.test-db/
+*.db
+*.db-wal
+*.db-shm
+cloude5-admin-credentials*.txt

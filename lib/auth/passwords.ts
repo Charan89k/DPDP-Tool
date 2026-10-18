@@ -87,3 +87,34 @@ export async function consumePasswordVerificationTime(plainText: string): Promis
     // Timing equalization is best-effort and never affects the authentication outcome.
   }
 }
+
+export const MIN_PASSWORD_LENGTH = 12;
+// bcrypt only uses the first 72 bytes of a password; longer inputs would be silently truncated.
+const MAX_PASSWORD_BYTES = 72;
+
+/**
+ * Password policy for self-service accounts. Returns a user-facing problem description, or null
+ * when the password is acceptable.
+ */
+export function describePasswordProblem(password: string, context: { email?: string } = {}): string | null {
+  if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH) {
+    return `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+  if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) {
+    return "Use at most 72 bytes (roughly 72 characters).";
+  }
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return "Include at least one letter and one number.";
+  }
+  if (/^(.)\1+$/.test(password)) {
+    return "Avoid repeating a single character.";
+  }
+  const localPart = context.email?.split("@")[0]?.toLowerCase();
+  if (localPart && localPart.length >= 4 && password.toLowerCase().includes(localPart)) {
+    return "Do not include your email address in your password.";
+  }
+  if (password === SYNTHETIC_SEED_PASSWORD) {
+    return "Choose a different password.";
+  }
+  return null;
+}

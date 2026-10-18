@@ -1,25 +1,22 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Row-Level Security (RLS) Execution Engine
+ * CloudE5 — Tenant-scoped execution engine.
  *
- * Enforces PostgreSQL Row-Level Security policies by binding database sessions to
- * trusted server-side user and tenant contexts.
+ * Binds a unit of database work to a verified identity so the SQLite tenant policy layer
+ * (lib/db/sqlite/policies.ts — the CloudE5 equivalent of PostgreSQL row-level security)
+ * filters every read and checks every write.
  *
- * Security Guarantees:
- * 1. Executes strictly under the least-privilege role 'dpdp_app_user' (NOSUPERUSER, NOBYPASSRLS).
- * 2. Operates within an isolated transaction boundary (BEGIN / COMMIT / ROLLBACK).
- * 3. Sets transaction-local context variables (is_local = true):
- *    - app.current_tenant_id
- *    - app.current_user_id
- *    - app.current_user_role
- * 4. Validates caller identity against current database records (users & tenants)
- *    to prevent client-side or JWT role/tenant forgery, and rejects deactivated accounts.
- * 5. Guarantees transaction rollback on error and systematically neutralizes session GUCs
- *    (RESET ALL, RESET ROLE, DISCARD TEMP) before pool release.
- * 6. Discards corrupted connections on cleanup failure to eliminate connection reuse context bleed.
+ * Guarantees:
+ * 1. Runs inside one transaction with exclusive use of the connection (BEGIN / COMMIT / ROLLBACK).
+ * 2. Re-verifies the session against current database records (account active, tenant active,
+ *    role unchanged) before any tenant data is touched, defeating forged or stale tokens.
+ * 3. Sets the policy context (tenant, user, role) only for the duration of the operation and always
+ *    restores the previous context afterwards, including on error, so no request can inherit
+ *    another request's identity.
  */
 
-import type { PoolClient } from "pg";
-import { pool } from "./pool.ts";
+import { executeStatement, withConnection } from "./sqlite/client.ts";
+import type { PoolClient, Queryable } from "./sqlite/client.ts";
+import { GET_CONTEXT_SQL, SET_CONTEXT_SQL } from "./sqlite/policies.ts";
 import type { SessionUser } from "../auth/types.ts";
 
 export class DatabaseAuthorizationError extends Error {
@@ -63,13 +60,13 @@ export interface VerifiedDatabaseIdentity {
  * Safe to call on a privileged pool client or inside an RLS-scoped transaction.
  */
 export async function assertSessionMatchesDatabase(
-  client: Pick<PoolClient, "query">,
+  client: Queryable,
   context: SessionUser
 ): Promise<VerifiedDatabaseIdentity> {
   validateSessionContext(context);
 
   const userCheck = await client.query(
-    `SELECT u.id, u.role, u.is_active, t.status AS tenant_status, t.type AS tenant_type
+    `SELECT u.id, u.role, u.is_active, u.session_version, t.status AS tenant_status, t.type AS tenant_type
      FROM users u
      JOIN tenants t ON t.id = u.tenant_id
      WHERE u.id = $1 AND u.tenant_id = $2;`,
@@ -102,6 +99,12 @@ export async function assertSessionMatchesDatabase(
     );
   }
 
+  if (Number(dbUser.session_version ?? 0) !== (context.sessionVersion ?? 0)) {
+    throw new DatabaseAuthorizationError(
+      "Database identity verification failed: this session has been signed out. Please sign in again."
+    );
+  }
+
   if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
     throw new DatabaseAuthorizationError(
       "Database identity verification failed: TLI_SUPER_ADMIN must belong to a TLI advisory tenant."
@@ -112,7 +115,7 @@ export async function assertSessionMatchesDatabase(
 }
 
 /**
- * Executes a database operation within an RLS-hardened session bound to the trusted SessionUser.
+ * Executes a database operation within a tenant-scoped session bound to the trusted SessionUser.
  * Strictly verifies identity against current database records within an isolated transaction.
  */
 export async function executeWithRls<T>(
@@ -121,69 +124,58 @@ export async function executeWithRls<T>(
 ): Promise<T> {
   validateSessionContext(context);
 
-  const client = await pool.connect();
-  let transactionActive = false;
-  let connectionTainted = false;
+  return withConnection(async (db, unit) => {
+    const run = (sql: string, params?: readonly unknown[]) => executeStatement(db, unit, sql, params);
+    const previous = db.prepare(GET_CONTEXT_SQL).get() as {
+      tenant_id: string | null;
+      user_id: string | null;
+      role: string;
+      bypass: number;
+    };
+    const restoreContext = () =>
+      db
+        .prepare("UPDATE temp._ctx SET tenant_id = ?, user_id = ?, role = ?, bypass = ?")
+        .run(previous.tenant_id, previous.user_id, previous.role, previous.bypass);
 
+    run("BEGIN;");
+    try {
+      // 1. Bind tenant and user (role stays empty until verified), then verify identity
+      db.prepare(SET_CONTEXT_SQL).run(context.tenantId, context.userId, "");
+      const dbUser = await assertSessionMatchesDatabase({ query: async (sql, params) => run(sql, params) }, context);
+
+      // 2. Bind the verified role
+      db.prepare(SET_CONTEXT_SQL).run(context.tenantId, context.userId, dbUser.role);
+
+      // 3. Execute the caller's work inside the policy-filtered sandbox
+      const client: PoolClient = {
+        query: async (sql, params) => run(sql, params),
+        release: () => undefined,
+      };
+      const result = await operation(client);
+
+      run("COMMIT;");
+      return result;
+    } catch (err) {
+      run("ROLLBACK;");
+      throw err;
+    } finally {
+      restoreContext();
+    }
+  });
+}
+
+/**
+ * Runs `work` with policy enforcement suspended inside the current tenant-scoped transaction,
+ * then restores the caller's context. This is the SQLite equivalent of a PostgreSQL
+ * SECURITY DEFINER function and must only wrap operations the calling service has already
+ * authorized (currently: copying questionnaire responses into an authorized re-audit).
+ */
+export async function runWithDefinerRights<T>(client: PoolClient, work: () => Promise<T>): Promise<T> {
+  const previous = (await client.query("SELECT bypass FROM temp._ctx;")).rows[0]?.bypass ?? 1;
+  await client.query("UPDATE temp._ctx SET bypass = 1;");
   try {
-    // 1. Begin isolated transaction
-    await client.query("BEGIN;");
-    transactionActive = true;
-
-    // 2. Switch to least-privilege runtime role strictly within this transaction
-    await client.query("SET LOCAL ROLE dpdp_app_user;");
-
-    // 3. Set transaction-local tenant context variables (is_local = true)
-    await client.query("SELECT set_config('app.current_tenant_id', $1, true);", [
-      context.tenantId,
-    ]);
-    await client.query("SELECT set_config('app.current_user_id', $1, true);", [
-      context.userId,
-    ]);
-
-    // 4. Verify identity against current database records to prevent role or tenant forgery
-    const dbUser = await assertSessionMatchesDatabase(client, context);
-
-    // 5. Bind transaction-local verified user role (is_local = true)
-    await client.query("SELECT set_config('app.current_user_role', $1, true);", [
-      dbUser.role,
-    ]);
-
-    // 6. Execute caller's query within the RLS-filtered sandbox
-    const result = await operation(client);
-
-    // 7. Commit transaction
-    await client.query("COMMIT;");
-    transactionActive = false;
-
-    return result;
-  } catch (err) {
-    if (transactionActive) {
-      try {
-        await client.query("ROLLBACK;");
-        transactionActive = false;
-      } catch (rollbackErr) {
-        console.error("Failed to rollback transaction after error:", rollbackErr);
-        connectionTainted = true;
-      }
-    }
-    throw err;
+    return await work();
   } finally {
-    // 8. Systematically neutralize context variables and reset role before pool return.
-    // Ordering: RESET ROLE first (restores pool session authority), then RESET ALL (clears GUCs), then DISCARD TEMP.
-    if (connectionTainted) {
-      client.release(new Error("Connection released in tainted state due to rollback failure"));
-    } else {
-      try {
-        await client.query("RESET ROLE;");
-        await client.query("RESET ALL;");
-        await client.query("DISCARD TEMP;");
-        client.release();
-      } catch (cleanErr) {
-        console.error("Failed to clean up RLS session context on client release:", cleanErr);
-        // Discard contaminated connection from the pool
-        client.release(cleanErr instanceof Error ? cleanErr : new Error(String(cleanErr)));
-      }
-    }
+    await client.query("UPDATE temp._ctx SET bypass = $1;", [previous]);
   }
 }

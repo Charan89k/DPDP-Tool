@@ -64,27 +64,15 @@ export async function POST(request: NextRequest) {
     const query = `
       SELECT 
         u.id, u.tenant_id, u.email, u.password_hash, u.full_name, u.role, u.is_active,
+        u.email_verified_at, u.session_version,
         t.name AS tenant_name, t.slug AS tenant_slug, t.type AS tenant_type, t.is_sdf, t.status AS tenant_status
       FROM users u
       JOIN tenants t ON t.id = u.tenant_id
       WHERE LOWER(u.email) = $1
       LIMIT 1;
     `;
-    let result = await pool.query(query, [normalizedEmail]);
-    let row = result.rows[0];
-
-    // In non-production development mode, support demo aliases if explicit records have not yet been seeded
-    if (!row && process.env.NODE_ENV !== "production") {
-      const demoAliases: Record<string, string> = {
-        "consultant.demo@tli.local": "lead.consultant@truthlabs.in",
-        "customer.demo@tli.local": "admin@alphahealth.example.com",
-      };
-      const fallbackTarget = demoAliases[normalizedEmail];
-      if (fallbackTarget) {
-        result = await pool.query(query, [fallbackTarget]);
-        row = result.rows[0];
-      }
-    }
+    const result = await pool.query(query, [normalizedEmail]);
+    const row = result.rows[0];
 
     // Uniform failure message to prevent account enumeration
     const AUTH_FAILED_MSG = "Invalid email or password.";
@@ -120,6 +108,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!row.email_verified_at) {
+      return NextResponse.json(
+        {
+          error: "Please verify your email address before signing in. Check your inbox for the verification link.",
+          code: "EMAIL_NOT_VERIFIED",
+        },
+        { status: 403 }
+      );
+    }
+
     // Reset rate limiter counters on successful login
     loginRateLimiter.resetAttempts(`ip:${clientIp}`);
     loginRateLimiter.resetAttempts(`email:${normalizedEmail}`);
@@ -135,6 +133,7 @@ export async function POST(request: NextRequest) {
       tenantSlug: row.tenant_slug,
       tenantType: row.tenant_type as TenantType,
       isSdf: Boolean(row.is_sdf),
+      sessionVersion: Number(row.session_version ?? 0),
     };
 
     // 5. Generate JWT session token

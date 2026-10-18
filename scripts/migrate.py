@@ -18,7 +18,7 @@ import subprocess
 import argparse
 from typing import List, Tuple, Dict, Optional
 
-MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "migrations")
+MIGRATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "migrations/postgres")
 
 def compute_checksum(filepath: str) -> str:
     """Computes SHA-256 checksum of file contents."""

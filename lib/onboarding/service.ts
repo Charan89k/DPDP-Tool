@@ -7,7 +7,7 @@
  */
 
 import crypto from "node:crypto";
-import type { PoolClient } from "pg";
+import type { PoolClient } from "../db/pool.ts";
 import { pool } from "../db/pool.ts";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError, executeWithRls } from "../db/rls.ts";
 import type { SessionUser, UserRole } from "../auth/types.ts";
