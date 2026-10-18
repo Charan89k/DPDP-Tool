@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, LogOut, ShieldCheck } from "lucide-react";
 import { readJsonResponse } from "@/lib/http/responses";
@@ -15,13 +16,26 @@ const secondaryButton =
 interface Props {
   mfaEnabled: boolean;
   recoveryCodesRemaining: number;
+  /** The organisation requires two-factor for every member. */
+  organizationRequiresMfa?: boolean;
+  /** Show the organisation-wide requirement control (organisation administrators). */
+  canManageOrganization?: boolean;
+  /** Required-setup mode: where to continue once two-factor is on. */
+  continueHref?: string;
 }
 
 type Setup = { qrCodeDataUrl: string; manualEntryKey: string };
 
-export function SecuritySettings({ mfaEnabled: initialEnabled, recoveryCodesRemaining }: Props) {
+export function SecuritySettings({
+  mfaEnabled: initialEnabled,
+  recoveryCodesRemaining,
+  organizationRequiresMfa = false,
+  canManageOrganization = false,
+  continueHref,
+}: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
+  const [orgRequired, setOrgRequired] = useState(organizationRequiresMfa);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -73,6 +87,19 @@ export function SecuritySettings({ mfaEnabled: initialEnabled, recoveryCodesRema
       setPassword("");
       setCode("");
       setMessage({ tone: "success", text: "Two-factor authentication is turned off." });
+    }
+  };
+
+  const setOrganizationRequirement = async (requireMfa: boolean) => {
+    const { errorMessage } = await call("/api/organization/security", { requireMfa });
+    if (!errorMessage) {
+      setOrgRequired(requireMfa);
+      setMessage({
+        tone: "success",
+        text: requireMfa
+          ? "Two-factor is now required. Members without it will be asked to set it up before continuing."
+          : "Two-factor is no longer required for your organisation.",
+      });
     }
   };
 
@@ -160,7 +187,17 @@ export function SecuritySettings({ mfaEnabled: initialEnabled, recoveryCodesRema
           </div>
         )}
 
-        {enabled && !recoveryCodes && (
+        {continueHref && enabled && (
+          <Link href={continueHref} className={`${primaryButton} inline-block`}>
+            Continue to CloudE5
+          </Link>
+        )}
+
+        {enabled && orgRequired && !recoveryCodes && (
+          <p className="text-sm text-slate-600">Your organisation requires two-factor, so it cannot be turned off.</p>
+        )}
+
+        {enabled && !orgRequired && !recoveryCodes && (
           <form onSubmit={disable} className="grid sm:grid-cols-3 gap-3 items-end p-4 rounded-lg border border-slate-200">
             <div>
               <label htmlFor="disable-password" className="block text-xs font-semibold text-slate-700 mb-1">Password</label>
@@ -176,6 +213,29 @@ export function SecuritySettings({ mfaEnabled: initialEnabled, recoveryCodesRema
           </form>
         )}
       </div>
+
+      {canManageOrganization && (
+        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Require two-factor for your organisation</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              {orgRequired
+                ? "On. Every member must use two-factor; members without it are asked to set it up when they next open CloudE5."
+                : enabled
+                  ? "Off. Members choose whether to use two-factor."
+                  : "Off. Turn on two-factor for your own account first."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOrganizationRequirement(!orgRequired)}
+            disabled={busy || (!orgRequired && !enabled)}
+            className={orgRequired ? secondaryButton : primaryButton}
+          >
+            {orgRequired ? "Stop requiring" : "Require two-factor"}
+          </button>
+        </div>
+      )}
 
       <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
         <div>

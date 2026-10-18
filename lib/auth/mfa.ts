@@ -17,7 +17,7 @@ import QRCode from "qrcode";
 import { SignJWT, jwtVerify } from "jose";
 import { pool } from "../db/pool.ts";
 import type { PoolClient } from "../db/pool.ts";
-import { assertSessionMatchesDatabase } from "../db/rls.ts";
+import { assertSessionMatchesDatabase, executeWithRls } from "../db/rls.ts";
 import { getSigningKey } from "./session.ts";
 import { verifyPassword } from "./passwords.ts";
 import { PersistentRateLimiter } from "./rate_limit.ts";
@@ -141,18 +141,26 @@ async function enforceAttemptLimit(userId: string): Promise<void> {
 
 export async function getMfaStatus(
   sessionUser: SessionUser
-): Promise<{ enabled: boolean; recoveryCodesRemaining: number }> {
+): Promise<{ enabled: boolean; recoveryCodesRemaining: number; organizationRequiresMfa: boolean }> {
   return inTransaction(async (client) => {
-    await assertSessionMatchesDatabase(client, sessionUser);
-    const user = (await client.query("SELECT mfa_enabled FROM users WHERE id = $1;", [sessionUser.userId]))
-      .rows[0];
+    await assertSessionMatchesDatabase(client, sessionUser, { allowPendingMfaSetup: true });
+    const user = (
+      await client.query(
+        "SELECT u.mfa_enabled, t.require_mfa FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.id = $1;",
+        [sessionUser.userId]
+      )
+    ).rows[0];
     const codes = (
       await client.query(
         "SELECT COUNT(*) AS n FROM mfa_recovery_codes WHERE user_id = $1 AND used_at IS NULL;",
         [sessionUser.userId]
       )
     ).rows[0];
-    return { enabled: Boolean(user?.mfa_enabled), recoveryCodesRemaining: Number(codes?.n ?? 0) };
+    return {
+      enabled: Boolean(user?.mfa_enabled),
+      recoveryCodesRemaining: Number(codes?.n ?? 0),
+      organizationRequiresMfa: Boolean(user?.require_mfa),
+    };
   });
 }
 
@@ -162,7 +170,7 @@ export async function beginMfaEnrolment(
 ): Promise<{ otpauthUri: string; qrCodeDataUrl: string; manualEntryKey: string }> {
   const secret = new OTPAuth.Secret({ size: 20 });
   await inTransaction(async (client) => {
-    await assertSessionMatchesDatabase(client, sessionUser);
+    await assertSessionMatchesDatabase(client, sessionUser, { allowPendingMfaSetup: true });
     const res = await client.query(
       `UPDATE users SET mfa_secret_encrypted = $1, mfa_last_used_step = NULL, updated_at = CURRENT_TIMESTAMP
        WHERE id = $2 AND mfa_enabled = FALSE;`,
@@ -220,7 +228,7 @@ export async function confirmMfaEnrolment(
   await enforceAttemptLimit(sessionUser.userId);
   const recoveryCodes = generateRecoveryCodes();
   const ok = await inTransaction(async (client) => {
-    await assertSessionMatchesDatabase(client, sessionUser);
+    await assertSessionMatchesDatabase(client, sessionUser, { allowPendingMfaSetup: true });
     const current = (await client.query("SELECT mfa_enabled FROM users WHERE id = $1;", [sessionUser.userId]))
       .rows[0];
     if (current?.mfa_enabled) {
@@ -265,6 +273,14 @@ export async function disableMfa(sessionUser: SessionUser, password: string, cod
     if (!user?.mfa_enabled) {
       throw new MfaError("Two-factor authentication is not enabled.", "MFA_NOT_ENABLED", 409);
     }
+    const tenant = (await client.query("SELECT require_mfa FROM tenants WHERE id = $1;", [sessionUser.tenantId])).rows[0];
+    if (tenant?.require_mfa) {
+      throw new MfaError(
+        "Your organisation requires two-factor authentication, so it cannot be turned off.",
+        "MFA_REQUIRED_BY_ORGANIZATION",
+        409
+      );
+    }
     if (!(await verifyPassword(password, user.password_hash))) return false;
     const trimmed = code.trim();
     const valid =
@@ -285,6 +301,52 @@ export async function disableMfa(sessionUser: SessionUser, password: string, cod
     throw new MfaError("Password or code is not valid.", "INVALID_CODE");
   }
   await mfaRateLimiter.resetAttempts(sessionUser.userId);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Organisation-wide requirement
+// ---------------------------------------------------------------------------------------------
+
+/** True when the user's organisation requires two-factor and the user has not enrolled yet. */
+export async function isMfaSetupRequired(sessionUser: SessionUser): Promise<boolean> {
+  return inTransaction(async (client) => {
+    const row = (
+      await client.query(
+        `SELECT t.require_mfa, u.mfa_enabled FROM users u JOIN tenants t ON t.id = u.tenant_id
+         WHERE u.id = $1 AND u.tenant_id = $2;`,
+        [sessionUser.userId, sessionUser.tenantId]
+      )
+    ).rows[0];
+    return Boolean(row?.require_mfa) && !row?.mfa_enabled;
+  });
+}
+
+/**
+ * Lets an organisation administrator require two-factor for every member. Administrators must have
+ * two-factor themselves before requiring it, so they cannot lock themselves out of the setting.
+ */
+export async function setOrganizationMfaRequirement(sessionUser: SessionUser, required: boolean): Promise<void> {
+  if (sessionUser.role !== "CLIENT_ADMIN" && sessionUser.role !== "TLI_SUPER_ADMIN") {
+    throw new MfaError("Only organisation administrators can change this setting.", "FORBIDDEN", 403);
+  }
+  await executeWithRls(sessionUser, async (client) => {
+    const me = (await client.query("SELECT mfa_enabled FROM users WHERE id = $1;", [sessionUser.userId])).rows[0];
+    if (required && !me?.mfa_enabled) {
+      throw new MfaError("Turn on two-factor for your own account before requiring it.", "MFA_NOT_ENABLED", 409);
+    }
+    const res = await client.query(
+      "UPDATE tenants SET require_mfa = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id;",
+      [required, sessionUser.tenantId]
+    );
+    if (res.rows.length === 0) {
+      throw new MfaError("Organisation not found.", "NOT_FOUND", 404);
+    }
+    await client.query(
+      `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, new_state)
+       VALUES ($1, $2, 'ORGANIZATION_MFA_REQUIREMENT_CHANGED', 'tenants', $1, $3);`,
+      [sessionUser.tenantId, sessionUser.userId, JSON.stringify({ requireMfa: required })]
+    );
+  });
 }
 
 // ---------------------------------------------------------------------------------------------

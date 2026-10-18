@@ -16,8 +16,11 @@ import {
   decryptSecret,
   disableMfa,
   getMfaStatus,
+  isMfaSetupRequired,
   MfaError,
+  setOrganizationMfaRequirement,
 } from "../lib/auth/mfa.ts";
+import { executeWithRls, MfaSetupRequiredError } from "../lib/db/rls.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 
 const ALPHA_TENANT = "018f3a5b-7c8d-7e90-8000-000000000002";
@@ -84,7 +87,7 @@ describe("CloudE5 two-factor authentication", () => {
     assert.equal(recoveryCodes.length, 10);
     assert.equal(await currentVersion(user.userId), 1, "Enabling MFA revokes existing sessions");
     user = { ...user, sessionVersion: 1 };
-    assert.deepEqual(await getMfaStatus(user), { enabled: true, recoveryCodesRemaining: 10 });
+    assert.deepEqual(await getMfaStatus(user), { enabled: true, recoveryCodesRemaining: 10, organizationRequiresMfa: false });
     const hashes = (await pool.query("SELECT code_hash FROM mfa_recovery_codes WHERE user_id = $1", [user.userId])).rows;
     assert.ok(hashes.every((h) => /^[0-9a-f]{64}$/.test(h.code_hash) && !recoveryCodes.includes(h.code_hash)));
   });
@@ -139,5 +142,71 @@ describe("CloudE5 two-factor authentication", () => {
     assert.equal(row.mfa_enabled, false);
     assert.equal(row.mfa_secret_encrypted, null);
     assert.equal((await getMfaStatus(user)).recoveryCodesRemaining, 0);
+  });
+});
+
+describe("CloudE5 organisation-wide two-factor requirement", () => {
+  const tenantId = crypto.randomUUID();
+
+  async function member(role: "CLIENT_ADMIN" | "CLIENT_CONTRIBUTOR"): Promise<SessionUser> {
+    const id = crypto.randomUUID();
+    const email = `req.${id.slice(0, 8)}@required.example.com`;
+    await pool.query(
+      `INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, is_active, email_verified_at)
+       VALUES ($1, $2, $3, $4, 'Req User', $5, TRUE, CURRENT_TIMESTAMP)`,
+      [id, tenantId, email, await hashPassword(PASSWORD), role]
+    );
+    return {
+      userId: id, email, fullName: "Req User", role, tenantId, tenantName: "Required MFA Org",
+      tenantSlug: "required-mfa-org", tenantType: "CLIENT", isSdf: false, sessionVersion: 0,
+    };
+  }
+
+  async function enrol(user: SessionUser): Promise<SessionUser> {
+    await beginMfaEnrolment(user);
+    await confirmMfaEnrolment(user, codeAt(await storedSecret(user.userId)));
+    return { ...user, sessionVersion: await currentVersion(user.userId) };
+  }
+
+  const readOwnTenant = (user: SessionUser) =>
+    executeWithRls(user, async (client) => (await client.query("SELECT id FROM tenants WHERE id = $1", [tenantId])).rows);
+
+  before(async () => {
+    await pool.query("INSERT INTO tenants (id, type, name, slug) VALUES ($1, 'CLIENT', 'Required MFA Org', $2)", [
+      tenantId,
+      `required-mfa-${tenantId.slice(0, 8)}`,
+    ]);
+  });
+
+  it("only lets an administrator who uses two-factor require it", async () => {
+    const contributor = await member("CLIENT_CONTRIBUTOR");
+    await assert.rejects(setOrganizationMfaRequirement(contributor, true), (e: unknown) => e instanceof MfaError && e.statusCode === 403);
+
+    const admin = await member("CLIENT_ADMIN");
+    await assert.rejects(setOrganizationMfaRequirement(admin, true), (e: unknown) => e instanceof MfaError && e.code === "MFA_NOT_ENABLED");
+    await setOrganizationMfaRequirement(await enrol(admin), true);
+    const row = (await pool.query("SELECT require_mfa FROM tenants WHERE id = $1", [tenantId])).rows[0];
+    assert.equal(Boolean(row.require_mfa), true);
+  });
+
+  it("blocks unenrolled members from tenant data but still lets them enrol", async () => {
+    const pending = await member("CLIENT_CONTRIBUTOR");
+    assert.equal(await isMfaSetupRequired(pending), true);
+    await assert.rejects(readOwnTenant(pending), (e: unknown) => e instanceof MfaSetupRequiredError);
+
+    const status = await getMfaStatus(pending);
+    assert.equal(status.organizationRequiresMfa, true);
+    const enrolled = await enrol(pending);
+    assert.equal(await isMfaSetupRequired(enrolled), false);
+    assert.equal((await readOwnTenant(enrolled)).length, 1);
+  });
+
+  it("refuses to turn two-factor off while the organisation requires it", async () => {
+    const enrolled = await enrol(await member("CLIENT_CONTRIBUTOR"));
+    const secret = await storedSecret(enrolled.userId);
+    await assert.rejects(
+      disableMfa(enrolled, PASSWORD, codeAt(secret, 1)),
+      (e: unknown) => e instanceof MfaError && e.code === "MFA_REQUIRED_BY_ORGANIZATION"
+    );
   });
 });

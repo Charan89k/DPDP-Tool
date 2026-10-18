@@ -45,6 +45,22 @@ export function validateSessionContext(context: SessionUser): void {
   }
 }
 
+/**
+ * The user's organisation requires two-factor authentication and the user has not enrolled yet.
+ * Only enrolment (and signing out) is allowed until they do.
+ */
+export class MfaSetupRequiredError extends DatabaseAuthorizationError {
+  constructor() {
+    super("Your organisation requires two-factor authentication. Set it up to continue.");
+    this.name = "MfaSetupRequiredError";
+  }
+}
+
+export interface SessionCheckOptions {
+  /** Allow a user who still has to enrol in required two-factor (enrolment endpoints only). */
+  allowPendingMfaSetup?: boolean;
+}
+
 export interface VerifiedDatabaseIdentity {
   id: string;
   role: string;
@@ -61,12 +77,14 @@ export interface VerifiedDatabaseIdentity {
  */
 export async function assertSessionMatchesDatabase(
   client: Queryable,
-  context: SessionUser
+  context: SessionUser,
+  options: SessionCheckOptions = {}
 ): Promise<VerifiedDatabaseIdentity> {
   validateSessionContext(context);
 
   const userCheck = await client.query(
-    `SELECT u.id, u.role, u.is_active, u.session_version, t.status AS tenant_status, t.type AS tenant_type
+    `SELECT u.id, u.role, u.is_active, u.session_version, u.mfa_enabled,
+            t.status AS tenant_status, t.type AS tenant_type, t.require_mfa
      FROM users u
      JOIN tenants t ON t.id = u.tenant_id
      WHERE u.id = $1 AND u.tenant_id = $2;`,
@@ -109,6 +127,10 @@ export async function assertSessionMatchesDatabase(
     throw new DatabaseAuthorizationError(
       "Database identity verification failed: TLI_SUPER_ADMIN must belong to the platform operator tenant."
     );
+  }
+
+  if (dbUser.require_mfa && !dbUser.mfa_enabled && !options.allowPendingMfaSetup) {
+    throw new MfaSetupRequiredError();
   }
 
   return { id: dbUser.id, role: dbUser.role, tenantType: dbUser.tenant_type };

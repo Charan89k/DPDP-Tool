@@ -29,6 +29,8 @@ case "$command" in
     ;;
   backup-all)
     stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+    # Backups contain every tenant's data: owner-only, like the database backup itself.
+    umask 077
     mkdir -p /data/backups
     $DB_CLI backup "/data/backups/cloude5-$stamp.db"
     tar -C "$(dirname "$CLOUDE5_EVIDENCE_DIR")" -czf "/data/backups/evidence-$stamp.tar.gz" "$(basename "$CLOUDE5_EVIDENCE_DIR")"

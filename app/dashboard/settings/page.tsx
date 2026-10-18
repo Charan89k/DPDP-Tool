@@ -31,7 +31,12 @@ export default async function SettingsPage() {
         </p>
       </div>
 
-      <SecuritySettings mfaEnabled={mfa.enabled} recoveryCodesRemaining={mfa.recoveryCodesRemaining} />
+      <SecuritySettings
+        mfaEnabled={mfa.enabled}
+        recoveryCodesRemaining={mfa.recoveryCodesRemaining}
+        organizationRequiresMfa={mfa.organizationRequiresMfa}
+        canManageOrganization={sessionUser.role === "CLIENT_ADMIN" || sessionUser.role === "TLI_SUPER_ADMIN"}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* User Identity Card */}
