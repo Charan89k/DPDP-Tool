@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Service
+ * CloudE5 — Deterministic Scoring Service
  *
  * Provides database-backed calculation and persistence of assessment scoring
  * strictly under PostgreSQL Row-Level Security (RLS) and trusted session context.
@@ -13,7 +13,7 @@
 
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
-import { calculateAssessmentScores, normalizeQuestionCode } from "./engine.ts";
+import { calculateAssessmentScores } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "./config.ts";
 import type {
   ScoringCalculationInput,

@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Transition API
+ * CloudE5 — Assessment Lifecycle Transition API
  *
  * GET /api/assessments/[id]/transition
  * Retrieves current lifecycle state, permitted transitions for authenticated caller,
@@ -20,6 +20,7 @@ import {
   LifecycleError,
 } from "@/lib/lifecycle";
 import type { TransitionRequest } from "@/lib/lifecycle/types";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -50,7 +51,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         { error: err.message, code: err.code },
@@ -107,7 +110,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         {
@@ -120,7 +125,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to execute lifecycle transition:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to execute lifecycle transition." },
+      { error: "Failed to execute lifecycle transition." },
       { status: 500 }
     );
   }

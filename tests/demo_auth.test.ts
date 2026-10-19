@@ -1,12 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
-import {
-  verifyPassword,
-  SYNTHETIC_SEED_HASH,
-  SYNTHETIC_SEED_PASSWORD,
-  getDemoPassword,
-} from "../lib/auth/passwords.ts";
+import { verifyPassword } from "../lib/auth/passwords.ts";
 import {
   canReviewAssessment,
   canFinalizeAssessment,
@@ -15,53 +10,8 @@ import {
 } from "../lib/auth/rbac.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 
-describe("Phase 3D: Demo Authentication & Tenant Scoping Tests", () => {
-  it("should configure and verify demo password via DEMO_USER_PASSWORD in non-production", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    const originalDemoPass = process.env.DEMO_USER_PASSWORD;
-    process.env.NODE_ENV = "development";
-
-    try {
-      // Default dev password verification
-      delete process.env.DEMO_USER_PASSWORD;
-      assert.equal(getDemoPassword(), SYNTHETIC_SEED_PASSWORD);
-      assert.equal(await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH), true);
-
-      // Custom configured demo password
-      process.env.DEMO_USER_PASSWORD = "CustomLocalSecretPass2026!";
-      assert.equal(getDemoPassword(), "CustomLocalSecretPass2026!");
-      assert.equal(await verifyPassword("CustomLocalSecretPass2026!", SYNTHETIC_SEED_HASH), true);
-      assert.equal(await verifyPassword("WrongPassword123!", SYNTHETIC_SEED_HASH), false);
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-      if (originalDemoPass !== undefined) {
-        process.env.DEMO_USER_PASSWORD = originalDemoPass;
-      } else {
-        delete process.env.DEMO_USER_PASSWORD;
-      }
-    }
-  });
-
-  it("should unconditionally reject DEMO_USER_PASSWORD in production mode", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    const originalDemoPass = process.env.DEMO_USER_PASSWORD;
-    process.env.NODE_ENV = "production";
-    process.env.DEMO_USER_PASSWORD = "CustomLocalSecretPass2026!";
-
-    try {
-      const valid = await verifyPassword("CustomLocalSecretPass2026!", SYNTHETIC_SEED_HASH);
-      assert.equal(valid, false, "Production mode must reject any synthetic seed or demo password");
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-      if (originalDemoPass !== undefined) {
-        process.env.DEMO_USER_PASSWORD = originalDemoPass;
-      } else {
-        delete process.env.DEMO_USER_PASSWORD;
-      }
-    }
-  });
-
-  it("should verify seeded demo accounts in PostgreSQL database with correct roles and tenants", async () => {
+describe("Phase 3D: Test Fixture Accounts & Tenant Scoping Tests", () => {
+  it("should verify seeded test-fixture accounts with correct roles and tenants", async () => {
     const res = await pool.query(`
       SELECT 
         u.email, u.role, u.password_hash, u.is_active,
@@ -79,14 +29,15 @@ describe("Phase 3D: Demo Authentication & Tenant Scoping Tests", () => {
     assert.equal(consultant.role, "TLI_LEAD_CONSULTANT");
     assert.equal(consultant.tenant_type, "TLI");
     assert.equal(consultant.is_active, true);
-    assert.equal(consultant.password_hash, SYNTHETIC_SEED_HASH);
+    // Fixture accounts carry a placeholder hash and can never sign in.
+    assert.equal(await verifyPassword("SyntheticTestPassword123!", consultant.password_hash), false);
 
     const customer = res.rows.find((r) => r.email === "customer.demo@tli.local");
     assert.ok(customer);
     assert.equal(customer.role, "CLIENT_ADMIN");
     assert.equal(customer.tenant_slug, "alpha-healthcare");
     assert.equal(customer.is_active, true);
-    assert.equal(customer.password_hash, SYNTHETIC_SEED_HASH);
+    assert.equal(await verifyPassword("SyntheticTestPassword123!", customer.password_hash), false);
   });
 
   it("should enforce role and permission boundaries for consultant vs customer demo personas", () => {

@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Onboarding Domain Service
+ * CloudE5 — Customer Onboarding Domain Service
  *
  * Implements server-side customer organization onboarding, user provisioning,
  * cryptographic token invitations, and assessment assignment workflows
@@ -7,12 +7,15 @@
  */
 
 import crypto from "node:crypto";
-import type { PoolClient } from "pg";
+import type { PoolClient } from "../db/pool.ts";
 import { pool } from "../db/pool.ts";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError, executeWithRls } from "../db/rls.ts";
 import type { SessionUser, UserRole } from "../auth/types.ts";
 import { canCreateCustomer, canManageTenantUsers, isTliRole, CLIENT_ROLES } from "../auth/rbac.ts";
-import { hashPassword } from "../auth/passwords.ts";
+import { describePasswordProblem, hashPassword } from "../auth/passwords.ts";
+import { issueToken } from "../auth/account.ts";
+import { publicBaseUrl, sendEmail } from "../email/mailer.ts";
+import { verificationEmail } from "../email/templates.ts";
 import type {
   CreateCustomerInput,
   ProvisionUserInput,
@@ -21,6 +24,9 @@ import type {
   CreateAssessmentWithAssignmentInput,
   CustomerDetails,
   InvitationResult,
+  CreatedAssessmentRecord,
+  CustomerRecord,
+  ProvisionedUserRecord,
 } from "./types.ts";
 
 export class OnboardingError extends Error {
@@ -33,6 +39,24 @@ export class OnboardingError extends Error {
     this.code = code;
     this.statusCode = statusCode;
   }
+}
+
+interface PendingVerification {
+  email: string;
+  fullName: string;
+  token: string;
+}
+
+/** Sends the email verification link for an administrator-created account (after commit). */
+async function sendVerificationEmail(pending: PendingVerification | null): Promise<void> {
+  if (!pending) return;
+  await sendEmail(
+    verificationEmail(
+      pending.email,
+      pending.fullName,
+      `${publicBaseUrl()}/verify-email?token=${encodeURIComponent(pending.token)}`
+    )
+  );
 }
 
 /**
@@ -58,17 +82,17 @@ async function verifyPrivilegedSession(
 }
 
 /**
- * Onboards a new customer organization (TLI Super Admin only).
+ * Onboards a new customer organization (Platform Administrator only).
  */
 export async function createCustomerOrganization(
   sessionUser: SessionUser,
   input: CreateCustomerInput,
   clientIp: string = "127.0.0.1",
-  userAgent: string = "TLI-App"
-): Promise<{ customer: any; initialUser?: any }> {
+  userAgent: string = "CloudE5-App"
+): Promise<{ customer: CustomerRecord; initialUser?: ProvisionedUserRecord }> {
   if (!canCreateCustomer(sessionUser.role)) {
     throw new OnboardingError(
-      "Unauthorized: Only TLI Super Administrators are permitted to onboard customer organizations.",
+      "Unauthorized: Only Platform Administrators are permitted to onboard customer organizations.",
       "FORBIDDEN",
       403
     );
@@ -87,6 +111,8 @@ export async function createCustomerOrganization(
       .replace(/^-|-$/g, "")
   ).slice(0, 100);
 
+  let result: { customer: CustomerRecord; initialUser?: ProvisionedUserRecord };
+  let pendingVerification: PendingVerification | null = null;
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
@@ -149,7 +175,7 @@ export async function createCustomerOrganization(
     );
 
     // 4. Optionally provision initial user
-    let createdUser: any = undefined;
+    let createdUser: ProvisionedUserRecord | undefined = undefined;
     if (input.initialUser) {
       const { fullName, email, role = "CLIENT_ADMIN", password } = input.initialUser;
 
@@ -176,8 +202,15 @@ export async function createCustomerOrganization(
         );
       }
 
-      const rawPassword = password || "TLI-" + crypto.randomBytes(8).toString("hex") + "!9";
-      const passwordHash = await hashPassword(rawPassword);
+      if (password) {
+        const passwordProblem = describePasswordProblem(password, { email });
+        if (passwordProblem) {
+          throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
+        }
+      }
+      // Without an administrator-chosen password the account gets an unusable random one; the
+      // user verifies their email and sets their own password via "Forgot password".
+      const passwordHash = await hashPassword(password || crypto.randomBytes(32).toString("base64url"));
 
       const userRes = await client.query(
         `INSERT INTO users (
@@ -187,7 +220,13 @@ export async function createCustomerOrganization(
         [newCustomer.id, email.toLowerCase().trim(), passwordHash, fullName.trim(), role]
       );
 
-      createdUser = userRes.rows[0];
+      const initialUser: ProvisionedUserRecord = userRes.rows[0];
+      createdUser = initialUser;
+      pendingVerification = {
+        email: initialUser.email,
+        fullName: initialUser.full_name,
+        token: await issueToken(client, initialUser.id, "EMAIL_VERIFICATION"),
+      };
 
       await client.query(
         `INSERT INTO audit_logs (
@@ -196,12 +235,12 @@ export async function createCustomerOrganization(
         [
           newCustomer.id,
           sessionUser.userId,
-          createdUser.id,
+          initialUser.id,
           clientIp,
           userAgent,
           JSON.stringify({
-            email: createdUser.email,
-            role: createdUser.role,
+            email: initialUser.email,
+            role: initialUser.role,
             isInitialUser: true,
           }),
         ]
@@ -209,13 +248,15 @@ export async function createCustomerOrganization(
     }
 
     await client.query("COMMIT;");
-    return { customer: newCustomer, initialUser: createdUser };
+    result = { customer: newCustomer, initialUser: createdUser };
   } catch (err) {
     await client.query("ROLLBACK;");
     throw err;
   } finally {
     client.release();
   }
+  await sendVerificationEmail(pendingVerification);
+  return result;
 }
 
 /**
@@ -234,9 +275,8 @@ export async function getCustomerDetails(
     );
   }
 
-  const client = await pool.connect();
-  try {
-    await verifyPrivilegedSession(client, sessionUser);
+  // Runs under the tenant policy layer: platform staff see only organisations they may access.
+  return executeWithRls(sessionUser, async (client) => {
     const tenantRes = await client.query(
       `SELECT id, name, slug, industry, is_sdf, dpo_name, dpo_email, status, created_at
        FROM tenants
@@ -280,9 +320,7 @@ export async function getCustomerDetails(
       invitations: invRes.rows,
       assessments: assessRes.rows,
     };
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /**
@@ -293,8 +331,8 @@ export async function provisionCustomerUser(
   customerId: string,
   input: ProvisionUserInput,
   clientIp: string = "127.0.0.1",
-  userAgent: string = "TLI-App"
-): Promise<any> {
+  userAgent: string = "CloudE5-App"
+): Promise<ProvisionedUserRecord> {
   // Permissions check
   if (!canManageTenantUsers(sessionUser.role)) {
     throw new OnboardingError("Unauthorized to manage users.", "FORBIDDEN", 403);
@@ -319,6 +357,8 @@ export async function provisionCustomerUser(
     throw new OnboardingError("A valid email address is required.", "INVALID_INPUT", 400);
   }
 
+  let newUser: ProvisionedUserRecord;
+  let pendingVerification: PendingVerification | null = null;
   const client = await pool.connect();
   try {
     await client.query("BEGIN;");
@@ -347,8 +387,13 @@ export async function provisionCustomerUser(
       );
     }
 
-    const rawPassword = input.password || "TLI-" + crypto.randomBytes(8).toString("hex") + "!9";
-    const passwordHash = await hashPassword(rawPassword);
+    if (input.password) {
+      const passwordProblem = describePasswordProblem(input.password, { email });
+      if (passwordProblem) {
+        throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
+      }
+    }
+    const passwordHash = await hashPassword(input.password || crypto.randomBytes(32).toString("base64url"));
 
     const userRes = await client.query(
       `INSERT INTO users (
@@ -358,7 +403,12 @@ export async function provisionCustomerUser(
       [customerId, email, passwordHash, input.fullName.trim(), input.role, input.phone || null]
     );
 
-    const newUser = userRes.rows[0];
+    newUser = userRes.rows[0];
+    pendingVerification = {
+      email: newUser.email,
+      fullName: newUser.full_name,
+      token: await issueToken(client, newUser.id, "EMAIL_VERIFICATION"),
+    };
 
     await client.query(
       `INSERT INTO audit_logs (
@@ -379,13 +429,14 @@ export async function provisionCustomerUser(
     );
 
     await client.query("COMMIT;");
-    return newUser;
   } catch (err) {
     await client.query("ROLLBACK;");
     throw err;
   } finally {
     client.release();
   }
+  await sendVerificationEmail(pendingVerification);
+  return newUser;
 }
 
 /**
@@ -397,7 +448,7 @@ export async function createCustomerInvitation(
   input: CreateInvitationInput,
   baseUrl: string = "http://localhost:3000",
   clientIp: string = "127.0.0.1",
-  userAgent: string = "TLI-App"
+  userAgent: string = "CloudE5-App"
 ): Promise<InvitationResult> {
   if (!canManageTenantUsers(sessionUser.role)) {
     throw new OnboardingError("Unauthorized to issue invitations.", "FORBIDDEN", 403);
@@ -525,16 +576,17 @@ export async function createCustomerInvitation(
 export async function acceptCustomerInvitation(
   input: AcceptInvitationInput,
   clientIp: string = "127.0.0.1",
-  userAgent: string = "TLI-App"
-): Promise<any> {
+  userAgent: string = "CloudE5-App"
+): Promise<ProvisionedUserRecord> {
   const token = input.token?.trim();
   if (!token || token.length < 32) {
     throw new OnboardingError("Invalid or missing activation token.", "INVALID_TOKEN", 400);
   }
 
   const password = input.password;
-  if (!password || password.length < 8) {
-    throw new OnboardingError("Password must be at least 8 characters.", "WEAK_PASSWORD", 400);
+  const passwordProblem = describePasswordProblem(password ?? "");
+  if (passwordProblem) {
+    throw new OnboardingError(`Password does not meet requirements: ${passwordProblem}`, "WEAK_PASSWORD", 400);
   }
 
   const fullName = input.fullName?.trim();
@@ -607,22 +659,17 @@ export async function acceptCustomerInvitation(
       [invitation.email]
     );
 
-    let createdUser: any;
+    let createdUser: ProvisionedUserRecord;
     if (userCheck.rows.length > 0) {
-      // Activate existing user if pre-created
-      const updateRes = await client.query(
-        `UPDATE users
-         SET full_name = $1, password_hash = $2, is_active = TRUE, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $3
-         RETURNING id, tenant_id, email, full_name, role, is_active;`,
-        [fullName, passwordHash, userCheck.rows[0].id]
-      );
-      createdUser = updateRes.rows[0];
+      // Never take over an existing account through an invitation (matches the accept route).
+      await client.query("UPDATE user_invitations SET status = 'REVOKED' WHERE id = $1;", [invitation.id]);
+      await client.query("COMMIT;");
+      throw new OnboardingError("An account with this email address already exists.", "ACCOUNT_EXISTS", 409);
     } else {
       const insertRes = await client.query(
         `INSERT INTO users (
-          tenant_id, email, password_hash, full_name, role, is_active
-        ) VALUES ($1, $2, $3, $4, $5, TRUE)
+          tenant_id, email, password_hash, full_name, role, is_active, email_verified_at
+        ) VALUES ($1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP)
         RETURNING id, tenant_id, email, full_name, role, is_active, created_at;`,
         [invitation.tenant_id, invitation.email.toLowerCase(), passwordHash, fullName, invitation.role]
       );
@@ -673,11 +720,11 @@ export async function createCustomerAssessment(
   sessionUser: SessionUser,
   input: CreateAssessmentWithAssignmentInput,
   clientIp: string = "127.0.0.1",
-  userAgent: string = "TLI-App"
-): Promise<any> {
+  userAgent: string = "CloudE5-App"
+): Promise<CreatedAssessmentRecord> {
   if (!isTliRole(sessionUser.role)) {
     throw new OnboardingError(
-      "Only authorized TLI personnel can initialize DPDP compliance assessments.",
+      "Only authorized CloudE5 consultants can initialize DPDP compliance assessments.",
       "FORBIDDEN",
       403
     );
@@ -705,11 +752,26 @@ export async function createCustomerAssessment(
     const frameworkVersionId = fwRes.rows[0].id;
     const scoringModelId = smRes.rows[0].id;
 
-    // 2. Validate tenant exists
-    const tRes = await client.query("SELECT id, name FROM tenants WHERE id = $1;", [tenantId]);
+    // 2. Validate the customer organisation and the engagement lead
+    const tRes = await client.query(
+      "SELECT id, name FROM tenants WHERE id = $1 AND type = 'CLIENT' AND status = 'ACTIVE';",
+      [tenantId]
+    );
     if (tRes.rows.length === 0) {
       await client.query("ROLLBACK;");
       throw new OnboardingError("Customer organisation not found.", "NOT_FOUND", 404);
+    }
+    if (sessionUser.role !== "TLI_SUPER_ADMIN" && leadConsultantId !== sessionUser.userId) {
+      await client.query("ROLLBACK;");
+      throw new OnboardingError("Only a platform administrator can assign another engagement lead.", "FORBIDDEN", 403);
+    }
+    const leadRes = await client.query(
+      "SELECT id FROM users WHERE id = $1 AND is_active = TRUE AND role IN ('TLI_LEAD_CONSULTANT', 'TLI_SUPER_ADMIN');",
+      [leadConsultantId]
+    );
+    if (leadRes.rows.length === 0) {
+      await client.query("ROLLBACK;");
+      throw new OnboardingError("The engagement lead must be an active lead consultant.", "INVALID_INPUT", 400);
     }
 
     // 3. Create assessment

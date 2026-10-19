@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Wrench,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,15 @@ export default async function DashboardPage() {
   const sessionUser = await getCurrentSession();
   if (!sessionUser) {
     redirect("/login?redirect=/dashboard");
+  }
+
+  if (sessionUser.role === "CLIENT_ADMIN") {
+    const onboarding = await executeWithRls(sessionUser, async (client) =>
+      (await client.query("SELECT onboarding_completed_at FROM tenants WHERE id = $1;", [sessionUser.tenantId])).rows[0]
+    );
+    if (onboarding && !onboarding.onboarding_completed_at) {
+      redirect("/dashboard/onboarding");
+    }
   }
 
   const isTli = isTliRole(sessionUser.role);
@@ -562,11 +572,7 @@ export default async function DashboardPage() {
                   {assessments.map((item) => {
                     const statusInfo = getStatusPill(item.status);
                     const completion = listProgress.completionByAssessment.get(item.id) ?? 0;
-                    const formattedDate = new Date(item.created_at).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    });
+                    const formattedDate = formatDate(item.created_at);
 
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">

@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Gap Analysis Engine
+ * CloudE5 — Deterministic Gap Analysis Engine
  *
  * Pure, side-effect-free calculation engine for compliance gap discovery,
  * explainable risk factor prioritization, and statutory domain rollups.
@@ -20,16 +20,12 @@ import controlsData from "../../data/dpdp_controls.json" with { type: "json" };
 import { normalizeQuestionCode, calculateAssessmentScores } from "../scoring/engine.ts";
 import {
   DEFAULT_PROVISIONAL_CONFIG,
-  STATUTORY_PENALTY_TIERS,
-  STATUTORY_DOMAIN_WEIGHTS,
   STATUTORY_LEGAL_DISCLAIMER,
-  UNMAPPED_QUESTION_CODES,
 } from "../scoring/config.ts";
 import type {
   ScoringModelConfig,
   QuestionResponseInput,
   AssessorReviewInput,
-  EvidenceCoverageInput,
   CanonicalResponseOption,
 } from "../scoring/types.ts";
 import type {
@@ -219,7 +215,6 @@ export function evaluateAssessmentGaps(
   let highCount = 0;
   let mediumCount = 0;
   let lowCount = 0;
-  let infoCount = 0;
   let unapprovedNaCount = 0;
   let unknownCount = 0;
   let evidenceDeficiencyCount = 0;
@@ -380,7 +375,6 @@ export function evaluateAssessmentGaps(
           unknownCount++;
           gapType = "INFORMATION_UNCERTAINTY";
           gapSeverity = "INFORMATIONAL";
-          infoCount++;
           factualObservation = `Respondent recorded posture as 'Unknown / not verified'.`;
           explanation = `Uncertainty gap on question ${normCode}. Factual discovery required to determine whether safeguards exist.`;
           remediationGuidance =
@@ -411,7 +405,7 @@ export function evaluateAssessmentGaps(
             factualObservation = `Selected 'Not applicable' with written justification awaiting authorized assessor verification.`;
             explanation = `Provisional exclusion on question ${normCode}. Awaiting lead consultant verification under DEC-01. Remains in applicable scope until reviewed.`;
             remediationGuidance =
-              "Submit exclusion rationale and supporting evidence to assigned TLI lead consultant for validation.";
+              "Submit exclusion rationale and supporting evidence to assigned lead consultant for validation.";
           }
           break;
 
@@ -439,7 +433,7 @@ export function evaluateAssessmentGaps(
             gapType = "EVIDENCE_DEFICIENCY";
             gapSeverity = "HIGH_DEFICIT";
             highCount++;
-            factualObservation = `Evidence submitted for 'Implemented' status was inspected and rejected by TLI assessor.`;
+            factualObservation = `Evidence submitted for 'Implemented' status was inspected and rejected by CloudE5 assessor.`;
             explanation =
               rev?.evidenceDeficiencyNotes ||
               `Assessor rejected attached evidence due to deficiencies or insufficient proof.`;
@@ -702,7 +696,7 @@ export function evaluateAssessmentGaps(
     assessmentTitle: input.assessmentTitle || "DPDP Compliance Gap Assessment",
     assessmentStatus: input.assessmentStatus || "IN_PROGRESS",
     frameworkName: input.frameworkName || "DPDPA-2023-V1.0",
-    leadConsultantName: input.leadConsultantName || "TLI Advisory Lead",
+    leadConsultantName: input.leadConsultantName || "CloudE5 Lead",
     isSdf: Boolean(input.isSdf),
     summary,
     gaps: allGaps,
@@ -712,7 +706,7 @@ export function evaluateAssessmentGaps(
     trendComparison,
     governanceNotes: [
       "1. Factual Gap Separation: Observed deficiencies reflect respondent declarations and evidence state, not judicial compliance determinations.",
-      "2. Provisional Methodology Notice: Scoring values and weights operate under SCORING-V1-PROVISIONAL pending formal TLI methodology approval (DEC-08, DEC-09).",
+      "2. Provisional Methodology Notice: Scoring values and weights operate under SCORING-V1-PROVISIONAL pending formal methodology approval (DEC-08, DEC-09).",
       "3. Statutory Exposure Limits: Penalty tier amounts represent maximum statutory limits under Section 33(1), subject to Section 28(2) mitigation factors.",
       "4. Unresolved Mappings: Questions GOV-005, GOV-006, GOV-008, APP-006 remain isolated from statutory controls pending official Excel build sheet mappings.",
     ],

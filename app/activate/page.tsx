@@ -2,9 +2,8 @@
 
 import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
-  Shield,
   Lock,
   Eye,
   EyeOff,
@@ -13,10 +12,9 @@ import {
   ArrowRight,
   User,
 } from "lucide-react";
-import { TliBrandMark } from "@/components/ui/tli-brand-mark";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 function ActivateAccountForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
 
@@ -70,7 +68,7 @@ function ActivateAccountForm() {
 
       setIsSuccess(true);
       setIsLoading(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Activation request error:", err);
       setErrorMessage("Network error connecting to activation service.");
       setIsLoading(false);
@@ -81,7 +79,7 @@ function ActivateAccountForm() {
     <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center p-4 sm:p-8">
       <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-8 sm:p-10">
         <div className="flex flex-col items-center text-center mb-6">
-          <TliBrandMark variant="light" size="md" className="mb-4" />
+          <BrandMark variant="light" size="md" className="mb-4" />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Activate Your Account
           </h1>
@@ -110,7 +108,7 @@ function ActivateAccountForm() {
                 Account Activated Successfully!
               </h2>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Your corporate account has been provisioned under your organization's tenant workspace.
+                Your corporate account has been provisioned under your organization&apos;s tenant workspace.
               </p>
             </div>
             <Link

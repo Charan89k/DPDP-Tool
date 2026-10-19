@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Invitation Acceptance & Account Activation API
+ * CloudE5 — Invitation Acceptance & Account Activation API
  *
  * POST /api/auth/invitations/accept
  * Verifies the single-use token, validates expiration, creates the user account,
@@ -10,12 +10,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { pool } from "@/lib/db/pool";
-import { hashPassword } from "@/lib/auth/passwords";
+import { describePasswordProblem, hashPassword } from "@/lib/auth/passwords";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 
 const acceptInvitationSchema = z.object({
   token: z.string().min(16, "Invalid token format."),
-  password: z.string().min(8, "Password must be at least 8 characters long."),
+  password: z.string().min(1, "Choose a password.").max(200),
   fullName: z.string().min(2).optional(),
 });
 
@@ -35,8 +35,15 @@ export async function POST(req: NextRequest) {
     }
 
     const { token, password, fullName: nameOverride } = parseResult.data;
+    const passwordProblem = describePasswordProblem(password);
+    if (passwordProblem) {
+      return NextResponse.json(
+        { error: `Password does not meet requirements: ${passwordProblem}`, details: { password: [passwordProblem] } },
+        { status: 400 }
+      );
+    }
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     // Compute SHA-256 hash of the provided raw token
     const tokenHash = crypto.createHash("sha256").update(token.trim()).digest("hex");
@@ -110,9 +117,9 @@ export async function POST(req: NextRequest) {
       // Insert new user
       const insertUserSql = `
         INSERT INTO users (
-          tenant_id, email, password_hash, full_name, role, is_active
+          tenant_id, email, password_hash, full_name, role, is_active, email_verified_at
         ) VALUES (
-          $1, $2, $3, $4, $5, TRUE
+          $1, $2, $3, $4, $5, TRUE, CURRENT_TIMESTAMP
         )
         RETURNING id, email, full_name, role, tenant_id;
       `;
@@ -171,10 +178,10 @@ export async function POST(req: NextRequest) {
     } finally {
       client.release();
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error("Failed to accept invitation:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to process invitation acceptance." },
+      { error: "Failed to process invitation acceptance." },
       { status: 500 }
     );
   }

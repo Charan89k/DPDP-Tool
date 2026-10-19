@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Role-Based Access Control (RBAC) Matrix
+ * CloudE5 — Role-Based Access Control (RBAC) Matrix
  *
  * Implements strict, server-side permission rules for the 7 defined application roles.
  * Denies access by default.
@@ -55,8 +55,12 @@ export function canFinalizeAssessment(role: UserRole): boolean {
   return role === "TLI_SUPER_ADMIN" || role === "TLI_LEAD_CONSULTANT";
 }
 
+/**
+ * Platform consultants create assessments for any customer they manage; a customer administrator
+ * may start a self-assessment for their own organisation only (enforced by the API).
+ */
 export function canCreateAssessment(role: UserRole): boolean {
-  return role === "TLI_SUPER_ADMIN" || role === "TLI_LEAD_CONSULTANT";
+  return role === "TLI_SUPER_ADMIN" || role === "TLI_LEAD_CONSULTANT" || role === "CLIENT_ADMIN";
 }
 
 export function canManageTenantUsers(role: UserRole): boolean {
@@ -81,7 +85,7 @@ export function getRoleBadgeLabel(role: UserRole): {
 } {
   switch (role) {
     case "TLI_SUPER_ADMIN":
-      return { label: "TLI Super Admin", variant: "indigo" };
+      return { label: "Platform Administrator", variant: "indigo" };
     case "TLI_LEAD_CONSULTANT":
       return { label: "Lead Consultant", variant: "blue" };
     case "TLI_REVIEWER":

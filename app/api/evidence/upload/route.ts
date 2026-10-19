@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Evidence Upload API Endpoint
+ * CloudE5 — Evidence Upload API Endpoint
  *
  * POST /api/evidence/upload
  * Multi-tenant, server-authorized evidence upload endpoint writing directly to
@@ -12,6 +12,8 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { canUploadEvidence } from "@/lib/auth/rbac";
 import { EvidenceVaultService } from "@/lib/storage/service";
 import { ValidationError } from "@/lib/storage/validation";
+import { ScannerUnavailableError } from "@/lib/storage/malware_scanner";
+import type { UploadedEvidence } from "@/lib/storage/upload_response";
 import { StorageConfigurationError, STORAGE_NOT_CONFIGURED_MESSAGE } from "@/lib/storage/object_store";
 import { DatabaseAuthorizationError } from "@/lib/db/rls";
 
@@ -94,16 +96,23 @@ export async function POST(req: NextRequest) {
           sha256: record.sha256,
           status: record.status,
           uploadedAt: record.createdAt,
-          questionCode: record.questionCode,
-          evidenceCategory: record.evidenceCategory,
-          description: record.description,
-        },
+          questionCode: record.questionCode ?? null,
+          evidenceCategory: record.evidenceCategory ?? null,
+          description: record.description ?? null,
+        } satisfies UploadedEvidence,
       },
       { status: 201 }
     );
   } catch (err: unknown) {
     if (err instanceof StorageConfigurationError) {
       return NextResponse.json({ error: STORAGE_NOT_CONFIGURED_MESSAGE }, { status: 503 });
+    }
+    if (err instanceof ScannerUnavailableError) {
+      console.error("Evidence upload refused:", err.message);
+      return NextResponse.json(
+        { error: "The virus scanner is unavailable, so uploads are paused. Please try again shortly." },
+        { status: 503 }
+      );
     }
     if (err instanceof DatabaseAuthorizationError) {
       return NextResponse.json(

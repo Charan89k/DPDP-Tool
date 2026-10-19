@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Every page is rendered per request so it can carry that request's CSP script nonce (proxy.ts).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
-  title: "TLI DPDP Compliance Gap Analysis Tool",
+  title: {
+    default: "CloudE5 — DPDP compliance self-assessment",
+    template: "%s · CloudE5",
+  },
   description:
-    "Truth Labs International — Multi-tenant compliance assessment platform evaluating corporate preparedness against India's Digital Personal Data Protection Act, 2023.",
+    "CloudE5 helps organisations assess their readiness for India's Digital Personal Data Protection Act, 2023, manage supporting evidence, and plan corrective actions.",
+  applicationName: "CloudE5",
 };
 
 export default function RootLayout({

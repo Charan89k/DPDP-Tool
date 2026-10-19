@@ -1,14 +1,14 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Service
+ * CloudE5 — Assessment Lifecycle Service
  *
  * Implements server-side lifecycle transitions, precondition guards,
  * role authorization, audit logging, and immutable snapshot enforcement
  * strictly under PostgreSQL Row-Level Security (RLS).
  */
 
-import type { PoolClient } from "pg";
+import type { PoolClient } from "../db/pool.ts";
 import crypto from "crypto";
-import { executeWithRls } from "../db/rls.ts";
+import { executeWithRls, runWithDefinerRights } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import type {
   AssessmentStatus,
@@ -24,9 +24,6 @@ import {
   getAllowedTransitionsForRole,
   isAssessmentImmutable,
 } from "./rules.ts";
-import { calculateAssessmentScores } from "../scoring/engine.ts";
-import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
-import type { QuestionResponseInput, AssessorReviewInput } from "../scoring/types.ts";
 
 export class LifecycleError extends Error {
   code: string;
@@ -125,12 +122,21 @@ export async function getAssessmentLifecycleState(
   });
 }
 
+/** The assessments columns the transition guards read. */
+export interface TransitionAssessmentRow {
+  id: string;
+  status: string;
+  engagement_code: string;
+  lead_consultant_id: string | null;
+  is_partial_assessment?: boolean | null;
+}
+
 /**
  * Validates domain preconditions and role authorization for an assessment state transition.
  */
 export async function validateTransitionGuards(
   client: PoolClient,
-  assessment: any,
+  assessment: TransitionAssessmentRow,
   from: AssessmentStatus,
   to: AssessmentStatus,
   sessionUser: SessionUser,
@@ -335,7 +341,7 @@ export async function validateTransitionGuards(
       sessionUser.role !== "TLI_SUPER_ADMIN"
     ) {
       errors.push(
-        "Authority violation: Only the assigned TLI Lead Consultant or Super Administrator can grant formal approval (DEC-01)."
+        "Authority violation: Only the assigned Lead Consultant or Super Administrator can grant formal approval (DEC-01)."
       );
     }
   }
@@ -347,7 +353,7 @@ export async function validateTransitionGuards(
       sessionUser.role !== "TLI_SUPER_ADMIN"
     ) {
       errors.push(
-        "Authority violation: Only TLI Lead Consultant or Super Administrator can issue the final assessment report."
+        "Authority violation: Only Lead Consultant or Super Administrator can issue the final assessment report."
       );
     }
   }
@@ -602,13 +608,13 @@ export async function cloneAssessmentForReaudit(
   parentAssessmentId: string,
   request: ReauditCloneRequest = {}
 ): Promise<AssessmentStateSummary> {
-  // Authorization: Only TLI Lead Consultant or Super Admin can initiate re-audit
+  // Authorization: Only Lead Consultant or Super Admin can initiate re-audit
   if (
     sessionUser.role !== "TLI_LEAD_CONSULTANT" &&
     sessionUser.role !== "TLI_SUPER_ADMIN"
   ) {
     throw new LifecycleError(
-      "Insufficient permissions: Only TLI Lead Consultants or Super Administrators can initiate re-audit cycles.",
+      "Insufficient permissions: Only Lead Consultants or Super Administrators can initiate re-audit cycles.",
       "UNAUTHORIZED",
       403
     );
@@ -636,10 +642,18 @@ export async function cloneAssessmentForReaudit(
       );
     }
 
-    // 2. Generate new engagement code
+    // 2. Generate new engagement code (same format rules as assessment creation; it is used in
+    //    storage keys and download filenames)
     const newEngagementCode =
-      request.engagementCode ||
+      request.engagementCode?.trim() ||
       `${parent.engagement_code}-REAUDIT-${Date.now().toString().slice(-4)}`;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$/.test(newEngagementCode) || newEngagementCode.includes("..")) {
+      throw new LifecycleError(
+        "Engagement code may only contain letters, numbers, '.', '_' and '-' (3-100 characters).",
+        "INVALID_ENGAGEMENT_CODE",
+        400
+      );
+    }
 
     const newTitle =
       request.title ||
@@ -683,9 +697,20 @@ export async function cloneAssessmentForReaudit(
 
     // 5. Optionally copy client responses
     if (request.copyResponses) {
-      await client.query(
-        `SELECT clone_assessment_questionnaire_responses($1, $2);`,
-        [parentAssessmentId, newAssessment.id]
+      // Authorized above (lead consultant on a finalized parent); runs with definer rights exactly
+      // as the former PostgreSQL SECURITY DEFINER clone function did.
+      await runWithDefinerRights(client, () =>
+        client.query(
+          `INSERT INTO assessment_questionnaire_responses (
+             assessment_id, tenant_id, question_code, questionnaire_version,
+             selected_option, comments_and_justification
+           )
+           SELECT $2, tenant_id, question_code, questionnaire_version,
+                  selected_option, comments_and_justification
+           FROM assessment_questionnaire_responses
+           WHERE assessment_id = $1;`,
+          [parentAssessmentId, newAssessment.id]
+        )
       );
     }
 

@@ -7,13 +7,10 @@ import crypto from "node:crypto";
 import {
   getCanonicalQuestionnaireSections,
   calculateQuestionnaireProgress,
-  CANONICAL_DOMAINS,
-  STANDARD_MCQ_OPTIONS,
 } from "../lib/questionnaire/data.ts";
 import type { QuestionResponse } from "../lib/questionnaire/types.ts";
 import {
   FileValidator,
-  ValidationError,
 } from "../lib/storage/validation.ts";
 import {
   LocalStorageAdapter,

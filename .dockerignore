@@ -1,0 +1,16 @@
+.git
+.next
+node_modules
+.env
+.env.*
+!.env.example
+.cloude5
+.test-db
+.local_evidence*
+*.db
+*.db-wal
+*.db-shm
+cloude5-admin-credentials*.txt
+.credentials*
+coverage
+test-results

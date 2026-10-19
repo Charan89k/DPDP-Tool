@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { generateReportDocument } from "@/lib/reports";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         "X-Document-SHA256": report.sha256,
       },
     });
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Report download error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to generate report document" },
+      { error: "Failed to generate report document" },
       { status: 500 }
     );
   }

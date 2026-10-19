@@ -240,10 +240,11 @@ describe("Phase 3D: Post-Login Workspace Flow & Live RLS Enforcement", () => {
       );
 
       // Now query as consultant under RLS
-      await rawClient.query("SET LOCAL ROLE dpdp_app_user;");
-      await rawClient.query("SELECT set_config('app.current_tenant_id', $1, true);", [DEMO_CONSULTANT.tenantId]);
-      await rawClient.query("SELECT set_config('app.current_user_id', $1, true);", [DEMO_CONSULTANT.userId]);
-      await rawClient.query("SELECT set_config('app.current_user_role', $1, true);", [DEMO_CONSULTANT.role]);
+      // Bind the consultant's policy context inside this transaction (rolled back below)
+      await rawClient.query(
+        "UPDATE temp._ctx SET tenant_id = $1, user_id = $2, role = $3, bypass = 0;",
+        [DEMO_CONSULTANT.tenantId, DEMO_CONSULTANT.userId, DEMO_CONSULTANT.role]
+      );
 
       const res = await rawClient.query("SELECT id FROM assessments WHERE id = $1;", [betaAssessmentId]);
       assert.equal(res.rows.length, 0, "Removing assignment must immediately revoke assessment visibility");
@@ -332,9 +333,8 @@ describe("Phase 3D: Post-Login Workspace Flow & Live RLS Enforcement", () => {
   });
 
   it("should fail closed if session context is missing, invalid, or forged", async () => {
-    // @ts-expect-error invalid context test
     await assert.rejects(
-      async () => executeWithRls(null, async () => {}),
+      async () => executeWithRls(null as unknown as SessionUser, async () => {}),
       DatabaseAuthorizationError
     );
 

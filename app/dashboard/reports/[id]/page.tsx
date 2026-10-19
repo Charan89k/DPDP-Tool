@@ -1,32 +1,44 @@
 import React from "react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
 import { getAssessmentGapAnalysis } from "@/lib/gaps";
 import { getAssessmentReportSnapshots } from "@/lib/reports";
 import { CANONICAL_DOMAINS } from "@/lib/questionnaire/data";
-import { Badge } from "@/components/ui/badge";
+import type { GapAnalysisOutput } from "@/lib/gaps/types";
+import type { ReportSnapshotRecord } from "@/lib/reports/types";
 import {
   FileText,
   Shield,
   ShieldAlert,
   AlertCircle,
   CheckCircle2,
-  Calendar,
-  Building,
-  User,
   ArrowLeft,
-  Lock,
-  Printer,
-  FileCheck,
 } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
 interface ReportDetailPageProps {
   params: Promise<{ id: string }>;
+}
+
+interface ReportAssessmentRow {
+  id: string;
+  tenant_id: string;
+  title: string;
+  status: string;
+  target_framework: string;
+  start_date: Date | null;
+  target_completion_date: Date | null;
+  lead_consultant_name: string | null;
+  dpo_contact_name: string | null;
+  created_at: Date | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  industry: string | null;
+  is_sdf: boolean;
 }
 
 export default async function ReportDetailPage({ params }: ReportDetailPageProps) {
@@ -37,11 +49,9 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     redirect(`/login?redirect=/dashboard/reports/${id}`);
   }
 
-  const isConsultant = isTliRole(sessionUser.role);
-  const canFinalize = canFinalizeAssessment(sessionUser.role);
 
-  // Fetch assessment under PostgreSQL RLS
-  let assessment: any = null;
+  // Fetch the assessment through the tenant policy layer
+  let assessment: ReportAssessmentRow | null = null;
 
   try {
     assessment = await executeWithRls(sessionUser, async (client) => {
@@ -75,7 +85,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     console.error("Error fetching report under RLS:", err);
   }
 
-  let gapData: any = null;
+  let gapData: GapAnalysisOutput | null = null;
   if (assessment) {
     try {
       gapData = await getAssessmentGapAnalysis(sessionUser, id);
@@ -84,7 +94,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     }
   }
 
-  let reportSnapshots: any[] = [];
+  let reportSnapshots: ReportSnapshotRecord[] = [];
   if (assessment) {
     try {
       reportSnapshots = await getAssessmentReportSnapshots(sessionUser, id);
@@ -103,7 +113,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           Access Restricted / Report Not Found
         </h2>
         <p className="text-xs text-stone-600 max-w-md mx-auto mt-2 leading-relaxed">
-          PostgreSQL Row-Level Security policy prohibits access to this report record or it does not exist within your tenant scope.
+          This report does not exist, or your account does not have access to it.
         </p>
         <Link
           href="/dashboard/reports"
@@ -161,14 +171,14 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
           <ShieldAlert className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>DRAFT EVALUATION REPORT (FOR REVIEW ONLY):</strong> This document is generated for consulting evaluation and review under DPDPA 2023 guidelines. In accordance with TLI governance decisions DEC-01 and DEC-08, numeric scores are advisory pending formal Lead Consultant approval.
+            <strong>DRAFT EVALUATION REPORT (FOR REVIEW ONLY):</strong> This document is generated for consulting evaluation and review under DPDPA 2023 guidelines. In accordance with methodology decisions DEC-01 and DEC-08, numeric scores are advisory pending formal Lead Consultant approval.
           </div>
         </div>
       ) : (
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-950 flex items-start gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the TLI Lead Forensic Consultant. The dataset snapshot is sealed and permanently immutable under PostgreSQL database triggers.
+            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the CloudE5 lead consultant. The dataset snapshot is sealed and permanently immutable under PostgreSQL database triggers.
           </div>
         </div>
       )}
@@ -181,11 +191,11 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded border border-stone-400 bg-stone-900 flex items-center justify-center text-white font-serif font-bold text-sm tracking-tight">
-                TLI
+                CE5
               </div>
               <div>
                 <h1 className="font-serif text-lg font-bold tracking-tight text-stone-900">
-                  Truth Labs International
+                  CloudE5
                 </h1>
                 <p className="text-[11px] font-mono text-stone-500 uppercase tracking-widest">
                   Forensic Privacy & Compliance Advisory
@@ -194,8 +204,8 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
 
             <div className="text-right font-mono text-xs text-stone-500 space-y-0.5">
-              <div>REF: <strong className="text-stone-800">TLI-DPDP-REP-{assessment.id.slice(0, 8).toUpperCase()}</strong></div>
-              <div>DATE: {new Date().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}</div>
+              <div>REF: <strong className="text-stone-800">CE5-REP-{assessment.id.slice(0, 8).toUpperCase()}</strong></div>
+              <div>DATE: {formatDate(new Date())}</div>
               <div>STATUS: <strong className="text-stone-900">{assessment.status}</strong></div>
             </div>
           </div>
@@ -235,7 +245,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
             <div>
               <span className="text-stone-500 block text-[10px]">Lead Forensic Consultant:</span>
-              <span className="text-stone-800 font-sans text-xs">{assessment.lead_consultant_name || "Assigned by TLI"}</span>
+              <span className="text-stone-800 font-sans text-xs">{assessment.lead_consultant_name || "Assigned by CloudE5"}</span>
             </div>
           </div>
         </section>
@@ -246,7 +256,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             2. Executive Evaluation Summary
           </h3>
           <p className="text-xs text-stone-700 leading-relaxed">
-            The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable obligations for entities processing digital personal data. In accordance with TLI forensic methodology, statutory compliance is evaluated on a <strong>non-compensatory standard</strong>: high operational maturity in administrative areas (e.g., privacy policies) does not cure or mitigate material technical deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notifications).
+            The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable obligations for entities processing digital personal data. In accordance with the CloudE5 methodology, statutory compliance is evaluated on a <strong>non-compensatory standard</strong>: high operational maturity in administrative areas (e.g., privacy policies) does not cure or mitigate material technical deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notifications).
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 bg-stone-50 rounded border border-stone-200">
@@ -292,7 +302,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </div>
           <div className="space-y-3">
             {gapData && gapData.domainSummaries.length > 0 ? (
-              gapData.domainSummaries.map((domain: any, index: number) => (
+              gapData.domainSummaries.map((domain, index: number) => (
                 <div
                   key={domain.domainCode}
                   className="p-3.5 bg-white border border-stone-200 rounded-lg text-xs space-y-1.5"
@@ -358,7 +368,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </h3>
           <div className="space-y-2.5 text-xs text-stone-700 leading-relaxed">
             <p>
-              Under TLI forensic standards, self-attestations and policy manuals without demonstrable technical implementation logs or automated enforcement do not constitute satisfactory proof of compliance.
+              Under the CloudE5 methodology, self-attestations and policy manuals without demonstrable technical implementation logs or automated enforcement do not constitute satisfactory proof of compliance.
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-stone-600 text-[11px]">
               <li><strong>Notice & Transparency:</strong> Generic commercial terms of service bundling data consent violate Section 5(1) itemized requirements.</li>
@@ -392,7 +402,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
               </span>
             </div>
             <div className="space-y-2.5">
-              {reportSnapshots.map((snap: any) => (
+              {reportSnapshots.map((snap) => (
                 <div
                   key={snap.id}
                   className="p-3.5 bg-stone-50 border border-stone-200 rounded-lg text-xs space-y-2 font-mono"
@@ -403,7 +413,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
                         {snap.reportType} • {snap.versionLabel}
                       </span>
                       <strong className="text-stone-900 font-sans text-xs">
-                        Issued on {new Date(snap.createdAt).toLocaleString("en-IN")}
+                        Issued on {formatDateTime(snap.createdAt)}
                       </strong>
                     </div>
                     <span className="text-stone-500 text-[10px]">
@@ -427,7 +437,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
               <span className="font-mono text-[10px] uppercase font-bold text-stone-500 block">
                 Issuing Forensic Authority
               </span>
-              <strong className="text-stone-900 font-serif block mt-1">Truth Labs International</strong>
+              <strong className="text-stone-900 font-serif block mt-1">CloudE5</strong>
               <p className="text-stone-500 text-[11px] mt-0.5">DPDP Compliance & Forensic Evaluation Practice</p>
             </div>
             <div>

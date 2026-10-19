@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Evidence & Coverage API Endpoint
+ * CloudE5 — Assessment Evidence & Coverage API Endpoint
  *
  * GET /api/assessments/[id]/evidence
  * Returns all active compliance evidence items associated with the specified assessment
@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { errorMessage } from "@/lib/http/errors";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -149,8 +151,10 @@ export async function GET(
       assessmentId,
       ...result,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }

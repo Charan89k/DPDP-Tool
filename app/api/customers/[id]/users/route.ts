@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer User Provisioning API
+ * CloudE5 — Customer User Provisioning API
  *
  * POST /api/customers/[id]/users
  * Provisions a client user for the specified customer organization.
@@ -8,8 +8,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
-import { canManageTenantUsers, CLIENT_ROLES } from "@/lib/auth/rbac";
-import { hashPassword } from "@/lib/auth/passwords";
+import { CLIENT_ROLES } from "@/lib/auth/rbac";
+import crypto from "node:crypto";
+import { describePasswordProblem, hashPassword } from "@/lib/auth/passwords";
+import { issueToken } from "@/lib/auth/account";
+import { publicBaseUrl, sendEmail } from "@/lib/email/mailer";
+import { verificationEmail } from "@/lib/email/templates";
 import { pool } from "@/lib/db/pool";
 import { assertSessionMatchesDatabase, DatabaseAuthorizationError } from "@/lib/db/rls";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
@@ -18,7 +22,7 @@ const provisionUserSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters.").max(255),
   email: z.string().email("Valid corporate email address is required."),
   role: z.enum(["CLIENT_ADMIN", "CLIENT_BU_LEAD", "CLIENT_CONTRIBUTOR", "CLIENT_VIEWER"]),
-  password: z.string().min(8, "Password must be at least 8 characters.").optional(),
+  password: z.string().max(200).optional().or(z.literal("").transform(() => undefined)),
   phone: z.string().max(50).optional().nullable(),
 });
 
@@ -36,7 +40,7 @@ export async function POST(
 
   const { id: customerId } = await context.params;
 
-  // Authorization check: Only TLI Super Admin or Client Admin of this tenant
+  // Authorization check: Only Platform Administrator or Client Admin of this tenant
   const isAuthorized =
     sessionUser.role === "TLI_SUPER_ADMIN" ||
     (sessionUser.role === "CLIENT_ADMIN" && sessionUser.tenantId === customerId);
@@ -68,13 +72,13 @@ export async function POST(
     // Security Gate: Ensure role is strictly a client-facing role
     if (!CLIENT_ROLES.includes(role)) {
       return NextResponse.json(
-        { error: "Security violation: Cannot provision user with administrative or advisory TLI role." },
+        { error: "Security violation: Cannot provision user with administrative or platform role." },
         { status: 400 }
       );
     }
 
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     const client = await pool.connect();
     try {
@@ -117,8 +121,19 @@ export async function POST(
         );
       }
 
-      const initialPassword = password || "SyntheticTestPassword123!";
-      const passwordHash = await hashPassword(initialPassword);
+      if (password) {
+        const problem = describePasswordProblem(password, { email: normalizedEmail });
+        if (problem) {
+          await client.query("ROLLBACK;");
+          return NextResponse.json(
+            { error: `Password does not meet requirements: ${problem}`, details: { password: [problem] } },
+            { status: 400 }
+          );
+        }
+      }
+      // Without an administrator-chosen password the account gets an unusable random one; the user
+      // sets their own through the emailed verification + password reset flow.
+      const passwordHash = await hashPassword(password || crypto.randomBytes(32).toString("base64url"));
 
       const insertSql = `
         INSERT INTO users (
@@ -153,12 +168,26 @@ export async function POST(
         ]
       );
 
+      const verificationToken = await issueToken(client, newUser.id, "EMAIL_VERIFICATION");
       await client.query("COMMIT;");
+
+      // The new user proves control of their email before first sign-in. Without an admin-chosen
+      // password they then use "Forgot password" to set one.
+      const emailDelivery = await sendEmail(
+        verificationEmail(
+          newUser.email,
+          newUser.full_name,
+          `${publicBaseUrl()}/verify-email?token=${encodeURIComponent(verificationToken)}`
+        )
+      );
 
       return NextResponse.json(
         {
           success: true,
           user: newUser,
+          emailDelivery: emailDelivery.sent
+            ? { sent: true, message: `A verification email was sent to ${newUser.email}.` }
+            : { sent: false, reason: emailDelivery.reason, message: "The user was created but the verification email could not be sent." },
         },
         { status: 201 }
       );

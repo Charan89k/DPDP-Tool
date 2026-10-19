@@ -1,23 +1,14 @@
 "use client";
 
+import { errorMessage } from "@/lib/http/errors";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
-  ShieldAlert,
-  ShieldCheck,
   CheckCircle2,
-  Clock,
-  AlertTriangle,
   History,
   ArrowRight,
   RefreshCw,
-  Send,
-  FileCheck,
-  FileText,
   Lock,
-  Archive,
-  Ban,
-  RotateCcw,
-  Check,
   AlertCircle,
   Copy,
 } from "lucide-react";
@@ -27,6 +18,7 @@ import type {
   TransitionAuditLogEntry,
   AssessmentStatus,
 } from "@/lib/lifecycle/types";
+import { formatDateTime } from "@/lib/format/dates";
 
 interface AssessmentLifecycleControlsProps {
   assessmentId: string;
@@ -39,6 +31,7 @@ export function AssessmentLifecycleControls({
   onStatusChanged,
   className = "",
 }: AssessmentLifecycleControlsProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,18 +66,21 @@ export function AssessmentLifecycleControls({
 
       setLifecycle(data.lifecycle);
       setHistory(data.history || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to load assessment lifecycle state.");
+      setError(errorMessage(err) || "Failed to load assessment lifecycle state.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used after transitions.
     if (assessmentId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchLifecycleState();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
   const handleOpenTransitionModal = (opt: AllowedTransitionOption) => {
@@ -138,8 +134,8 @@ export function AssessmentLifecycleControls({
 
       // Refresh history
       fetchLifecycleState();
-    } catch (err: any) {
-      setError(err.message || "Transition rejected by lifecycle policy.");
+    } catch (err) {
+      setError(errorMessage(err) || "Transition rejected by lifecycle policy.");
     } finally {
       setSubmitting(false);
     }
@@ -167,9 +163,9 @@ export function AssessmentLifecycleControls({
 
       setSuccessMessage(`New re-audit assessment created: ${data.assessment.engagementCode}.`);
       setShowReauditModal(false);
-      window.location.href = `/dashboard/assessments/${data.assessment.id}/review`;
-    } catch (err: any) {
-      setError(err.message || "Failed to initiate re-audit cycle.");
+      router.push(`/dashboard/assessments/${data.assessment.id}/review`);
+    } catch (err) {
+      setError(errorMessage(err) || "Failed to initiate re-audit cycle.");
     } finally {
       setCloning(false);
     }
@@ -516,7 +512,7 @@ export function AssessmentLifecycleControls({
                     )}
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono shrink-0">
-                    {new Date(entry.timestamp).toLocaleString()}
+                    {formatDateTime(entry.timestamp)}
                   </div>
                 </div>
               ))}

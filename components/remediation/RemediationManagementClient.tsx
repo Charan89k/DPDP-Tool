@@ -4,23 +4,18 @@ import React, { useState } from "react";
 import Link from "next/link";
 import {
   ShieldCheck,
-  AlertTriangle,
-  Clock,
   CheckCircle2,
   XCircle,
   Plus,
   ArrowLeft,
-  FileText,
-  User,
   Calendar,
   Filter,
-  Check,
-  Send,
-  AlertCircle,
   ShieldAlert,
 } from "lucide-react";
 import type { RemediationTask, RemediationStatus, RemediationPriority } from "@/lib/remediation/types";
 import type { SessionUser } from "@/lib/auth/types";
+import { errorMessage } from "@/lib/http/errors";
+import { formatDateTime } from "@/lib/format/dates";
 
 interface Props {
   assessment: {
@@ -112,8 +107,8 @@ export function RemediationManagementClient({
       setNewDesc("");
       setNewQuestionCode("");
       setNewTargetDate("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -147,8 +142,8 @@ export function RemediationManagementClient({
       );
       setSelectedTaskForUpdate(null);
       setClosureNotes("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -186,8 +181,8 @@ export function RemediationManagementClient({
       );
       setSelectedTaskForValidation(null);
       setValidationNotes("");
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -269,7 +264,7 @@ export function RemediationManagementClient({
       <div className="p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs text-stone-700 flex items-start gap-2.5">
         <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong>Independent Post-Assessment Remediation:</strong> Remediation workflows track organizational action plans. In accordance with TLI governance principles, marking a remediation task complete does <em>not</em> retroactively mutate historical questionnaire responses or alter officially issued report snapshots.
+          <strong>Independent Post-Assessment Remediation:</strong> Remediation workflows track organizational action plans. In line with the CloudE5 methodology, marking a remediation task complete does <em>not</em> retroactively mutate historical questionnaire responses or alter officially issued report snapshots.
         </div>
       </div>
 
@@ -383,7 +378,7 @@ export function RemediationManagementClient({
                 <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-xs space-y-1 text-blue-900">
                   <div className="flex items-center justify-between font-mono text-[10px] text-blue-700">
                     <span className="font-bold">Client Closure Submission:</span>
-                    <span>{task.closureSubmittedAt ? new Date(task.closureSubmittedAt).toLocaleString("en-IN") : ""}</span>
+                    <span>{task.closureSubmittedAt ? formatDateTime(task.closureSubmittedAt) : ""}</span>
                   </div>
                   <p className="text-stone-800 text-xs leading-relaxed">{task.closureSubmissionNotes}</p>
                 </div>
@@ -400,9 +395,9 @@ export function RemediationManagementClient({
                 >
                   <div className="flex items-center justify-between font-mono text-[10px] text-stone-600">
                     <span className="font-bold">
-                      Assessor Validation ({task.closureValidatedByName || "TLI Consultant"}):
+                      Assessor Validation ({task.closureValidatedByName || "CloudE5 Consultant"}):
                     </span>
-                    <span>{task.validatedAt ? new Date(task.validatedAt).toLocaleString("en-IN") : ""}</span>
+                    <span>{task.validatedAt ? formatDateTime(task.validatedAt) : ""}</span>
                   </div>
                   <p className="text-stone-800 text-xs leading-relaxed">{task.closureValidationNotes}</p>
                 </div>
@@ -601,7 +596,7 @@ export function RemediationManagementClient({
                   <option value="OPEN">OPEN (Not yet active)</option>
                   <option value="IN_REMEDIATION">IN_REMEDIATION (Remediation active)</option>
                   <option value="SUBMITTED_FOR_CLOSURE">
-                    SUBMITTED_FOR_CLOSURE (Ready for TLI assessor validation)
+                    SUBMITTED_FOR_CLOSURE (Ready for CloudE5 assessor validation)
                   </option>
                 </select>
               </div>

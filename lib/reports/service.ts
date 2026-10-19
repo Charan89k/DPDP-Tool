@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Report Service
+ * CloudE5 — Report Service
  *
  * Coordinates draft compilation, document generation, formal lead approval,
  * immutable report snapshots, and download retrieval under PostgreSQL RLS.
@@ -96,7 +96,8 @@ export async function generateReportDocument(
   data.auditTrail.documentSha256 = sha256;
 
   const prefix = data.auditTrail.isDraft ? "DRAFT_" : "FINAL_";
-  const filename = `TLI_DPDP_Report_${prefix}${data.assessment.engagementCode}_${new Date()
+  const safeCode = data.assessment.engagementCode.replace(/[^A-Za-z0-9._-]/g, "_");
+  const filename = `CloudE5_DPDP_Report_${prefix}${safeCode}_${new Date()
     .toISOString()
     .split("T")[0]}.docx`;
 
@@ -111,7 +112,7 @@ export async function generateReportDocument(
 
 /**
  * Issues the official final compliance assessment report.
- * Strictly gated: Only authorized TLI Lead Consultant or Super Admin can issue.
+ * Strictly gated: Only authorized Lead Consultant or Super Admin can issue.
  * Client users are blocked with an authority error.
  * Enforces lifecycle progression to FINAL_ISSUED and stores immutable snapshot in report_snapshots.
  */
@@ -157,11 +158,15 @@ export async function issueOfficialFinalReport(
   const reportDoc = await generateReportDocument(sessionUser, assessmentId, false);
 
   // 5. Store report file in storage vault
-  const s3Key = `reports/${currentAssessment.tenant_id}/${currentAssessment.engagement_code}-FINAL-V1.0.docx`;
+  const safeCode = String(currentAssessment.engagement_code).replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.\.+/g, "_");
+  const s3Key = `reports/${currentAssessment.tenant_id}/${safeCode}-FINAL-V1.0.docx`;
+  // A failed write must not record an issued snapshot that points at a missing file. The assessment
+  // is already FINAL_ISSUED at this point, so retrying issuance skips the transitions and retries this.
   try {
     await getLocalStorageAdapter().saveFile(s3Key, reportDoc.buffer);
   } catch (err) {
-    console.warn("Storage save notification:", err);
+    console.error("Failed to store final report file:", err);
+    throw new Error("The final report could not be stored. Please retry issuing the report.");
   }
 
   // 6. Record immutable snapshot in report_snapshots under RLS

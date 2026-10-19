@@ -3,12 +3,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
-  ShieldCheck,
-  CheckCircle2,
   AlertTriangle,
   XCircle,
   HelpCircle,
-  Clock,
   MessageSquare,
   Paperclip,
   Save,
@@ -25,9 +22,10 @@ import {
   Building,
   Check,
   RefreshCw,
-  ExternalLink,
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
+import { errorMessage } from "@/lib/http/errors";
+import { formatDate, formatTime } from "@/lib/format/dates";
 
 interface CanonicalQuestion {
   code: string;
@@ -86,6 +84,47 @@ interface CanonicalQuestion {
   }>;
 }
 
+/** Assessment header as returned by GET /api/assessments/[id]/reviews (database column names). */
+interface ReviewAssessment {
+  id: string;
+  engagement_code: string;
+  title: string;
+  status: string;
+  lead_consultant_id: string | null;
+  target_completion_date: string | null;
+  created_at: string | null;
+  lead_consultant_name: string | null;
+  tenant_name: string | null;
+  tenant_slug: string | null;
+  is_sdf: boolean;
+  framework_name: string | null;
+}
+
+interface ReviewSection {
+  code: string;
+  title: string;
+  heading: string;
+}
+
+interface ReviewMetrics {
+  totalQuestions: number;
+  clientAnsweredCount: number;
+  assessorReviewedCount: number;
+  pendingReviewCount: number;
+  clarificationRequestedCount: number;
+  deficienciesCount: number;
+  requiresValidationCount: number;
+  assessorProgressPct: number;
+  clientProgressPct: number;
+}
+
+interface ReviewDraft {
+  reviewStatus: string;
+  reviewFindings: string;
+  evidenceDeficiencyNotes: string;
+  requiresFurtherValidation: boolean;
+}
+
 interface ReviewWorkspaceProps {
   assessmentId: string;
 }
@@ -106,10 +145,10 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   const [saveSuccessCode, setSaveSuccessCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [assessment, setAssessment] = useState<any>(null);
-  const [sections, setSections] = useState<any[]>([]);
+  const [assessment, setAssessment] = useState<ReviewAssessment | null>(null);
+  const [sections, setSections] = useState<ReviewSection[]>([]);
   const [questions, setQuestions] = useState<CanonicalQuestion[]>([]);
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<ReviewMetrics | null>(null);
   const [isAssessor, setIsAssessor] = useState<boolean>(true);
   const [userRole, setUserRole] = useState<string>("");
 
@@ -128,17 +167,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   const [sendingClarification, setSendingClarification] = useState(false);
 
   // Local draft state for edits
-  const [reviewDrafts, setReviewDrafts] = useState<
-    Record<
-      string,
-      {
-        reviewStatus: string;
-        reviewFindings: string;
-        evidenceDeficiencyNotes: string;
-        requiresFurtherValidation: boolean;
-      }
-    >
-  >({});
+  const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
 
   const loadData = async () => {
     try {
@@ -159,7 +188,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       setUserRole(data.userRole || "");
 
       // Initialize drafts
-      const drafts: Record<string, any> = {};
+      const drafts: Record<string, ReviewDraft> = {};
       for (const q of data.questions) {
         drafts[q.code] = {
           reviewStatus: q.assessorReview.reviewStatus || "PENDING_REVIEW",
@@ -169,19 +198,22 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         };
       }
       setReviewDrafts(drafts);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setError(err.message || "Failed to load review workspace.");
+      setError(errorMessage(err) || "Failed to load review workspace.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used by refresh actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
-  const handleDraftChange = (code: string, field: string, value: any) => {
+  const handleDraftChange = <K extends keyof ReviewDraft>(code: string, field: K, value: ReviewDraft[K]) => {
     setReviewDrafts((prev) => ({
       ...prev,
       [code]: {
@@ -226,8 +258,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         setQuestions(refreshData.questions);
         setMetrics(refreshData.metrics);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to persist review evaluation.");
+    } catch (err) {
+      setError(errorMessage(err) || "Failed to persist review evaluation.");
     } finally {
       setSavingCode(null);
     }
@@ -260,8 +292,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       setClarificationTitle("");
       setClarificationMessage("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to create clarification thread.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to create clarification thread.");
     } finally {
       setSendingClarification(false);
     }
@@ -288,8 +320,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
 
       setReplyMessage("");
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to post reply.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to post reply.");
     } finally {
       setSendingClarification(false);
     }
@@ -311,8 +343,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         throw new Error(data.error || "Failed to update thread status.");
       }
       await loadData();
-    } catch (err: any) {
-      alert(err.message || "Failed to update thread status.");
+    } catch (err) {
+      alert(errorMessage(err) || "Failed to update thread status.");
     }
   };
 
@@ -434,7 +466,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
             </span>
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>Target: <strong className="text-slate-800">{assessment?.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString() : "Pending"}</strong></span>
+              <span>Target: <strong className="text-slate-800">{assessment?.target_completion_date ? formatDate(assessment.target_completion_date) : "Pending"}</strong></span>
             </span>
           </p>
         </div>
@@ -469,7 +501,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       <AssessmentLifecycleControls
         assessmentId={assessmentId}
         onStatusChanged={(newStatus) => {
-          setAssessment((prev: any) => (prev ? { ...prev, status: newStatus } : null));
+          setAssessment((prev) => (prev ? { ...prev, status: newStatus } : null));
           loadData();
         }}
       />
@@ -479,7 +511,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-start space-x-3 text-xs text-amber-900">
           <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
           <div>
-            <strong className="font-semibold">Client Review Mode:</strong> You are viewing assessor findings in transparent read-only mode ({userRole}). You can inspect assessor evaluations and respond to clarification queries, but review statuses and findings can only be recorded by certified TLI assessors.
+            <strong className="font-semibold">Client Review Mode:</strong> You are viewing assessor findings in transparent read-only mode ({userRole}). You can inspect assessor evaluations and respond to clarification queries, but review statuses and findings can only be recorded by authorised CloudE5 assessors.
           </div>
         </div>
       )}
@@ -555,7 +587,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              {sec.code} ({sec.questionCount})
+              {sec.code} ({questions.filter((q) => q.sectionCode === sec.code).length})
             </button>
           ))}
         </div>
@@ -713,7 +745,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                         <span>Client Response</span>
                         {q.clientResponse?.updatedAt && (
                           <span className="text-[10px] text-slate-400 normal-case font-normal">
-                            Updated {new Date(q.clientResponse.updatedAt).toLocaleDateString()}
+                            Updated {formatDate(q.clientResponse.updatedAt)}
                           </span>
                         )}
                       </div>
@@ -880,7 +912,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                     {/* Internal Assessor Notes Header Badge */}
                     <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Internal Assessor Notes (Confidential TLI Advisory)
+                        Internal Assessor Notes (Confidential: CloudE5 assessors only)
                       </span>
                       <span className="text-[10px] text-slate-400">
                         Segregated from client view
@@ -926,7 +958,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                           <span>
                             Evaluated by <strong>{q.assessorReview.reviewedByUserName}</strong>
                             {q.assessorReview.reviewedAt && (
-                              <span> on {new Date(q.assessorReview.reviewedAt).toLocaleDateString()}</span>
+                              <span> on {formatDate(q.assessorReview.reviewedAt)}</span>
                             )}
                           </span>
                         ) : (
@@ -1007,7 +1039,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                         <div>
                           <h4 className="text-xs font-bold text-slate-900">{th.title}</h4>
                           <span className="text-[10px] text-slate-400">
-                            Raised by {th.raisedByUserName} on {th.createdAt ? new Date(th.createdAt).toLocaleDateString() : ""}
+                            Raised by {th.raisedByUserName} on {th.createdAt ? formatDate(th.createdAt) : ""}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -1036,7 +1068,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                               <span className="font-semibold text-slate-800">
                                 {m.authorName} <span className="text-slate-400 font-normal">({m.authorRole})</span>
                               </span>
-                              <span>{m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                              <span>{m.createdAt ? formatTime(m.createdAt) : ""}</span>
                             </div>
                             <p className="text-slate-700 whitespace-pre-wrap">{m.messageText}</p>
                           </div>

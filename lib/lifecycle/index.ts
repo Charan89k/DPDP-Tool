@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Module
+ * CloudE5 — Assessment Lifecycle Module
  */
 
 export * from "./types.ts";

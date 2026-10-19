@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { issueOfficialFinalReport } from "@/lib/reports";
 import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         {
           error:
-            "Authority violation: Only TLI Lead Consultant or Super Administrator can approve and issue final reports (DEC-01).",
+            "Authority violation: Only Lead Consultant or Super Administrator can approve and issue final reports (DEC-01).",
         },
         { status: 403 }
       );
@@ -30,10 +31,12 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     const snapshot = await issueOfficialFinalReport(session, id);
 
     return NextResponse.json({ ok: true, snapshot }, { status: 200 });
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Report issuance error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to issue final report" },
+      { error: "Failed to issue final report" },
       { status: 500 }
     );
   }

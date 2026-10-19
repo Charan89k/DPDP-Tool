@@ -63,7 +63,7 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
     assert.equal(manifest.questions.length, 60, "Must contain exactly 60 canonical questions");
 
     const expectedSections = ["GOV", "DAT", "NOT", "RGT", "SEC", "RET", "TPR", "APP"];
-    const sectionCodes = manifest.sections.map((s: any) => s.code);
+    const sectionCodes = manifest.sections.map((s: { code: string }) => s.code);
     assert.deepEqual(sectionCodes, expectedSections);
 
     for (const q of manifest.questions) {
@@ -219,10 +219,10 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
             [ASSESSMENT_ALPHA_ID, DEMO_CUSTOMER.userId]
           );
         },
-        (err: any) => {
+        (err: Error) => {
           return (
             err.message.includes("row-level security policy") ||
-            err.code === "42501"
+            (err as Error & { code?: string }).code === "42501"
           );
         },
         "Client user must be rejected when attempting to insert assessor review"
@@ -300,10 +300,10 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
             [ASSESSMENT_BETA_ID, UNASSIGNED_REVIEWER.userId]
           );
         },
-        (err: any) => {
+        (err: Error) => {
           return (
             err.message.includes("row-level security policy") ||
-            err.code === "42501"
+            (err as Error & { code?: string }).code === "42501"
           );
         },
         "Unassigned reviewer must be blocked by RLS from inserting reviews on unassigned assessment"
@@ -317,7 +317,6 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
     const consultantMsg = "Does the patient portal include a direct hyperlink to the Data Protection Board grievance form?";
     const clientReply = "Yes, confirmed in Release v2.4 under Settings > Privacy Rights.";
 
-    let threadId: string;
 
     // 1. Consultant raises clarification thread
     const createRes = await executeWithRls(DEMO_CONSULTANT, async (client) => {
@@ -346,7 +345,7 @@ describe("Phase 3D.2: Assessor Review Workspace & Clarifications Engine", () => 
       return tid;
     });
 
-    threadId = createRes;
+    const threadId: string = createRes;
     assert.ok(threadId, "Thread ID must be generated");
 
     // 2. Client user reads the thread and replies

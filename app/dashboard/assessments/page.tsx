@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole } from "@/lib/auth/rbac";
-import { Badge } from "@/components/ui/badge";
 import {
   FileCheck2,
   Calendar,
@@ -16,6 +15,7 @@ import {
   FileText,
   Paperclip,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -138,7 +138,7 @@ export default async function AssessmentsPage() {
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
                     <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                      {assessment.engagement_code || "DPDP-2024-006"}
+                      {assessment.engagement_code}
                     </span>
                     <h3 className="font-bold text-slate-900 text-base">
                       {assessment.title}
@@ -180,8 +180,8 @@ export default async function AssessmentsPage() {
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Commencement Date</span>
                     <span className="font-medium text-slate-800">
                       {assessment.start_date
-                        ? new Date(assessment.start_date).toLocaleDateString()
-                        : "20 Aug 2024"}
+                        ? formatDate(assessment.start_date)
+                        : "—"}
                     </span>
                   </div>
                 </div>
@@ -192,8 +192,8 @@ export default async function AssessmentsPage() {
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Target Completion</span>
                     <span className="font-medium text-slate-800">
                       {assessment.target_completion_date
-                        ? new Date(assessment.target_completion_date).toLocaleDateString()
-                        : "23 Aug 2024"}
+                        ? formatDate(assessment.target_completion_date)
+                        : "Not set"}
                     </span>
                   </div>
                 </div>

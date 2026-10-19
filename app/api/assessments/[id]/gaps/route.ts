@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
-import { isClientRole } from "@/lib/auth/rbac";
 import { getAssessmentGapAnalysis, GapsServiceError } from "@/lib/gaps";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
 
@@ -32,24 +32,11 @@ export async function GET(
 
     const gapResult = await getAssessmentGapAnalysis(sessionUser, id);
 
-    // Client role data segregation: omit internal assessor findings & deficiency notes
-    if (isClientRole(sessionUser.role)) {
-      for (const gap of gapResult.gaps) {
-        if (gap.assessorReview) {
-          gap.assessorReview.reviewFindings = null;
-          gap.assessorReview.evidenceDeficiencyNotes = null;
-        }
-      }
-      for (const unmapped of gapResult.unresolvedMappingItems) {
-        if (unmapped.assessorReview) {
-          unmapped.assessorReview.reviewFindings = null;
-          unmapped.assessorReview.evidenceDeficiencyNotes = null;
-        }
-      }
-    }
-
+    // Customer roles receive results with internal assessor notes removed (done in the service).
     return NextResponse.json(gapResult, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
+    const sessionError = sessionErrorResponse(error);
+    if (sessionError) return sessionError;
     console.error("GET /api/assessments/[id]/gaps error:", error);
 
     if (error instanceof GapsServiceError) {
@@ -60,7 +47,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { error: "Failed to evaluate compliance gaps", details: error?.message },
+      { error: "Failed to evaluate compliance gaps" },
       { status: 500 }
     );
   }

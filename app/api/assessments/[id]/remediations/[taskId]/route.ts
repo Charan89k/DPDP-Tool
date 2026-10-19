@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
+import { DatabaseAuthorizationError } from "@/lib/db/rls";
 import {
   updateRemediationProgress,
   validateRemediationClosure,
+  RemediationError,
 } from "@/lib/remediation";
+
+const STATUSES = ["OPEN", "IN_REMEDIATION", "SUBMITTED_FOR_CLOSURE", "VALIDATED_CLOSED", "REJECTED_REOPENED"] as const;
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+
+function remediationErrorResponse(err: unknown, context: string) {
+  if (err instanceof RemediationError) {
+    return NextResponse.json({ error: err.message }, { status: err.statusCode });
+  }
+  if (err instanceof DatabaseAuthorizationError) {
+    return NextResponse.json({ error: "Your session is no longer valid. Please sign in again." }, { status: 401 });
+  }
+  console.error(`${context}:`, err);
+  return NextResponse.json({ error: `Failed to ${context.toLowerCase()}.` }, { status: 500 });
+}
+
+const closureSchema = z.object({
+  action: z.enum(["VALIDATE_CLOSE", "REJECT_REOPEN"]),
+  validationNotes: z.string().trim().max(5000).optional(),
+});
+
+const progressSchema = z.object({
+  title: z.string().trim().min(3).max(200).optional(),
+  description: z.string().trim().max(5000).optional(),
+  targetDate: isoDate.optional(),
+  ownerUserId: z.string().uuid().optional(),
+  status: z.enum(STATUSES).optional(),
+  closureSubmissionNotes: z.string().trim().max(5000).optional(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -19,34 +50,39 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     }
 
     const { taskId } = await params;
-    const body = await req.json();
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    const isClosureDecision =
+      typeof raw === "object" && raw !== null && "action" in raw && (raw as { action?: unknown }).action !== undefined;
 
-    // Check if this is an assessor closure validation request
-    if (body.action === "VALIDATE_CLOSE" || body.action === "REJECT_REOPEN") {
+    if (isClosureDecision) {
+      const closure = closureSchema.safeParse(raw);
+      if (!closure.success) {
+        return NextResponse.json({ error: "Invalid closure decision." }, { status: 400 });
+      }
       const task = await validateRemediationClosure(session, taskId, {
-        action: body.action,
-        validationNotes: body.validationNotes || "",
+        action: closure.data.action,
+        validationNotes: closure.data.validationNotes ?? "",
       });
       return NextResponse.json({ ok: true, task }, { status: 200 });
     }
 
-    // Otherwise, normal progress update or submission for closure
-    const task = await updateRemediationProgress(session, taskId, {
-      title: body.title,
-      description: body.description,
-      targetDate: body.targetDate,
-      ownerUserId: body.ownerUserId,
-      status: body.status,
-      closureSubmissionNotes: body.closureSubmissionNotes,
-    });
+    const progress = progressSchema.safeParse(raw);
+    if (!progress.success) {
+      return NextResponse.json(
+        { error: "Please correct the highlighted fields.", details: progress.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    const task = await updateRemediationProgress(session, taskId, progress.data);
 
     return NextResponse.json({ ok: true, task }, { status: 200 });
-  } catch (err: any) {
-    console.error("Update remediation error:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to update remediation task" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return remediationErrorResponse(err, "Update remediation task");
   }
 }
 

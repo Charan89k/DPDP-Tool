@@ -1,12 +1,11 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Gap Analysis & Risk Prioritization Types
+ * CloudE5 — Gap Analysis & Risk Prioritization Types
  *
  * Grounded in canonical questionnaire manifest (60 questions), 30 canonical controls,
  * 13 statutory domains, and non-compensatory dual-metric governance specifications (DEC-01, DEC-08, DEC-10).
  */
 
 import type { CanonicalResponseOption } from "../questionnaire/types.ts";
-import type { QuestionEvaluationDetail, StatutoryDeficitItem } from "../scoring/types.ts";
 
 export type GapType =
   | "NEGATIVE_RESPONSE"        // Not implemented

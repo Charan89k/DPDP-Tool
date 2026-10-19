@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Report Data Compiler
+ * CloudE5 — Report Data Compiler
  *
  * Compiles exhaustive, auditable report data across all 60 questions,
  * 13 statutory domains, evidence items, assessor reviews, and remediations.
@@ -13,6 +13,18 @@ import { isTliRole } from "../auth/rbac.ts";
 import { getAssessmentGapAnalysis } from "../gaps/index.ts";
 import questionnaireData from "../../data/questionnaire_v1.json" with { type: "json" };
 import controlsData from "../../data/dpdp_controls.json" with { type: "json" };
+
+/** remediation_tasks row as selected for the report (with the owner's name joined in). */
+interface RemediationRow {
+  id: string;
+  question_code: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  target_date: string | Date | null;
+  status: string;
+  owner_name: string | null;
+}
 import type {
   ReportDocumentData,
   DomainFindingReportItem,
@@ -24,7 +36,7 @@ import type {
 export async function compileReportDocumentData(
   sessionUser: SessionUser,
   assessmentId: string,
-  isDraft: boolean = true
+  _requestedDraft: boolean = true
 ): Promise<ReportDocumentData> {
   const isConsultant = isTliRole(sessionUser.role);
 
@@ -103,7 +115,7 @@ export async function compileReportDocumentData(
   const gapAnalysis = await getAssessmentGapAnalysis(sessionUser, assessmentId);
 
   // Map controls for quick lookup
-  const controlMap = new Map<string, any>();
+  const controlMap = new Map<string, (typeof controlsData)[number]>();
   for (const c of controlsData) {
     controlMap.set(c.control_id, c);
   }
@@ -168,7 +180,7 @@ export async function compileReportDocumentData(
   }));
 
   // 5. Compile Remediation Tasks
-  const remediationTasks: RemediationReportItem[] = dbData.remediations.map((r: any) => ({
+  const remediationTasks: RemediationReportItem[] = dbData.remediations.map((r: RemediationRow) => ({
     id: r.id,
     questionCode: r.question_code || null,
     title: r.title,
@@ -193,8 +205,10 @@ export async function compileReportDocumentData(
   });
   const datasetSha256 = createHash("sha256").update(datasetDigestPayload).digest("hex");
 
-  // If assessment is formally issued, isDraft is strictly false
-  const effectiveIsDraft = dbData.assessment.status === "FINAL_ISSUED" ? false : isDraft;
+  // A report is final only once the assessment has actually been issued; before that every
+  // document is a draft regardless of what the caller asked for.
+  const ISSUED_STATUSES = ["FINAL_ISSUED", "REMEDIATION_ACTIVE", "ARCHIVED"];
+  const effectiveIsDraft = !ISSUED_STATUSES.includes(dbData.assessment.status);
 
   return {
     assessment: {
@@ -270,14 +284,14 @@ export async function compileReportDocumentData(
     methodologyDisclosures: {
       scoringStatus: "PROVISIONAL_PENDING_APPROVAL",
       provisionalModel: "SCORING-V1-PROVISIONAL",
-      governanceReference: "Truth Labs International Governance Register (DEC-01 through DEC-10)",
+      governanceReference: "CloudE5 Governance Register (DEC-01 through DEC-10)",
       nonCompensatoryDisclaimer:
         "Non-Compensatory Evaluation Principle: Overall readiness scores and mathematical averages do not mitigate or cure material deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notification requirements).",
       statutoryCeilingDisclaimer:
         "Regulatory Exposure Disclosure: Statutory penalties are adjudicated exclusively by the Data Protection Board of India upon complaint, inquiry, or statutory audit pursuant to Section 33(2) guiding factors.",
     },
     auditTrail: {
-      reportTemplateVersion: "TLI-DPDP-REP-V1.0",
+      reportTemplateVersion: "CE5-REP-V1.0",
       isDraft: effectiveIsDraft,
       draftWatermarkNotice: effectiveIsDraft
         ? "DRAFT AUDIT REPORT — FOR INTERNAL CONSULTING REVIEW ONLY — NOT AN OFFICIAL ADVISORY OPINION"

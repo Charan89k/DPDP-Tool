@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -11,19 +12,19 @@ import {
   BarChart3,
   Settings,
   Shield,
-  Building2,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
-import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
-import { Badge } from "@/components/ui/badge";
+import { isTliRole } from "@/lib/auth/rbac";
 
 interface SidebarProps {
   user: SessionUser;
+  /** Mobile drawer state; on large screens the sidebar is always visible. */
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const roleBadge = getRoleBadgeLabel(user.role);
 
   const navItems = [
     {
@@ -47,7 +48,14 @@ export function Sidebar({ user }: SidebarProps) {
             exact: false,
           },
         ]
-      : []),
+      : [
+          {
+            label: "Team",
+            href: `/dashboard/customers/${user.tenantId}`,
+            icon: Users,
+            exact: false,
+          },
+        ]),
     {
       label: "Questionnaire",
       href: "/dashboard/questionnaire",
@@ -75,18 +83,21 @@ export function Sidebar({ user }: SidebarProps) {
   ];
 
   return (
-    <aside className="w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F]">
+    <aside
+      id="app-sidebar"
+      className={`w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F] fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+      aria-label="Main navigation"
+    >
       {/* Brand Header */}
       <div className="p-6 pb-5">
-        <Link href="/dashboard" className="block group">
-          <div className="flex flex-col">
-            <span className="font-serif text-xl font-bold tracking-tight text-white group-hover:text-blue-200 transition-colors">
-              Truth Labs
-            </span>
-            <span className="text-[10px] tracking-[0.25em] font-semibold text-slate-400 uppercase mt-0.5">
-              International
-            </span>
-          </div>
+        <Link
+          href="/dashboard"
+          aria-label="CloudE5 dashboard"
+          className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+        >
+          <BrandMark variant="dark" size="sm" showTagline />
         </Link>
       </div>
 
@@ -102,6 +113,8 @@ export function Sidebar({ user }: SidebarProps) {
             <Link
               key={item.label}
               href={item.href}
+              onClick={onNavigate}
+              aria-current={isActive ? "page" : undefined}
               className={`flex items-center space-x-3.5 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-[#0066FF] text-white shadow-sm font-semibold"

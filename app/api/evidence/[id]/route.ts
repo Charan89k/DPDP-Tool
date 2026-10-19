@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Evidence Item Management API Endpoint
+ * CloudE5 — Evidence Item Management API Endpoint
  *
  * GET /api/evidence/[id] — Retrieve evidence metadata
  * PATCH /api/evidence/[id] — Record reviewer decision (VERIFIED / REJECTED) with audit trail
@@ -106,7 +106,7 @@ export async function PATCH(
   // Assessors only can record review decisions
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Forbidden: Only authorized TLI assessors can record evidence review decisions." },
+      { error: "Forbidden: Only authorized CloudE5 assessors can record evidence review decisions." },
       { status: 403 }
     );
   }

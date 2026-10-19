@@ -2,14 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { readJsonResponse } from "@/lib/http/responses";
+import type { UploadedEvidence } from "@/lib/storage/upload_response";
 import {
-  Shield,
-  FileText,
-  Upload,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Download,
   Eye,
   Trash2,
   Plus,
@@ -24,6 +18,7 @@ import type {
   CanonicalResponseOption,
   RespondentQuestionResponse,
 } from "@/lib/questionnaire/types";
+import { formatDate, formatTime } from "@/lib/format/dates";
 
 interface AttachedEvidenceItem {
   id: string;
@@ -52,6 +47,65 @@ interface QuestionClarificationThread {
   }>;
 }
 
+/** Evidence item as returned by GET /api/assessments/[id]/evidence. */
+interface EvidenceListItem {
+  id: string;
+  questionCode: string;
+  description: string;
+  fileName: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  sha256: string | null;
+  status: string;
+  createdAt: string | null;
+}
+
+/** Thread as returned by GET /api/assessments/[id]/clarifications. */
+interface ClarificationThreadResponse {
+  id: string;
+  questionCode: string | null;
+  title: string;
+  status: string;
+  raisedByName?: string;
+  createdAt: string;
+  messages?: Array<{ id: string; authorName?: string; authorRole?: string; messageText: string; createdAt: string }>;
+}
+
+/**
+ * Evidence and threads belong to a question by its code, or by its mapped control code
+ * (the evidence API reports control-level evidence under the control code).
+ */
+function belongsTo(
+  questionCode: string,
+  controlId: string | null | undefined,
+  code: string | null | undefined
+): boolean {
+  return Boolean(code) && (code === questionCode || (Boolean(controlId) && code === controlId));
+}
+
+function toQuestionThreads(
+  threads: ClarificationThreadResponse[],
+  questionCode: string,
+  controlId: string | null | undefined
+): QuestionClarificationThread[] {
+  return threads
+    .filter((th) => belongsTo(questionCode, controlId, th.questionCode))
+    .map((th) => ({
+      id: th.id,
+      title: th.title,
+      status: th.status,
+      raisedByName: th.raisedByName || "Assessor",
+      createdAt: th.createdAt,
+      messages: (th.messages || []).map((msg) => ({
+        id: msg.id,
+        authorName: msg.authorName || "User",
+        authorRole: msg.authorRole || "",
+        messageText: msg.messageText,
+        createdAt: msg.createdAt,
+      })),
+    }));
+}
+
 interface QuestionCardProps {
   question: CanonicalQuestion;
   response?: RespondentQuestionResponse;
@@ -75,11 +129,8 @@ export function QuestionCard({
   evidenceItems = [],
   isAssessor = false,
   canEdit = true,
-  userRole,
   onUpdateResponse,
   onAttachEvidence,
-  onNextQuestion,
-  onPrevQuestion,
   questionNumber = 1,
   totalQuestions = 60,
 }: QuestionCardProps) {
@@ -111,15 +162,11 @@ export function QuestionCard({
       try {
         const evRes = await fetch(`/api/assessments/${assessmentId}/evidence`);
         if (evRes.ok) {
-          const evData = await evRes.json();
+          const evData: { items?: EvidenceListItem[] } = await evRes.json();
           if (evData.items && Array.isArray(evData.items) && isMounted) {
-            const matched = evData.items.filter(
-              (it: any) =>
-                it.questionCode === question.code ||
-                (question.canonicalControlId && it.controlCode === question.canonicalControlId)
-            );
+            const matched = evData.items.filter((it) => belongsTo(question.code, question.canonicalControlId, it.questionCode));
             setCurrentEvidenceList(
-              matched.map((m: any) => ({
+              matched.map((m) => ({
                 id: m.id,
                 fileName: m.fileName,
                 fileSizeBytes: m.fileSizeBytes,
@@ -127,7 +174,7 @@ export function QuestionCard({
                 sha256: m.sha256 || "",
                 status: m.status === "VERIFIED" ? "Reviewed" : "Received",
                 uploadedAt: m.createdAt
-                  ? new Date(m.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                  ? formatDate(m.createdAt)
                   : "Recent",
                 description: m.description || m.fileName,
                 fileType: m.fileName.split(".").pop()?.toUpperCase() || "File",
@@ -141,29 +188,9 @@ export function QuestionCard({
       try {
         const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
         if (clRes.ok) {
-          const clData = await clRes.json();
+          const clData: { threads?: ClarificationThreadResponse[] } = await clRes.json();
           if (clData.threads && Array.isArray(clData.threads) && isMounted) {
-            const matched = clData.threads.filter(
-              (th: any) =>
-                th.questionCode === question.code ||
-                (question.canonicalControlId && th.controlCode === question.canonicalControlId)
-            );
-            setClarificationThreads(
-              matched.map((th: any) => ({
-                id: th.id,
-                title: th.title,
-                status: th.status,
-                raisedByName: th.raisedByName || "Assessor",
-                createdAt: th.createdAt,
-                messages: (th.messages || []).map((msg: any) => ({
-                  id: msg.id,
-                  authorName: msg.authorName || "User",
-                  authorRole: msg.authorRole || "",
-                  messageText: msg.messageText,
-                  createdAt: msg.createdAt,
-                })),
-              }))
-            );
+            setClarificationThreads(toQuestionThreads(clData.threads, question.code, question.canonicalControlId));
           }
         }
       } catch {}
@@ -219,7 +246,7 @@ export function QuestionCard({
         body: formData,
       });
 
-      const { data, errorMessage } = await readJsonResponse(res);
+      const { data, errorMessage } = await readJsonResponse<{ evidence: UploadedEvidence }>(res);
 
       if (errorMessage) {
         setUploadError(errorMessage);
@@ -234,7 +261,7 @@ export function QuestionCard({
         mimeType: data.evidence.mimeType,
         sha256: data.evidence.sha256,
         status: "Received",
-        uploadedAt: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        uploadedAt: formatDate(new Date()),
         description: evidenceDescription || file.name,
         fileType: file.name.split(".").pop()?.toUpperCase() || "File",
       };
@@ -287,29 +314,9 @@ export function QuestionCard({
         // Refresh clarification threads
         const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
         if (clRes.ok) {
-          const clData = await clRes.json();
+          const clData: { threads?: ClarificationThreadResponse[] } = await clRes.json();
           if (clData.threads) {
-            const matched = clData.threads.filter(
-              (th: any) =>
-                th.questionCode === question.code ||
-                (question.canonicalControlId && th.controlCode === question.canonicalControlId)
-            );
-            setClarificationThreads(
-              matched.map((th: any) => ({
-                id: th.id,
-                title: th.title,
-                status: th.status,
-                raisedByName: th.raisedByName || "Assessor",
-                createdAt: th.createdAt,
-                messages: (th.messages || []).map((msg: any) => ({
-                  id: msg.id,
-                  authorName: msg.authorName || "User",
-                  authorRole: msg.authorRole || "",
-                  messageText: msg.messageText,
-                  createdAt: msg.createdAt,
-                })),
-              }))
-            );
+            setClarificationThreads(toQuestionThreads(clData.threads, question.code, question.canonicalControlId));
           }
         }
       }
@@ -401,7 +408,7 @@ export function QuestionCard({
                     : "bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-900 border-emerald-200"
                 }`}
               >
-                ✓ Implemented
+                {selectedOption === "Implemented" ? "✓ " : ""}Implemented
               </button>
 
               {/* Partially Implemented */}
@@ -577,7 +584,7 @@ export function QuestionCard({
                           {msg.authorName} {msg.authorRole ? `(${msg.authorRole})` : ""}
                         </span>
                         {msg.createdAt && (
-                          <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>{formatTime(msg.createdAt)}</span>
                         )}
                       </div>
                       <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{msg.messageText}</p>
@@ -591,7 +598,7 @@ export function QuestionCard({
                     type="text"
                     value={replyText[thread.id] || ""}
                     onChange={(e) => setReplyText((prev) => ({ ...prev, [thread.id]: e.target.value }))}
-                    placeholder="Type clarification response to the TLI assessor..."
+                    placeholder="Type clarification response to the CloudE5 assessor..."
                     className="flex-1 px-3 py-1.5 text-xs bg-white border border-purple-200 rounded-lg focus:outline-none focus:border-purple-600"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {

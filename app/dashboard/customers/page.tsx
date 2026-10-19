@@ -3,18 +3,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { canCreateCustomer, isTliRole } from "@/lib/auth/rbac";
+import { canCreateCustomer } from "@/lib/auth/rbac";
 import {
   Users,
   Building2,
   Plus,
   Search,
   Mail,
-  Phone,
-  ShieldAlert,
   ArrowRight,
-  ClipboardList,
-  ExternalLink,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";

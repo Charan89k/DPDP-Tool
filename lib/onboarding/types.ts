@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Onboarding Types
+ * CloudE5 — Customer Onboarding Types
  */
 
 import type { UserRole } from "../auth/types.ts";
@@ -119,3 +119,41 @@ export interface InvitationResult {
     reason: string;
   };
 }
+
+/** tenants row returned when a customer organisation is created. */
+export interface CustomerRecord {
+  id: string;
+  type: "TLI" | "CLIENT";
+  name: string;
+  slug: string;
+  industry: string | null;
+  is_sdf: boolean;
+  dpo_name: string | null;
+  dpo_email: string | null;
+  status: string;
+  created_at: Date;
+}
+
+/** users row returned when an account is provisioned or activated (never includes credentials). */
+export interface ProvisionedUserRecord {
+  id: string;
+  tenant_id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  phone?: string | null;
+  is_active: boolean;
+  created_at: Date;
+}
+
+/** assessments row returned when an assessment is created. */
+export interface CreatedAssessmentRecord {
+  id: string;
+  tenant_id: string;
+  title: string;
+  engagement_code: string;
+  status: string;
+  target_completion_date: Date | null;
+  created_at: Date;
+}
+

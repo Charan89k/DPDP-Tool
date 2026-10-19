@@ -202,10 +202,11 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
     const client = await pool.connect();
     try {
       const res = await client.query(
-        "SELECT current_setting('app.current_tenant_id', true) AS tid, current_setting('app.current_user_role', true) AS role;"
+        "SELECT coalesce(tenant_id, '') AS tid, role, bypass FROM temp._ctx;"
       );
-      assert.equal(res.rows[0].tid, "", "Tenant setting must be cleared after exception");
-      assert.equal(res.rows[0].role, "", "Role setting must be cleared after exception");
+      assert.equal(res.rows[0].tid, "", "Tenant context must be cleared after exception");
+      assert.equal(res.rows[0].role, "", "Role context must be cleared after exception");
+      assert.equal(res.rows[0].bypass, 1, "Connection must return to the system context");
     } finally {
       client.release();
     }
@@ -236,14 +237,15 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
     // 4. Unauthenticated raw connection check
     const client = await pool.connect();
     try {
-      await client.query("SET ROLE dpdp_app_user;");
+      // Enter the tenant policy layer with no identity bound (equivalent of SET ROLE dpdp_app_user)
+      await client.query("UPDATE temp._ctx SET tenant_id = NULL, user_id = NULL, role = '', bypass = 0;");
       const unauthCount = await client.query("SELECT count(*) FROM assessments;");
       assert.equal(
         Number(unauthCount.rows[0].count),
         0,
         "Connection reused without RLS context must see 0 rows (fail-closed)"
       );
-      await client.query("RESET ROLE;");
+      // Releasing the client always returns the connection to the system context.
     } finally {
       client.release();
     }
@@ -277,13 +279,10 @@ describe("Phase 3C: Database RLS & Multi-Tenant Kernel Isolation", () => {
     assert.deepEqual(betaRes, ["018f3a5b-7c8d-7e90-8000-000000000202"]);
     assert.ok(!betaRes.includes("018f3a5b-7c8d-7e90-8000-000000000201"));
 
-    // 4. Verify context on Beta query is strictly Beta's role and tenant
+    // 4. Verify the bound context is strictly Beta's tenant (observed through visible tenants)
     await executeWithRls(BETA_USER, async (client) => {
-      const roleCheck = await client.query(
-        "SELECT current_setting('app.current_user_role', true) AS role, current_setting('app.current_tenant_id', true) AS tid;"
-      );
-      assert.equal(roleCheck.rows[0].role, "CLIENT_ADMIN");
-      assert.equal(roleCheck.rows[0].tid, BETA_USER.tenantId);
+      const tenants = await client.query("SELECT id FROM tenants;");
+      assert.deepEqual(tenants.rows.map((r) => r.id), [BETA_USER.tenantId]);
     });
   });
 });

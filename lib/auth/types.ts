@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Authentication & Identity Types
+ * CloudE5 — Authentication & Identity Types
  *
  * Defines the 7 application roles, session context structures, and authentication contracts.
  */
@@ -25,6 +25,10 @@ export interface SessionUser {
   tenantSlug: string;
   tenantType: TenantType;
   isSdf: boolean;
+  /** users.session_version at sign-in; sessions with an older version are revoked. */
+  sessionVersion?: number;
+  /** Unique id of this signed session (JWT jti), used to revoke it on sign-out. */
+  sessionId?: string;
 }
 
 export interface AuthSuccessResult {

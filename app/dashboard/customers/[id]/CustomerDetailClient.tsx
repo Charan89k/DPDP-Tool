@@ -1,28 +1,20 @@
 "use client";
 
+import type { UserRole } from "@/lib/auth/types";
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  Building2,
-  Users,
-  ShieldCheck,
   Plus,
   Mail,
-  User,
   CheckCircle2,
   AlertCircle,
   Copy,
-  ExternalLink,
   ArrowRight,
-  FileCheck2,
-  Calendar,
-  Lock,
   Clock,
-  ShieldAlert,
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
 import { getRoleBadgeLabel, canManageTenantUsers } from "@/lib/auth/rbac";
+import { formatDate, formatDateTime } from "@/lib/format/dates";
 
 interface CustomerRecord {
   id: string;
@@ -82,7 +74,6 @@ export function CustomerDetailClient({
   invitations: initialInvitations,
   assessments,
 }: CustomerDetailClientProps) {
-  const router = useRouter();
   const [users, setUsers] = useState<UserRecord[]>(initialUsers);
   const [invitations, setInvitations] = useState<InvitationRecord[]>(initialInvitations);
   const [activeTab, setActiveTab] = useState<"users" | "invitations" | "assessments">("users");
@@ -93,7 +84,7 @@ export function CustomerDetailClient({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("CLIENT_ADMIN");
-  const [password, setPassword] = useState("SyntheticTestPassword123!");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [generatedActivationUrl, setGeneratedActivationUrl] = useState<string | null>(null);
@@ -160,7 +151,7 @@ export function CustomerDetailClient({
         setGeneratedActivationUrl(data.activationUrl);
         setActiveTab("invitations");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("User management error:", err);
       setFormError("Network error contacting server.");
     } finally {
@@ -172,7 +163,7 @@ export function CustomerDetailClient({
     setFullName("");
     setEmail("");
     setRole("CLIENT_ADMIN");
-    setPassword("SyntheticTestPassword123!");
+    setPassword("");
     setFormError(null);
     setGeneratedActivationUrl(null);
   };
@@ -208,7 +199,7 @@ export function CustomerDetailClient({
           <p className="text-xs text-slate-500 mt-0.5">
             Industry: <strong className="text-slate-700">{customer.industry}</strong> • Created:{" "}
             <span className="text-slate-700">
-              {new Date(customer.created_at).toLocaleDateString()}
+              {formatDate(customer.created_at)}
             </span>
           </p>
         </div>
@@ -324,7 +315,7 @@ export function CustomerDetailClient({
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
           {users.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-500">
-              No users provisioned for this customer yet. Use "Add / Invite User" to add team members.
+              No users provisioned for this customer yet. Use &ldquo;Add / Invite User&rdquo; to add team members.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -340,7 +331,7 @@ export function CustomerDetailClient({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {users.map((u) => {
-                    const badge = getRoleBadgeLabel(u.role as any);
+                    const badge = getRoleBadgeLabel(u.role as UserRole);
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-4">
@@ -360,11 +351,11 @@ export function CustomerDetailClient({
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
                           {u.last_login_at
-                            ? new Date(u.last_login_at).toLocaleString()
+                            ? formatDateTime(u.last_login_at)
                             : "Never logged in"}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(u.created_at).toLocaleDateString()}
+                          {formatDate(u.created_at)}
                         </td>
                       </tr>
                     );
@@ -394,7 +385,7 @@ export function CustomerDetailClient({
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
             {invitations.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-500">
-                No active invitations. Use "Add / Invite User" to issue a new single-use activation invitation.
+                No active invitations. Use &ldquo;Add / Invite User&rdquo; to issue a new single-use activation invitation.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -443,10 +434,10 @@ export function CustomerDetailClient({
                           )}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(inv.expires_at).toLocaleDateString()}
+                          {formatDate(inv.expires_at)}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(inv.created_at).toLocaleDateString()}
+                          {formatDate(inv.created_at)}
                         </td>
                       </tr>
                     ))}

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, AlertCircle } from "lucide-react";
 import type {
   CanonicalQuestionnaireSection,
   SectionProgressSummary,
@@ -22,7 +21,6 @@ export function SectionNavigator({
   activeSectionIndex,
   isReviewStep,
   onSelectSection,
-  onSelectReview,
 }: SectionNavigatorProps) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">

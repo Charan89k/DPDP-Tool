@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Responses API
+ * CloudE5 — Assessment Responses API
  *
  * GET /api/assessments/[id]/responses
  * Fetches saved questionnaire responses for the assessment.
@@ -10,8 +10,11 @@
  */
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { errorMessage } from "@/lib/http/errors";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -24,6 +27,22 @@ const VALID_OPTIONS = [
   "Unknown / not verified",
   "Not applicable — justification required",
 ] as const;
+
+const MAX_RESPONSES_PER_REQUEST = 200;
+const MAX_JUSTIFICATION_LENGTH = 10_000;
+
+const responseItemSchema = z
+  .object({
+    selectedOption: z.enum(VALID_OPTIONS).nullable().optional(),
+    commentsAndJustification: z.string().max(MAX_JUSTIFICATION_LENGTH).nullable().optional(),
+  })
+  .nullable();
+
+const responsesBodySchema = z.object({
+  responses: z
+    .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, "Invalid question code."), responseItemSchema)
+    .refine((r) => Object.keys(r).length <= MAX_RESPONSES_PER_REQUEST, "Too many responses in one request."),
+});
 
 export async function GET(request: Request, { params }: RouteParams) {
   const sessionUser = await getCurrentSession();
@@ -94,6 +113,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       responses,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to fetch assessment questionnaire responses:", err);
     return NextResponse.json(
       { error: "Failed to retrieve questionnaire responses under tenant security boundary." },
@@ -113,31 +134,28 @@ export async function PUT(request: Request, { params }: RouteParams) {
     );
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
-  const { responses } = body;
-  if (!responses || typeof responses !== "object") {
+  const parsed = responsesBodySchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue?.path.length ? ` (${issue.path.join(".")})` : "";
     return NextResponse.json(
-      { error: "Missing or invalid 'responses' object in payload." },
+      { error: `Invalid 'responses' payload: ${issue?.message ?? "malformed"}${where}` },
       { status: 400 }
     );
   }
+  const { responses } = parsed.data;
 
   // Validate all items
-  for (const [code, item] of Object.entries<any>(responses)) {
-    if (item.selectedOption && !VALID_OPTIONS.includes(item.selectedOption)) {
-      return NextResponse.json(
-        { error: `Invalid option '${item.selectedOption}' for question ${code}.` },
-        { status: 400 }
-      );
-    }
+  for (const [code, item] of Object.entries(responses)) {
     if (
-      item.selectedOption === "Not applicable — justification required" &&
+      item?.selectedOption === "Not applicable — justification required" &&
       (!item.commentsAndJustification || item.commentsAndJustification.trim().length === 0)
     ) {
       return NextResponse.json(
@@ -166,7 +184,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
       let savedCount = 0;
 
-      for (const [qCode, item] of Object.entries<any>(responses)) {
+      for (const [qCode, item] of Object.entries(responses)) {
         if (!item || (!item.selectedOption && !item.commentsAndJustification)) {
           continue;
         }
@@ -243,8 +261,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
       assessmentId,
       savedCount: result.savedCount,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -252,7 +272,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
     console.error("Failed to persist questionnaire responses:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to persist responses under tenant boundary." },
+      { error: "Failed to persist responses under tenant boundary." },
       { status: 500 }
     );
   }

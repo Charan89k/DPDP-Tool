@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Organization Detail API
+ * CloudE5 — Customer Organization Detail API
  *
  * GET /api/customers/[id]
  * Fetches organization details, provisioned users, invitations, and assessments.
@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole } from "@/lib/auth/rbac";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export async function GET(
   req: NextRequest,
@@ -96,7 +97,9 @@ export async function GET(
       success: true,
       ...data,
     });
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error(`Failed to fetch customer ${customerId}:`, err);
     return NextResponse.json(
       { error: "Unable to retrieve customer details." },

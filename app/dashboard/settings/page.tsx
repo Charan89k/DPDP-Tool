@@ -4,7 +4,9 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { getRoleBadgeLabel, isTliRole } from "@/lib/auth/rbac";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Key, Building2, User } from "lucide-react";
+import { Shield, Building2, User } from "lucide-react";
+import { getMfaStatus } from "@/lib/auth/mfa";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function SettingsPage() {
     redirect("/login?redirect=/dashboard/settings");
   }
   const roleBadge = getRoleBadgeLabel(sessionUser.role);
+  const mfa = await getMfaStatus(sessionUser);
   const isConsultant = isTliRole(sessionUser.role);
 
   return (
@@ -27,6 +30,13 @@ export default async function SettingsPage() {
           Authenticated session context and enterprise tenant configuration.
         </p>
       </div>
+
+      <SecuritySettings
+        mfaEnabled={mfa.enabled}
+        recoveryCodesRemaining={mfa.recoveryCodesRemaining}
+        organizationRequiresMfa={mfa.organizationRequiresMfa}
+        canManageOrganization={sessionUser.role === "CLIENT_ADMIN" || sessionUser.role === "TLI_SUPER_ADMIN"}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* User Identity Card */}
@@ -69,7 +79,7 @@ export default async function SettingsPage() {
               </span>
               <p className="text-slate-600 mt-0.5">
                 {isConsultant
-                  ? "Authorized Truth Labs International forensic reviewer. Cross-tenant assessment evaluation privileges active."
+                  ? "Authorized CloudE5 platform reviewer. Cross-tenant assessment evaluation privileges active."
                   : "Authorized client organization contributor. Access strictly restricted to tenant boundary."}
               </p>
             </div>
@@ -120,7 +130,7 @@ export default async function SettingsPage() {
               </span>
               <span className="text-slate-700 font-medium">
                 {sessionUser.tenantType === "TLI"
-                  ? "Advisory Firm Platform Tenant"
+                  ? "CloudE5 Platform Operator"
                   : sessionUser.isSdf
                   ? "Significant Data Fiduciary (Section 10 Additional Obligations)"
                   : "Standard Data Fiduciary"}
@@ -149,7 +159,7 @@ export default async function SettingsPage() {
               </span>
             </div>
             <p className="text-slate-500">
-              All database queries execute under least-privilege role <code className="text-slate-800">dpdp_app_user</code> with session variables bound per request (<code className="text-slate-800">app.current_tenant_id</code>). Connection reuse context bleed is strictly prevented.
+              Every query runs through CloudE5&apos;s tenant policy layer, bound to your verified identity for that request, so you only ever see your own organisation&apos;s data.
             </p>
           </div>
 
@@ -170,14 +180,14 @@ export default async function SettingsPage() {
           <div className="p-3 bg-blue-50/60 rounded-lg border border-blue-200 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-blue-900">
-                DEC-04 Governance Status: Authentication & Enterprise SSO
+                Single sign-on
               </span>
               <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-semibold">
-                OPEN STAKEHOLDER CONDITION
+                NOT YET AVAILABLE
               </span>
             </div>
             <p className="text-blue-800">
-              In accordance with <code className="text-blue-900 font-semibold">docs/09_unresolved_decisions_and_tl_assumptions.md (DEC-04)</code>, production launch will adopt TLI-approved Enterprise SAML 2.0 / OIDC federation. The current runtime provides secure password verification with bcrypt and session validation.
+              Single sign-on (SAML / OIDC) is not yet available. Sign-in uses bcrypt-hashed passwords with optional two-factor authentication.
             </p>
           </div>
         </CardContent>

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole } from "@/lib/auth/rbac";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText,
@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -152,7 +153,7 @@ export default async function ReportsListPage() {
                   <User className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                   <div>
                     <span className="text-stone-400 block text-[10px] uppercase font-mono font-semibold">Lead Consultant</span>
-                    <span className="font-medium text-stone-800">{a.lead_consultant_name || "TLI Advisory"}</span>
+                    <span className="font-medium text-stone-800">{a.lead_consultant_name || "CloudE5"}</span>
                   </div>
                 </div>
 
@@ -162,7 +163,7 @@ export default async function ReportsListPage() {
                     <span className="text-stone-400 block text-[10px] uppercase font-mono font-semibold">Target Completion</span>
                     <span className="font-medium text-stone-800 font-mono">
                       {a.target_completion_date
-                        ? new Date(a.target_completion_date).toLocaleDateString()
+                        ? formatDate(a.target_completion_date)
                         : "Q4 2026 Audit"}
                     </span>
                   </div>

@@ -1,3 +1,9 @@
+> **CloudE5:** current architecture: [ARCHITECTURE.md](ARCHITECTURE.md); onboarding customers: [ONBOARDING.md](ONBOARDING.md);
+> installation and operations: [SELF_HOSTING.md](SELF_HOSTING.md) and [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md);
+> tenant isolation and account security: [SECURITY_MODEL.md](SECURITY_MODEL.md). The documents below record the platform's design
+> history (originally built as the TLI DPDP Compliance Gap Analysis Tool on PostgreSQL); references to
+> PostgreSQL row-level security, Neon and Vercel describe that earlier architecture.
+
 # TLI DPDP Compliance Gap Analysis Tool — Architecture & Specifications
 
 This repository contains the enterprise architecture, security design, database specifications, and implementation roadmap for the **Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool**.

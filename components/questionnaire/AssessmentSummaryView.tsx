@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserRole } from "@/lib/auth/types";
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
@@ -8,25 +9,24 @@ import {
   Clock,
   XCircle,
   MinusCircle,
-  Eye,
-  FileDown,
-  ArrowLeft,
-  ChevronDown,
-  Building,
-  Check,
   Search,
-  Filter,
-  Shield,
   ShieldCheck,
-  AlertTriangle,
   Paperclip,
-  User,
   AlertCircle,
   ExternalLink,
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
 import { isTliRole } from "@/lib/auth/rbac";
+import { errorMessage } from "@/lib/http/errors";
+import type { ScoringEngineOutput } from "@/lib/scoring/types";
+
+/** Saved answer as returned by GET /api/assessments/[id]/responses. */
+interface SavedResponse {
+  selectedOption?: string;
+  commentsAndJustification?: string;
+  updatedAt: string;
+}
 
 interface AssessmentSummaryViewProps {
   assessmentId: string;
@@ -44,23 +44,24 @@ interface AssessmentSummaryViewProps {
 export function AssessmentSummaryView({
   assessmentId,
   tenantName = "ABC Private Limited",
-  assessmentCode = "DPDP-2024-006",
-  visitDate = "20 Aug 2024",
+  assessmentCode = "",
+  visitDate = "",
   leadConsultantName = "Anita Sharma",
   industry = "IT / ITES",
   assessmentStatus = "DATA_GATHERING",
   userRole = "CLIENT_ADMIN",
 }: AssessmentSummaryViewProps) {
-  const isConsultant = isTliRole(userRole as any);
+  const isConsultant = isTliRole(userRole as UserRole);
 
   // Real backend states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [scoringData, setScoringData] = useState<any>(null);
-  const [responses, setResponses] = useState<Record<string, any>>({});
-  const [evidenceList, setEvidenceList] = useState<any[]>([]);
-  const [clarifications, setClarifications] = useState<any[]>([]);
+  const [scoringData, setScoringData] = useState<ScoringEngineOutput | null>(null);
+  const [responses, setResponses] = useState<Record<string, SavedResponse>>({});
+  // The evidence API reports control-level evidence under its control code in questionCode.
+  const [evidenceList, setEvidenceList] = useState<{ id: string; questionCode: string }[]>([]);
+  const [clarifications, setClarifications] = useState<{ id: string }[]>([]);
 
   // Filtering & search
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
@@ -93,9 +94,9 @@ export function AssessmentSummaryView({
       // 1. Scoring calculation
       const scoringRes = await fetch(`/api/assessments/${assessmentId}/scoring`);
       if (scoringRes.ok) {
-        const scData = await scoringRes.json();
-        if (scData.success) {
-          setScoringData(scData);
+        const scData: { success?: boolean; data?: ScoringEngineOutput } = await scoringRes.json();
+        if (scData.success && scData.data) {
+          setScoringData(scData.data);
         }
       }
 
@@ -134,16 +135,19 @@ export function AssessmentSummaryView({
           setCurrentStatus(trData.state.status);
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to load summary data:", err);
-      setError(err.message || "Failed to load assessment summary data.");
+      setError(errorMessage(err) || "Failed to load assessment summary data.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Loads server data for the selected assessment; the loader is also used by refresh actions.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSummaryData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
 
   // Handle Client Submission to SUBMITTED_FOR_REVIEW
@@ -170,8 +174,8 @@ export function AssessmentSummaryView({
 
       setCurrentStatus("SUBMITTED_FOR_REVIEW");
       await loadSummaryData();
-    } catch (err: any) {
-      setSubmitError(err.message || "Network error while submitting assessment.");
+    } catch (err) {
+      setSubmitError(errorMessage(err) || "Network error while submitting assessment.");
     } finally {
       setIsSubmitting(false);
     }
@@ -179,23 +183,27 @@ export function AssessmentSummaryView({
 
   // Compute live counts and metrics
   const totalQuestions = allQuestions.length || 60;
-  const answeredCount = Object.values(responses).filter((r: any) => r && r.selectedOption).length;
+  const saved = Object.values(responses);
+  const answeredCount = saved.filter((r) => r?.selectedOption).length;
   const answeredPct = Math.round((answeredCount / totalQuestions) * 100);
 
-  const implementedCount = scoringData?.summary?.counts?.implemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Implemented").length;
+  // Prefer the scoring engine's figures; fall back to counting saved answers.
+  const metrics = scoringData?.metrics;
+  const implementedCount =
+    metrics?.implementedCount ?? saved.filter((r) => r?.selectedOption === "Implemented").length;
 
-  const partiallyCount = scoringData?.summary?.counts?.partiallyImplemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Partially implemented").length;
+  const partiallyCount =
+    metrics?.partiallyImplementedCount ?? saved.filter((r) => r?.selectedOption === "Partially implemented").length;
 
-  const notImplementedCount = scoringData?.summary?.counts?.notImplemented ??
-    Object.values(responses).filter((r: any) => r?.selectedOption === "Not implemented").length;
+  const notImplementedCount =
+    metrics?.notImplementedCount ?? saved.filter((r) => r?.selectedOption === "Not implemented").length;
 
-  const notApplicableCount = scoringData?.summary?.counts?.notApplicable ??
-    Object.values(responses).filter((r: any) => r?.selectedOption?.startsWith("Not applicable")).length;
+  const notApplicableCount = metrics
+    ? metrics.totalApprovedExcluded + metrics.totalUnapprovedNa
+    : saved.filter((r) => r?.selectedOption?.startsWith("Not applicable")).length;
 
-  const readinessPct = scoringData?.calculation?.indicativeReadinessPct ?? 0;
-  const maturityScore = scoringData?.calculation?.indicativeMaturityScore ?? 0;
+  const readinessPct = metrics?.indicativeReadinessPercentage ?? 0;
+  const maturityScore = metrics?.indicativeMaturityScore ?? 0;
 
   // Filtered Questions for Table
   const filteredQuestions = useMemo(() => {
@@ -216,9 +224,6 @@ export function AssessmentSummaryView({
     for (const ev of evidenceList) {
       if (ev.questionCode) {
         map.set(ev.questionCode, (map.get(ev.questionCode) || 0) + 1);
-      }
-      if (ev.controlCode) {
-        map.set(ev.controlCode, (map.get(ev.controlCode) || 0) + 1);
       }
     }
     return map;
@@ -273,7 +278,12 @@ export function AssessmentSummaryView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={loading}>
+      {error && (
+        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">
+          {error}
+        </div>
+      )}
       {/* 1. Top Context Bar & 4-Step Stepper */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
@@ -358,7 +368,7 @@ export function AssessmentSummaryView({
               disabled={isSubmitting}
               className="px-4 py-1.5 text-xs font-semibold text-white bg-[#0066FF] hover:bg-[#0052CC] disabled:opacity-50 rounded-lg shadow-sm transition-colors flex items-center space-x-1"
             >
-              <span>{isSubmitting ? "Submitting..." : "Submit for TLI Review"}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit for CloudE5 Review"}</span>
             </button>
           )}
 
@@ -523,8 +533,8 @@ export function AssessmentSummaryView({
                 Statutory Section Breakdown
               </h4>
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                {(scoringData?.domainRollups || canonicalSections).map((sec: any) => {
-                  const secCode = sec.sectionCode || sec.code;
+                {canonicalSections.map((sec) => {
+                  const secCode = sec.code;
                   const secTitle = sec.title;
                   const secQuestions = allQuestions.filter((q) => q.sectionCode === secCode);
                   const secAnswered = secQuestions.filter((q) => responses[q.code]?.selectedOption).length;
@@ -623,7 +633,7 @@ export function AssessmentSummaryView({
               </div>
 
               <div className="text-[9px] text-slate-400 italic text-center border-t border-slate-100 pt-1">
-                Diagnostic baseline pending formal TLI methodology ratification (DEC-01).
+                Diagnostic baseline pending formal methodology ratification (DEC-01).
               </div>
             </div>
 
@@ -884,17 +894,17 @@ export function AssessmentSummaryView({
 
             {scoringData?.statutoryDeficits && scoringData.statutoryDeficits.length > 0 ? (
               <div className="space-y-2">
-                {scoringData.statutoryDeficits.slice(0, 3).map((def: any, i: number) => (
+                {scoringData.statutoryDeficits.slice(0, 3).map((def, i: number) => (
                   <div key={i} className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs space-y-1">
                     <div className="flex items-center justify-between font-bold text-rose-900 text-[11px]">
                       <span>{def.questionCode}</span>
                       <span className="text-[10px] bg-rose-200 px-1.5 py-0.2 rounded">
-                        {def.deficitType}
+                        {def.severity.replace(/_/g, " ")}
                       </span>
                     </div>
-                    <p className="text-rose-800 text-[11px] leading-normal">{def.statutoryDeficit}</p>
+                    <p className="text-rose-800 text-[11px] leading-normal">{def.description}</p>
                     <p className="text-[10px] text-rose-600 font-mono">
-                      Statutory Focus: {def.statutoryReference}
+                      Statutory Focus: {def.statutoryDomain ?? def.canonicalControlId ?? "—"}
                     </p>
                   </div>
                 ))}
@@ -925,7 +935,7 @@ export function AssessmentSummaryView({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   2
                 </span>
-                <span>Submit engagement for formal TLI Assessor Review.</span>
+                <span>Submit engagement for formal CloudE5 Assessor Review.</span>
               </li>
               <li className="flex items-start space-x-2.5">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
@@ -937,7 +947,7 @@ export function AssessmentSummaryView({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   4
                 </span>
-                <span>TLI Lead Consultant approves and issues final cryptographic compliance report.</span>
+                <span>Lead Consultant approves and issues final cryptographic compliance report.</span>
               </li>
             </ol>
           </div>

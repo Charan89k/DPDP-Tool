@@ -4,8 +4,7 @@ import assert from "node:assert/strict";
 import {
   verifyPassword,
   hashPassword,
-  SYNTHETIC_SEED_HASH,
-  SYNTHETIC_SEED_PASSWORD,
+  describePasswordProblem,
 } from "../lib/auth/passwords.ts";
 import { getSafeRedirectUrl } from "../lib/auth/redirects.ts";
 import {
@@ -43,35 +42,14 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(invalid, false, "Bcrypt verification should reject incorrect password");
   });
 
-  it("should support synthetic development test fixtures safely in dev mode", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "development";
-    try {
-      const valid = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
-      assert.equal(valid, true, "Should recognize synthetic seed password in development");
-
-      const invalid = await verifyPassword("IncorrectPassword123!", SYNTHETIC_SEED_HASH);
-      assert.equal(invalid, false, "Should reject incorrect password for synthetic seed");
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
+  it("never accepts a non-bcrypt placeholder hash, such as the test fixtures' accounts", async () => {
+    const placeholder = "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
+    assert.equal(await verifyPassword("SyntheticTestPassword123!", placeholder), false);
+    assert.equal(await verifyPassword("anything-at-all-1", placeholder), false);
   });
 
-  it("should unconditionally reject synthetic development credentials in production mode", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
-    try {
-      // 1. Synthetic hash with synthetic password must fail closed in production
-      const attempt1 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
-      assert.equal(attempt1, false, "Production mode must reject synthetic test hash");
-
-      // 2. Synthetic password with any password hash must fail closed in production
-      const realHash = await hashPassword("RealProductionPassword123!");
-      const attempt2 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, realHash);
-      assert.equal(attempt2, false, "Production mode must reject synthetic test password");
-    } finally {
-      process.env.NODE_ENV = originalEnv;
-    }
+  it("refuses the former, publicly known demo password as a new password", () => {
+    assert.ok(describePasswordProblem("SyntheticTestPassword123!"));
   });
 
   it("should fail closed on null, undefined, or empty password verification", async () => {
@@ -85,7 +63,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
   it("should enforce mandatory strong signing secret in production mode", () => {
     const originalEnv = process.env.NODE_ENV;
     const originalSecret = process.env.SESSION_SECRET;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     try {
       // Missing secret fails closed
@@ -110,7 +88,7 @@ describe("Phase 3C: Authentication & Session Tests", () => {
       assert.ok(key instanceof Uint8Array);
       assert.ok(key.length >= 32);
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
       if (originalSecret !== undefined) {
         process.env.SESSION_SECRET = originalSecret;
       } else {
@@ -225,86 +203,72 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(getSafeRedirectUrl(""), "/dashboard");
   });
 
-  it("should enforce sliding window rate limiting on repeated failed login attempts", () => {
-    loginRateLimiter.clearAllRateLimits();
-    const testKey = "ip:192.168.1.50";
+  it("should enforce sliding window rate limiting on repeated failed login attempts", async () => {
+    
+    const testKey = `ip:192.168.1.${Date.now() % 250}`;
 
     // First 4 attempts should not be rate limited
     for (let i = 0; i < 4; i++) {
-      loginRateLimiter.recordFailedAttempt(testKey);
-      assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
+      await loginRateLimiter.recordFailedAttempt(testKey);
+      assert.equal((await loginRateLimiter.isRateLimited(testKey)).limited, false);
     }
 
     // 5th failed attempt reaches the threshold
-    loginRateLimiter.recordFailedAttempt(testKey);
-    const limitStatus = loginRateLimiter.isRateLimited(testKey);
+    await loginRateLimiter.recordFailedAttempt(testKey);
+    const limitStatus = await loginRateLimiter.isRateLimited(testKey);
     assert.equal(limitStatus.limited, true, "5 failed attempts must trigger rate limiting");
     assert.ok(limitStatus.retryAfterSeconds > 0, "Must provide retry-after seconds");
 
     // Successful login resets the counter
-    loginRateLimiter.resetAttempts(testKey);
-    assert.equal(loginRateLimiter.isRateLimited(testKey).limited, false);
+    await loginRateLimiter.resetAttempts(testKey);
+    assert.equal((await loginRateLimiter.isRateLimited(testKey)).limited, false);
   });
 
-  it("should safely resolve client IP from trusted edge headers and reject spoofed headers", async () => {
+  it("should resolve client IP only from trusted proxy headers and reject spoofed headers", async () => {
     const { resolveClientIp } = await import("../lib/auth/rate_limit.ts");
+    const selfHosted = {};
 
-    // 1. Cloudflare edge header takes precedence
-    const req1 = new Request("https://app.tli.internal", {
+    // 1. Behind a reverse proxy the rightmost X-Forwarded-For entry (appended by the proxy) wins;
+    //    client-injected CF-Connecting-IP / X-Real-IP / leftmost entries are ignored.
+    const spoofed = new Request("https://app.example", {
       headers: {
         "cf-connecting-ip": "203.0.113.195",
         "x-real-ip": "198.51.100.22",
-        "x-forwarded-for": "10.0.0.1",
+        "x-forwarded-for": "203.0.113.250, 198.51.100.99",
       },
     });
-    assert.equal(resolveClientIp(req1), "203.0.113.195");
+    assert.equal(resolveClientIp(spoofed, selfHosted), "198.51.100.99");
 
-    // 2. Standard X-Real-IP reverse proxy header
-    const req2 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-real-ip": "198.51.100.22",
-        "x-forwarded-for": "10.0.0.1",
-      },
+    // 2. Explicitly trusted headers are honoured
+    assert.equal(resolveClientIp(spoofed, { TRUST_CLOUDFLARE_IP_HEADER: "true" }), "203.0.113.195");
+    assert.equal(resolveClientIp(spoofed, { CLOUDE5_TRUST_X_REAL_IP: "true" }), "198.51.100.22");
+
+    // 3. Reject spoofed non-IP strings / injection attempts in forwarding header
+    const req4 = new Request("https://app.example", {
+      headers: { "x-forwarded-for": "attacker-spoofed-host; drop table users;" },
     });
-    assert.equal(resolveClientIp(req2), "198.51.100.22");
+    assert.equal(resolveClientIp(req4, selfHosted), "127.0.0.1", "Must fall back to 127.0.0.1 on invalid IP syntax");
 
-    // 3. Valid X-Forwarded-For leftmost IP
-    const req3 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-forwarded-for": "198.51.100.99, 10.0.0.1",
-      },
-    });
-    assert.equal(resolveClientIp(req3), "198.51.100.99");
-
-    // 4. Reject spoofed non-IP strings / injection attempts in forwarding header
-    const req4 = new Request("https://app.tli.internal", {
-      headers: {
-        "x-forwarded-for": "attacker-spoofed-host; drop table users;",
-      },
-    });
-    assert.equal(resolveClientIp(req4), "127.0.0.1", "Must fall back to 127.0.0.1 on invalid IP syntax");
-
-    // 5. Default fallback
-    const req5 = new Request("https://app.tli.internal");
-    assert.equal(resolveClientIp(req5), "127.0.0.1");
+    // 4. Default fallback
+    assert.equal(resolveClientIp(new Request("https://app.example"), selfHosted), "127.0.0.1");
   });
 
-  it("should prevent rate limit bypass via email case or whitespace variation", () => {
-    loginRateLimiter.clearAllRateLimits();
+  it("should prevent rate limit bypass via email case or whitespace variation", async () => {
+    
     const rawEmail = "Lead.Consultant@TruthLabs.in ";
     const normalizedKey = `email:${rawEmail.trim().toLowerCase()}`;
 
     // Record 5 failed attempts on normalized email
     for (let i = 0; i < 5; i++) {
-      loginRateLimiter.recordFailedAttempt(normalizedKey);
+      await loginRateLimiter.recordFailedAttempt(normalizedKey);
     }
 
     // Checking varying capitalizations / whitespaces normalized to same key
     const checkVariant1 = `email:${"LEAD.CONSULTANT@TRUTHLABS.IN".trim().toLowerCase()}`;
     const checkVariant2 = `email:${"  lead.consultant@truthlabs.in  ".trim().toLowerCase()}`;
 
-    assert.equal(loginRateLimiter.isRateLimited(checkVariant1).limited, true);
-    assert.equal(loginRateLimiter.isRateLimited(checkVariant2).limited, true);
+    assert.equal((await loginRateLimiter.isRateLimited(checkVariant1)).limited, true);
+    assert.equal((await loginRateLimiter.isRateLimited(checkVariant2)).limited, true);
   });
 });
 

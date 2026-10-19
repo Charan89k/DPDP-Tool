@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Assessment Lifecycle Types
+ * CloudE5 — Assessment Lifecycle Types
  *
  * Canonical 14-state assessment lifecycle types as defined in:
  * - docs/03_assessment_workflow_and_state_machine.md
@@ -7,7 +7,6 @@
  * - docs/31_phase_3d_assessment_workflow_implementation_plan.md
  */
 
-import type { UserRole } from "../auth/types.ts";
 
 export const CANONICAL_ASSESSMENT_STATUSES = [
   "DRAFT",
@@ -66,7 +65,7 @@ export interface TransitionValidationResult {
 export interface TransitionRequest {
   targetStatus: AssessmentStatus;
   reason?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AssessmentStateSummary {
@@ -97,7 +96,7 @@ export interface TransitionAuditLogEntry {
   previousStatus: AssessmentStatus;
   newStatus: AssessmentStatus;
   reason?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   timestamp: string;
 }
 

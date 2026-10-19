@@ -1,7 +1,7 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Professional Word (.docx) Exporter
+ * CloudE5 — Professional Word (.docx) Exporter
  *
- * Implements authoritative report generation preserving Truth Labs International
+ * Implements authoritative report generation preserving CloudE5
  * brand typography, tables, headers, footers, pagination, draft watermarks,
  * and complete 60-question audit provenance.
  */
@@ -15,7 +15,6 @@ import {
   TableRow,
   TableCell,
   WidthType,
-  BorderStyle,
   AlignmentType,
   HeadingLevel,
   Header,
@@ -31,9 +30,7 @@ const BRAND_STONE_MUTED = "78716C";
 const BRAND_AMBER_BG = "FEF3C7";
 const BRAND_AMBER_BORDER = "F59E0B";
 const BRAND_ROSE_BG = "FFE4E6";
-const BRAND_ROSE_BORDER = "E11D48";
 const BG_HEADER_GRAY = "F5F5F4";
-const BORDER_LIGHT_GRAY = "E7E5E4";
 
 type AlignmentValue = (typeof AlignmentType)[keyof typeof AlignmentType];
 
@@ -82,7 +79,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         alignment: AlignmentType.RIGHT,
         children: [
           new TextRun({
-            text: "Truth Labs International — DPDP Compliance Advisory | ",
+            text: "CloudE5 — DPDP Compliance Advisory | ",
             size: 16,
             font: "Arial",
             color: BRAND_STONE_MUTED,
@@ -105,7 +102,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         alignment: AlignmentType.JUSTIFIED,
         children: [
           new TextRun({
-            text: `REF: TLI-DPDP-REP-${data.assessment.id.slice(0, 8).toUpperCase()} | CONFIDENTIAL & PROPRIETARY | Page `,
+            text: `REF: CE5-REP-${data.assessment.id.slice(0, 8).toUpperCase()} | CONFIDENTIAL & PROPRIETARY | Page `,
             size: 16,
             font: "Arial",
             color: BRAND_STONE_MUTED,
@@ -165,7 +162,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
                     alignment: AlignmentType.CENTER,
                     children: [
                       new TextRun({
-                        text: "This document is a draft evaluation compiled prior to formal Lead Consultant issuance. In accordance with TLI governance decisions DEC-01 and DEC-08, numeric scores are advisory pending final methodology ratification.",
+                        text: "This document is a draft evaluation compiled prior to formal Lead Consultant issuance. In accordance with methodology decisions DEC-01 and DEC-08, numeric scores are advisory pending final methodology ratification.",
                         size: 16,
                         font: "Arial",
                         color: "78350F",
@@ -191,7 +188,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
       spacing: { before: 200, after: 100 },
       children: [
         new TextRun({
-          text: "Truth Labs International",
+          text: "CloudE5",
           bold: true,
           size: 36,
           font: "Georgia",
@@ -254,7 +251,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         new TableRow({
           children: [
             createTableCell("Lead Consultant", { isHeader: true, widthPct: 25 }),
-            createTableCell(data.assessment.leadConsultantName || "Assigned by TLI", { widthPct: 25 }),
+            createTableCell(data.assessment.leadConsultantName || "Assigned by CloudE5", { widthPct: 25 }),
             createTableCell("Evaluation Date", { isHeader: true, widthPct: 25 }),
             createTableCell(new Date(data.auditTrail.generatedAt).toLocaleDateString("en-IN"), {
               widthPct: 25,
@@ -287,7 +284,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
       spacing: { after: 160 },
       children: [
         new TextRun({
-          text: "The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable statutory safeguards. In alignment with TLI forensic methodology, statutory compliance is evaluated on a strict non-compensatory standard: mathematical averages in procedural areas do not cure or offset material deficits in core statutory obligations.",
+          text: "The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable statutory safeguards. In alignment with the CloudE5 methodology, statutory compliance is evaluated on a strict non-compensatory standard: mathematical averages in procedural areas do not cure or offset material deficits in core statutory obligations.",
           size: 18,
           font: "Arial",
           color: BRAND_STONE_DARK,
@@ -672,7 +669,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         new TableRow({
           children: [
             createTableCell(
-              `${data.auditTrail.approvedByUserName || data.assessment.leadConsultantName || "TLI Advisory Lead"}\nApproved Date: ${
+              `${data.auditTrail.approvedByUserName || data.assessment.leadConsultantName || "CloudE5 Lead"}\nApproved Date: ${
                 data.auditTrail.approvedAt
                   ? new Date(data.auditTrail.approvedAt).toLocaleDateString("en-IN")
                   : "Pending Formal Issuance"
@@ -680,7 +677,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
               { widthPct: 50 }
             ),
             createTableCell(
-              "Truth Labs International\nDigital Personal Data Protection Practice\nForensic Privacy & Advisory Division",
+              "CloudE5\nDigital Personal Data Protection Practice\nForensic Privacy & Advisory Division",
               { widthPct: 50, bold: true }
             ),
           ],

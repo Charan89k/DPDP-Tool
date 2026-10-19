@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Questionnaire Domain Types & Response Schema
+ * CloudE5 — Questionnaire Domain Types & Response Schema
  *
  * Grounded in the authoritative 60-question questionnaire extracted from
  * Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx.

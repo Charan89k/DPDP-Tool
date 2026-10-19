@@ -1,0 +1,13 @@
+# CloudE5 behind Caddy with automatic HTTPS (Let's Encrypt).
+{$CLOUDE5_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	# Evidence uploads are limited to 50 MB by the application.
+	request_body {
+		max_size 55MB
+	}
+	reverse_proxy cloude5:3000
+}

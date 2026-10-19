@@ -1,13 +1,27 @@
 import React from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { AssessmentSummaryView } from "@/components/questionnaire/AssessmentSummaryView";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
 interface SummaryPageProps {
   params: Promise<{ id: string }>;
+}
+
+interface SummaryAssessmentRow {
+  id: string;
+  engagement_code: string;
+  title: string;
+  status: string;
+  created_at: Date | null;
+  target_completion_date: Date | null;
+  is_partial_assessment: boolean;
+  tenant_name: string | null;
+  industry: string | null;
+  lead_consultant_name: string | null;
 }
 
 export default async function AssessmentSummaryPage({ params }: SummaryPageProps) {
@@ -18,7 +32,7 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
     redirect(`/login?redirect=/dashboard/assessments/${id}/summary`);
   }
 
-  let assessmentData: any = null;
+  let assessmentData: SummaryAssessmentRow | null = null;
 
   try {
     assessmentData = await executeWithRls(sessionUser, async (client) => {
@@ -31,7 +45,6 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
           a.created_at,
           a.target_completion_date,
           a.is_partial_assessment,
-          a.partial_assessment_reason,
           t.name AS tenant_name,
           t.industry,
           u.full_name AS lead_consultant_name
@@ -43,17 +56,18 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
       );
       return res.rows[0] || null;
     });
-  } catch {}
+  } catch (err) {
+    console.error("Failed to load assessment summary:", err instanceof Error ? err.message : err);
+  }
 
-  const tenantName = assessmentData?.tenant_name || sessionUser.tenantName || "ABC Private Limited";
-  const assessmentCode = assessmentData?.engagement_code || "DPDP-2024-006";
+  if (!assessmentData) {
+    notFound();
+  }
+  const tenantName: string = assessmentData.tenant_name || sessionUser.tenantName;
+  const assessmentCode: string = assessmentData.engagement_code;
   const visitDate = assessmentData?.created_at
-    ? new Date(assessmentData.created_at).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-    : "20 Aug 2024";
+    ? formatDate(assessmentData.created_at)
+    : "—";
 
   return (
     <div className="space-y-6">

@@ -16,17 +16,17 @@
  * 12. PostgreSQL Row-Level Security (RLS) tenant isolation and assignment boundaries.
  */
 
-import { describe, it, after } from "node:test";
+import { describe, it, before, after } from "node:test";
+import type { RemediationStatus } from "../lib/remediation/types.ts";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { pool } from "../lib/db/pool.ts";
 import { executeWithRls } from "../lib/db/rls.ts";
 import { createSessionToken, verifySessionToken } from "../lib/auth/session.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
-import { FileValidator, ValidationError } from "../lib/storage/validation.ts";
+import { ValidationError } from "../lib/storage/validation.ts";
 import { EvidenceVaultService } from "../lib/storage/service.ts";
 import { evaluateAssessmentGaps } from "../lib/gaps/engine.ts";
-import { calculateAssessmentScores } from "../lib/scoring/engine.ts";
 import { generateReportDocument, issueOfficialFinalReport } from "../lib/reports/service.ts";
 import { generateWordReport } from "../lib/reports/docx.ts";
 import {
@@ -109,6 +109,25 @@ const BETA_ADMIN_USER: SessionUser = {
 describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
   const testAssessmentId = crypto.randomUUID();
   const testEngagementCode = `PILOT-GAMMA-${Date.now()}`;
+
+  before(async () => {
+    // Dedicated Gamma pilot tenant and personas (idempotent; independent of other test files)
+    await pool.query(
+      `INSERT INTO tenants (id, type, name, slug, industry, status)
+       VALUES ($1, 'CLIENT', 'Gamma Health Test Systems', 'gamma-health-test', 'HealthTech', 'ACTIVE')
+       ON CONFLICT (id) DO NOTHING;`,
+      [PILOT_TENANT_ID]
+    );
+    await pool.query(
+      `INSERT INTO users (id, tenant_id, email, password_hash, full_name, role, is_active)
+       VALUES
+         ($1, $2, 'admin@gammatest.local', 'synthetic_hash', 'Gamma Admin', 'CLIENT_ADMIN', TRUE),
+         ($3, $4, 'gamma.lead@truthlabs.in', 'synthetic_hash', 'Gamma Lead Consultant', 'TLI_LEAD_CONSULTANT', TRUE),
+         ($5, $4, 'gamma.reviewer@truthlabs.in', 'synthetic_hash', 'Gamma Reviewer', 'TLI_REVIEWER', TRUE)
+       ON CONFLICT (id) DO NOTHING;`,
+      [PILOT_CLIENT_ADMIN_ID, PILOT_TENANT_ID, PILOT_LEAD_CONSULTANT_ID, TLI_TENANT_ID, PILOT_REVIEWER_ID]
+    );
+  });
 
   after(async () => {
     try {
@@ -265,7 +284,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
           content: fakePdfBuffer,
         });
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         (err.message.includes("signature does not match") ||
           err.message.includes("forbidden content signature"))
@@ -274,12 +293,9 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     // Cross-tenant download block: Beta Admin cannot access Gamma evidence under RLS (hidden fail-closed)
     await assert.rejects(
       async () => {
-        await vaultService.getEvidenceForDownload({
-          sessionUser: BETA_ADMIN_USER,
-          evidenceId: uploaded.id,
-        });
+        await vaultService.getEvidenceForDownload(BETA_ADMIN_USER, uploaded.id);
       },
-      (err: any) =>
+      (err: Error) =>
         err instanceof ValidationError &&
         (err.message.includes("Tenant isolation policy prohibits") ||
           err.message.includes("Evidence record not found"))
@@ -442,7 +458,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     // 2. Client logs progress and submits for closure
     const progressUpdated = await updateRemediationProgress(PILOT_CLIENT_USER, task.id, {
       status: "SUBMITTED_FOR_CLOSURE",
-      progressNotes: "Upgraded Cisco AnyConnect gateway with Duo SAML MFA. Ready for assessor verification.",
+      closureSubmissionNotes: "Upgraded Cisco AnyConnect gateway with Duo SAML MFA. Ready for assessor verification.",
     });
     assert.equal(progressUpdated.status, "SUBMITTED_FOR_CLOSURE");
 
@@ -450,11 +466,11 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     await assert.rejects(
       async () => {
         await updateRemediationProgress(PILOT_CLIENT_USER, task.id, {
-          status: "VALIDATED_CLOSED" as any,
-          progressNotes: "Self-closing task",
+          status: "VALIDATED_CLOSED" as RemediationStatus,
+          closureSubmissionNotes: "Self-closing task",
         });
       },
-      (err: any) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
+      (err: Error) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
     );
 
     // 4. Authorized TLI Consultant validates closure
@@ -477,7 +493,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
             [testAssessmentId]
           );
         },
-        (err: any) =>
+        (err: Error) =>
           err.message.includes("Report snapshots are immutable") ||
           err.message.includes("permission denied for table report_snapshots")
       );
@@ -492,7 +508,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
             [testAssessmentId]
           );
         },
-        (err: any) =>
+        (err: Error) =>
           err.message.includes("Report snapshots are immutable") ||
           err.message.includes("permission denied for table report_snapshots")
       );

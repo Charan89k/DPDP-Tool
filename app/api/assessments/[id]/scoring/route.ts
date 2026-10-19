@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Deterministic Scoring Engine API
+ * CloudE5 — Deterministic Scoring Engine API
  *
  * GET /api/assessments/[id]/scoring
  * Computes and returns deterministic assessment scoring, including:
@@ -23,6 +23,7 @@ import {
   persistAssessmentScores,
   ScoringServiceError,
 } from "@/lib/scoring";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -56,7 +57,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error) {
+    const sessionError = sessionErrorResponse(error);
+    if (sessionError) return sessionError;
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -67,7 +70,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     console.error("Scoring engine error:", error);
     return NextResponse.json(
       {
-        error: error.message || "An unexpected error occurred while calculating assessment scores.",
+        error: "An unexpected error occurred while calculating assessment scores.",
         code: "INTERNAL_SCORING_ERROR",
       },
       { status: 500 }
@@ -87,7 +90,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Forbidden: Only authorized TLI assessors or admins may snapshot scores." },
+      { error: "Forbidden: Only authorized CloudE5 assessors or admins may snapshot scores." },
       { status: 403 }
     );
   }
@@ -111,7 +114,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error) {
+    const sessionError = sessionErrorResponse(error);
+    if (sessionError) return sessionError;
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -122,7 +127,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     console.error("Persist scoring snapshot error:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to persist score snapshot.",
+        error: "Failed to persist score snapshot.",
         code: "PERSIST_SNAPSHOT_ERROR",
       },
       { status: 500 }

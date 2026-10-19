@@ -1,18 +1,16 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Customer Organization API
+ * CloudE5 — Customer Organization API
  *
  * GET  /api/customers - List customer organizations accessible to authenticated user
- * POST /api/customers - Create a new customer organization (TLI Super Admin only)
+ * POST /api/customers - Create a new customer organization (Platform Administrator only)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
-import { pool } from "@/lib/db/pool";
-import { canCreateCustomer, isTliRole, CLIENT_ROLES } from "@/lib/auth/rbac";
-import { hashPassword } from "@/lib/auth/passwords";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 const createCustomerSchema = z.object({
   name: z.string().min(2, "Organisation name must be at least 2 characters.").max(255),
@@ -28,7 +26,7 @@ const createCustomerSchema = z.object({
       fullName: z.string().min(2, "User name must be at least 2 characters."),
       email: z.string().email("Valid corporate email address is required."),
       role: z.enum(["CLIENT_ADMIN", "CLIENT_BU_LEAD", "CLIENT_CONTRIBUTOR", "CLIENT_VIEWER"]).default("CLIENT_ADMIN"),
-      password: z.string().min(8, "Password must be at least 8 characters.").optional(),
+      password: z.string().max(200).optional().or(z.literal("").transform(() => undefined)),
     })
     .optional(),
 });
@@ -73,7 +71,9 @@ export async function GET(req: NextRequest) {
       count: customers.length,
       customers,
     });
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to query customers:", err);
     return NextResponse.json(
       { error: "Unable to retrieve customers. Please verify your permissions." },
@@ -108,11 +108,11 @@ export async function POST(req: NextRequest) {
     }
 
     const clientIp = resolveClientIp(req);
-    const userAgent = req.headers.get("user-agent") || "TLI-App";
+    const userAgent = req.headers.get("user-agent") || "CloudE5-App";
 
     const { customer, initialUser } = await createCustomerOrganization(
       sessionUser,
-      parseResult.data as any,
+      parseResult.data,
       clientIp,
       userAgent
     );
@@ -125,7 +125,9 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (err: any) {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (err instanceof OnboardingError) {
       return NextResponse.json(
         { error: err.message, code: err.code },
@@ -134,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
     console.error("Failed to onboard customer organisation:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create customer organisation." },
+      { error: "Failed to create customer organisation." },
       { status: 500 }
     );
   }

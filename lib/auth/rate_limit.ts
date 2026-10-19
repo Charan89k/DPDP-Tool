@@ -1,46 +1,20 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — In-Memory Login Rate Limiter
+ * CloudE5 — Rate limiting
  *
- * Implements a sliding-window rate limiter protecting POST /api/auth/login
- * against brute-force password guessing and credential stuffing attacks.
+ * Sliding-window limits persisted in SQLite (rate_limit_buckets), so they survive restarts:
+ * - Failed sign-ins: 5 per 15 minutes per client IP and per email address.
+ * - Account emails (registration, verification resend, password reset): 5 per 15 minutes per IP
+ *   and per email address.
+ * - New organisation registrations: 30 per hour across the installation.
  *
- * Defaults:
- * - 5 failed attempts per key within a 15-minute window (900 seconds)
- * - Tracked per client IP and per normalized target email
- *
- * ============================================================================
- * ARCHITECTURAL LIMITATIONS & PRODUCTION MITIGATION REQUIREMENTS:
- * ============================================================================
- * 1. Single-Instance Memory Scope:
- *    This in-memory rate limiter stores state in process memory. It resets
- *    upon application restarts and DOES NOT share state across multiple Node.js
- *    instances or serverless worker invocations.
- *
- * 2. No Distributed Protection Claim:
- *    This implementation DOES NOT provide distributed brute-force protection.
- *    In multi-pod Kubernetes clusters or auto-scaled environments, requests will
- *    be routed across multiple pods, partitioning the attempt counters.
- *
- * 3. Production Mitigations Required Before Public Deployment:
- *    Before exposing this application to the public internet, infrastructure
- *    teams MUST deploy one of the following production-grade mitigations:
- *    a) Edge-Layer Rate Limiting: Terminate traffic through Cloudflare Rate
- *       Limiting, AWS WAF rate-based rules, or NGINX limit_req_zone.
- *    b) Shared Distributed Store: Replace or back this in-memory class with a
- *       Redis / Valkey atomic token-bucket or sliding-window script.
- *    c) Reverse Proxy Header Hardening: Ensure reverse proxies (ALB, Nginx)
- *       strip client-supplied X-Forwarded-For headers and overwrite X-Real-IP
- *       with the genuine client connection address ($remote_addr).
- * ============================================================================
+ * Client IPs come only from headers the deployment trusts (see resolveClientIp). Limits apply to a
+ * single CloudE5 server; for internet-facing deployments also rate-limit at the reverse proxy.
  */
 
+import crypto from "node:crypto";
 import type { NextRequest } from "next/server";
+import { pool } from "../db/pool.ts";
 
-interface RateLimitRecord {
-  attempts: number;
-  firstAttemptAt: number;
-  lastAttemptAt: number;
-}
 
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_SECONDS = 15 * 60; // 15 minutes
@@ -58,20 +32,17 @@ export function isValidIp(ip: string): boolean {
 }
 
 /**
- * Resolves the client IP address from trusted edge and proxy headers.
- * Does not trust arbitrary client-supplied headers without validation.
+ * Resolves the client IP address used for rate limiting and audit logs.
  *
- * On Vercel (VERCEL=1) the platform overwrites X-Vercel-Forwarded-For, X-Real-IP and
- * X-Forwarded-For with the genuine client address, while CF-Connecting-IP is passed through
- * from the client untouched. Trusting it there would let an attacker rotate the header to evade
- * per-IP login limits, so it is only honoured when TRUST_CLOUDFLARE_IP_HEADER=true (i.e. when
- * Cloudflare actually fronts the deployment).
- *
- * Priority off Vercel (self-hosted behind Cloudflare / NGINX):
- * 1. CF-Connecting-IP
- * 2. X-Real-IP
- * 3. X-Forwarded-For (leftmost, strictly validated)
- * 4. Fallback: 127.0.0.1
+ * Only headers set by infrastructure CloudE5 is told to trust are honoured, because any client can
+ * send arbitrary X-Real-IP / CF-Connecting-IP / X-Forwarded-For values:
+ * - Vercel (VERCEL=1): X-Vercel-Forwarded-For / X-Real-IP / X-Forwarded-For are set by the platform.
+ * - Self-hosted behind a reverse proxy (default; Caddy, nginx `$proxy_add_x_forwarded_for`): the
+ *   proxy appends the real peer address as the RIGHTMOST X-Forwarded-For entry, so that entry is used.
+ *   Client-supplied entries to its left are ignored.
+ * - X-Real-IP is honoured only with CLOUDE5_TRUST_X_REAL_IP=true (proxy overwrites it).
+ * - CF-Connecting-IP is honoured only with TRUST_CLOUDFLARE_IP_HEADER=true (Cloudflare fronts the site).
+ * Falls back to 127.0.0.1 when no trusted header carries a valid address.
  */
 export function resolveClientIp(
   request: Request | NextRequest,
@@ -79,120 +50,133 @@ export function resolveClientIp(
 ): string {
   const headers = request.headers;
   const onVercel = env.VERCEL === "1";
-  const trustCloudflare = !onVercel || env.TRUST_CLOUDFLARE_IP_HEADER === "true";
 
-  const firstValid = (value: string | null | undefined): string | null => {
-    const candidate = value?.split(",")[0]?.trim();
+  const valid = (value: string | null | undefined): string | null => {
+    const candidate = value?.trim();
     return candidate && isValidIp(candidate) ? candidate : null;
   };
+  const leftmost = (value: string | null) => valid(value?.split(",")[0]);
+  const rightmost = (value: string | null) => valid(value?.split(",").pop());
 
-  const orderedCandidates = [
-    trustCloudflare ? headers.get("cf-connecting-ip") : null,
-    onVercel ? headers.get("x-vercel-forwarded-for") : null,
-    headers.get("x-real-ip"),
-    headers.get("x-forwarded-for"),
-  ];
-
-  for (const value of orderedCandidates) {
-    const ip = firstValid(value);
-    if (ip) {
-      return ip;
+  const candidates: Array<string | null> = [];
+  if (env.TRUST_CLOUDFLARE_IP_HEADER === "true") {
+    candidates.push(valid(headers.get("cf-connecting-ip")));
+  }
+  if (onVercel) {
+    candidates.push(
+      leftmost(headers.get("x-vercel-forwarded-for")),
+      valid(headers.get("x-real-ip")),
+      leftmost(headers.get("x-forwarded-for"))
+    );
+  } else {
+    if (env.CLOUDE5_TRUST_X_REAL_IP === "true") {
+      candidates.push(valid(headers.get("x-real-ip")));
     }
+    candidates.push(rightmost(headers.get("x-forwarded-for")));
   }
 
-  return "127.0.0.1";
+  return candidates.find((ip): ip is string => Boolean(ip)) ?? "127.0.0.1";
 }
 
-class MemoryRateLimiter {
-  private records: Map<string, RateLimitRecord> = new Map();
-  private lastCleanup: number = Date.now();
+/**
+ * Rate limiter persisted in SQLite (table rate_limit_buckets), so limits survive restarts.
+ * Keys are hashed before storage. Each update is a single atomic statement.
+ */
+export class PersistentRateLimiter {
+  private readonly scope: string;
+  private readonly maxAttempts: number;
+  private readonly windowSeconds: number;
+  private lastPrune = 0;
 
-  private cleanupIfNeeded() {
-    const now = Date.now();
-    // Run garbage collection at most once every 60 seconds
-    if (now - this.lastCleanup > 60 * 1000) {
-      this.lastCleanup = now;
-      const cutoff = now - WINDOW_SECONDS * 1000;
-      for (const [key, record] of this.records.entries()) {
-        if (record.lastAttemptAt < cutoff) {
-          this.records.delete(key);
-        }
-      }
-    }
+  constructor(scope: string, maxAttempts: number = MAX_FAILED_ATTEMPTS, windowSeconds: number = WINDOW_SECONDS) {
+    this.scope = scope;
+    this.maxAttempts = maxAttempts;
+    this.windowSeconds = windowSeconds;
   }
 
-  /**
-   * Checks whether the given key has exceeded the allowed failed attempts threshold.
-   */
-  public isRateLimited(key: string): { limited: boolean; retryAfterSeconds: number } {
-    this.cleanupIfNeeded();
-    const record = this.records.get(key);
-    if (!record) {
+  private hash(key: string): string {
+    return crypto.createHash("sha256").update(`${this.scope}:${key}`).digest("hex");
+  }
+
+  private cutoff(): string {
+    return new Date(Date.now() - this.windowSeconds * 1000).toISOString();
+  }
+
+  public async isRateLimited(key: string): Promise<{ limited: boolean; retryAfterSeconds: number }> {
+    const row = (
+      await pool.query(
+        "SELECT attempts, window_started_at FROM rate_limit_buckets WHERE key_hash = $1;",
+        [this.hash(key)]
+      )
+    ).rows[0];
+    if (!row) return { limited: false, retryAfterSeconds: 0 };
+    const startedAt = new Date(row.window_started_at).getTime();
+    const elapsedSeconds = (Date.now() - startedAt) / 1000;
+    if (elapsedSeconds > this.windowSeconds || Number(row.attempts) < this.maxAttempts) {
       return { limited: false, retryAfterSeconds: 0 };
     }
+    return { limited: true, retryAfterSeconds: Math.max(Math.ceil(this.windowSeconds - elapsedSeconds), 1) };
+  }
 
-    const now = Date.now();
-    const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
-
-    if (elapsedSeconds > WINDOW_SECONDS) {
-      // Window expired, reset
-      this.records.delete(key);
+  /**
+   * Atomically counts one attempt and reports whether the caller is over the limit. Call this
+   * BEFORE doing the guarded work (checking a password or code) so concurrent requests cannot
+   * all pass a separate "check" step; reset on success.
+   */
+  public async hit(key: string): Promise<{ limited: boolean; retryAfterSeconds: number }> {
+    const now = new Date().toISOString();
+    const row = (
+      await pool.query(
+        `INSERT INTO rate_limit_buckets (key_hash, attempts, window_started_at, updated_at)
+         VALUES ($1, 1, $2, $2)
+         ON CONFLICT (key_hash) DO UPDATE SET
+           attempts = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN 1 ELSE rate_limit_buckets.attempts + 1 END,
+           window_started_at = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN $2 ELSE rate_limit_buckets.window_started_at END,
+           updated_at = $2
+         RETURNING attempts, window_started_at;`,
+        [this.hash(key), now, this.cutoff()]
+      )
+    ).rows[0];
+    await this.pruneIfDue();
+    if (Number(row.attempts) <= this.maxAttempts) {
       return { limited: false, retryAfterSeconds: 0 };
     }
-
-    if (record.attempts >= MAX_FAILED_ATTEMPTS) {
-      const remainingSeconds = Math.ceil(WINDOW_SECONDS - elapsedSeconds);
-      return { limited: true, retryAfterSeconds: Math.max(remainingSeconds, 1) };
-    }
-
-    return { limited: false, retryAfterSeconds: 0 };
+    const elapsedSeconds = (Date.now() - new Date(row.window_started_at).getTime()) / 1000;
+    return { limited: true, retryAfterSeconds: Math.max(Math.ceil(this.windowSeconds - elapsedSeconds), 1) };
   }
 
-  /**
-   * Increments the failed attempt counter for the given key.
-   */
-  public recordFailedAttempt(key: string): void {
-    this.cleanupIfNeeded();
-    const now = Date.now();
-    const record = this.records.get(key);
-
-    if (!record) {
-      this.records.set(key, {
-        attempts: 1,
-        firstAttemptAt: now,
-        lastAttemptAt: now,
-      });
-      return;
-    }
-
-    const elapsedSeconds = (now - record.firstAttemptAt) / 1000;
-    if (elapsedSeconds > WINDOW_SECONDS) {
-      // Start a fresh window
-      this.records.set(key, {
-        attempts: 1,
-        firstAttemptAt: now,
-        lastAttemptAt: now,
-      });
-      return;
-    }
-
-    record.attempts += 1;
-    record.lastAttemptAt = now;
+  public async recordFailedAttempt(key: string): Promise<void> {
+    const now = new Date().toISOString();
+    const cutoff = this.cutoff();
+    await pool.query(
+      `INSERT INTO rate_limit_buckets (key_hash, attempts, window_started_at, updated_at)
+       VALUES ($1, 1, $2, $2)
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN 1 ELSE rate_limit_buckets.attempts + 1 END,
+         window_started_at = CASE WHEN rate_limit_buckets.window_started_at < $3 THEN $2 ELSE rate_limit_buckets.window_started_at END,
+         updated_at = $2;`,
+      [this.hash(key), now, cutoff]
+    );
+    await this.pruneIfDue();
   }
 
-  /**
-   * Resets the failed attempts counter upon a successful login.
-   */
-  public resetAttempts(key: string): void {
-    this.records.delete(key);
+  public async resetAttempts(key: string): Promise<void> {
+    await pool.query("DELETE FROM rate_limit_buckets WHERE key_hash = $1;", [this.hash(key)]);
   }
 
-  /**
-   * Clears all stored rate limit records (for automated testing).
-   */
-  public clearAllRateLimits(): void {
-    this.records.clear();
+  /** Removes buckets whose window ended long ago (at most once a minute). */
+  private async pruneIfDue(): Promise<void> {
+    if (Date.now() - this.lastPrune < 60_000) return;
+    this.lastPrune = Date.now();
+    const staleBefore = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    await pool.query("DELETE FROM rate_limit_buckets WHERE updated_at < $1;", [staleBefore]);
   }
 }
 
-export const loginRateLimiter = new MemoryRateLimiter();
+export const loginRateLimiter = new PersistentRateLimiter("login");
+
+/** Limits account emails (registration, verification resend, password reset) per IP and per email. */
+export const accountEmailRateLimiter = new PersistentRateLimiter("account-email");
+
+/** Installation-wide cap on new organisation registrations: 30 per hour. */
+export const registrationRateLimiter = new PersistentRateLimiter("registration", 30, 60 * 60);

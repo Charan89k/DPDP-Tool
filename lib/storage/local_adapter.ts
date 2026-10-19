@@ -1,10 +1,11 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Local Disk Storage Adapter
+ * CloudE5 — Local Disk Storage Adapter
  *
  * Implements real local-disk evidence vault operations with strict tenant isolation,
  * directory traversal protection, SHA-256 calculation, and fail-closed safety.
  *
- * Configured via DPDP_LOCAL_EVIDENCE_DIR (defaults to '.local_evidence' in repository root,
+ * Configured via CLOUDE5_EVIDENCE_DIR (legacy name: DPDP_LOCAL_EVIDENCE_DIR; defaults to
+ * '.local_evidence' in the working directory,
  * which is strictly ignored by Git and located outside public/).
  */
 
@@ -13,6 +14,11 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { FileValidator, ValidationError } from "./validation.ts";
 import { assertPersistentEvidenceStorage } from "./object_store.ts";
+
+/** Evidence vault directory from configuration (CLOUDE5_EVIDENCE_DIR, legacy DPDP_LOCAL_EVIDENCE_DIR). */
+export function resolveEvidenceDirSetting(env: Record<string, string | undefined>): string | undefined {
+  return env.CLOUDE5_EVIDENCE_DIR || env.DPDP_LOCAL_EVIDENCE_DIR || undefined;
+}
 
 export interface SaveResult {
   bytesWritten: number;
@@ -24,15 +30,15 @@ export class LocalStorageAdapter {
   private baseDir: string;
 
   constructor(customBaseDir?: string) {
-    const configuredDir = customBaseDir || process.env.DPDP_LOCAL_EVIDENCE_DIR;
+    const configuredDir = customBaseDir || resolveEvidenceDirSetting(process.env);
     
     // Default to .local_evidence in project root if not explicitly configured
     const targetDir = configuredDir
-      ? path.resolve(configuredDir)
-      : path.resolve(process.cwd(), ".local_evidence");
+      ? path.resolve(/*turbopackIgnore: true*/ configuredDir)
+      : path.resolve(/*turbopackIgnore: true*/ process.cwd(), ".local_evidence");
 
     // Strictly enforce that the evidence vault is never placed in public/ or client-accessible assets
-    const publicDir = path.resolve(process.cwd(), "public");
+    const publicDir = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "public");
     if (FileValidator.isSafePath(publicDir, targetDir)) {
       throw new Error(
         "CRITICAL SECURITY VIOLATION: Evidence storage directory cannot be inside the 'public/' directory."

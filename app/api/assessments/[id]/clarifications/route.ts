@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Clarifications Management API
+ * CloudE5 — Clarifications Management API
  *
  * GET /api/assessments/[id]/clarifications
  * - Retrieves all clarification threads and threaded messages for an assessment under RLS.
@@ -13,8 +13,31 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { errorMessage } from "@/lib/http/errors";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
+
+interface ClarificationMessage {
+  id: string;
+  threadId: string;
+  authorUserId: string;
+  authorName: string;
+  messageText: string;
+  createdAt: string | null;
+}
+
+const optionalId = z.string().trim().max(64).nullable().optional();
+const clarificationBodySchema = z.object({
+  threadId: optionalId,
+  questionCode: z.string().trim().max(64).nullable().optional(),
+  evidenceItemId: optionalId,
+  targetRole: z.string().trim().max(40).nullable().optional(),
+  title: z.string().max(200).optional(),
+  message: z.string().max(10_000).optional(),
+  status: z.string().max(40).optional(),
+});
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -67,7 +90,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
 
       const threadIds = threadsRes.rows.map((r) => r.id);
-      let messagesMap = new Map<string, any[]>();
+      const messagesMap = new Map<string, ClarificationMessage[]>();
 
       if (threadIds.length > 0) {
         const msgsRes = await client.query(
@@ -124,8 +147,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       assessmentId,
       threads: result,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -133,7 +158,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     console.error("Failed to fetch clarifications:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to retrieve clarification threads." },
+      { error: "Failed to retrieve clarification threads." },
       { status: 500 }
     );
   }
@@ -150,14 +175,22 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  let body: any;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
   }
 
-  const { threadId, questionCode, evidenceItemId, targetRole, title, message, status } = body;
+  const parsed = clarificationBodySchema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `Invalid clarification payload: ${issue?.message ?? "malformed"}${issue?.path.length ? ` (${issue.path.join(".")})` : ""}` },
+      { status: 400 }
+    );
+  }
+  const { threadId, questionCode, evidenceItemId, targetRole, title, message, status } = parsed.data;
 
   try {
     const result = await executeWithRls(sessionUser, async (client) => {
@@ -289,8 +322,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       assessmentId,
       ...result,
     });
-  } catch (err: any) {
-    if (err.message === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
+  } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
+    if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },
         { status: 404 }
@@ -299,7 +334,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     console.error("Failed to process clarification:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to process clarification under security boundary." },
+      { error: "Failed to process clarification under security boundary." },
       { status: 500 }
     );
   }

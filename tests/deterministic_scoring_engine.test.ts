@@ -17,15 +17,12 @@ import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
 import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
-import controlsData from "../data/dpdp_controls.json" with { type: "json" };
 import {
   calculateAssessmentScores,
   normalizeQuestionCode,
 } from "../lib/scoring/engine.ts";
 import {
-  DEFAULT_PROVISIONAL_CONFIG,
   UNMAPPED_QUESTION_CODES,
-  STATUTORY_DOMAIN_WEIGHTS,
 } from "../lib/scoring/config.ts";
 import {
   getAssessmentScores,
@@ -52,6 +49,9 @@ const consultantSession: SessionUser = {
   fullName: "TLI Consultant Demo",
   role: "TLI_LEAD_CONSULTANT",
   tenantType: "TLI",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const customerAlphaSession: SessionUser = {
@@ -61,6 +61,9 @@ const customerAlphaSession: SessionUser = {
   fullName: "Alpha Health Demo Admin",
   role: "CLIENT_ADMIN",
   tenantType: "CLIENT",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 const customerBetaSession: SessionUser = {
@@ -70,6 +73,9 @@ const customerBetaSession: SessionUser = {
   fullName: "Rohan Kapoor",
   role: "CLIENT_ADMIN",
   tenantType: "CLIENT",
+  tenantName: "Test Organisation",
+  tenantSlug: "test-organisation",
+  isSdf: false,
 };
 
 describe("Phase 3D.4: Deterministic Scoring Engine & Governance Verification", () => {
@@ -601,8 +607,8 @@ describe("Phase 3D.4: Deterministic Scoring Engine & Governance Verification", (
         async () => {
           await getAssessmentScores(customerAlphaSession, testAssessmentId);
         },
-        (err: any) => {
-          assert.equal(err.code, "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN");
+        (err: Error) => {
+          assert.equal((err as Error & { code?: string }).code, "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN");
           return true;
         }
       );

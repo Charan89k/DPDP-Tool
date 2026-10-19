@@ -1,5 +1,5 @@
 /**
- * TLI DPDP Compliance Gap Analysis Tool — Remediation Workflow Service
+ * CloudE5 — Remediation Workflow Service
  *
  * Implements Corrective and Preventive Action (CAPA) tracking, assignment,
  * closure submissions by clients, and independent assessor validation under RLS.
@@ -12,6 +12,35 @@
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { isTliRole } from "../auth/rbac.ts";
+import type { PoolClient } from "../db/pool.ts";
+
+export class RemediationError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "RemediationError";
+    this.statusCode = statusCode;
+  }
+}
+
+/** Read-only roles (CLIENT_VIEWER) may view remediation plans but never change them. */
+function assertCanManageRemediation(sessionUser: SessionUser): void {
+  if (sessionUser.role === "CLIENT_VIEWER") {
+    throw new RemediationError("Your role can view remediation tasks but not change them.", 403);
+  }
+}
+
+/** Task owners must be active users of the organisation that owns the assessment. */
+async function assertValidOwner(client: PoolClient, ownerUserId: string | undefined | null, tenantId: string) {
+  if (!ownerUserId) return;
+  const res = await client.query(
+    "SELECT 1 FROM users WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE;",
+    [ownerUserId, tenantId]
+  );
+  if (res.rows.length === 0) {
+    throw new RemediationError("The task owner must be an active user of this organisation.", 400);
+  }
+}
 import type {
   RemediationTask,
   CreateRemediationInput,
@@ -99,6 +128,7 @@ export async function createRemediationTask(
 ): Promise<RemediationTask> {
   const { assessmentId, questionCode, title, description, priority, targetDate, ownerUserId } = input;
 
+  assertCanManageRemediation(sessionUser);
   return await executeWithRls(sessionUser, async (client) => {
     // 1. Resolve tenant_id from assessment
     const assessRes = await client.query(
@@ -106,9 +136,10 @@ export async function createRemediationTask(
       [assessmentId]
     );
     if (assessRes.rowCount === 0) {
-      throw new Error(`Assessment ${assessmentId} not found or access denied.`);
+      throw new RemediationError(`Assessment ${assessmentId} not found or access denied.`, 404);
     }
     const tenantId = assessRes.rows[0].tenant_id;
+    await assertValidOwner(client, ownerUserId, tenantId);
 
     // 2. Insert into remediation_tasks
     const insertSql = `
@@ -184,12 +215,14 @@ export async function updateRemediationProgress(
   taskId: string,
   input: UpdateRemediationInput
 ): Promise<RemediationTask> {
+  assertCanManageRemediation(sessionUser);
   const isConsultant = isTliRole(sessionUser.role);
 
   // Client cannot directly validate and close without assessor validation
   if (!isConsultant && input.status === "VALIDATED_CLOSED") {
-    throw new Error(
-      "Authority violation: Clients cannot mark remediation tasks as VALIDATED_CLOSED. Submission for closure requires independent TLI assessor validation."
+    throw new RemediationError(
+      "Authority violation: Clients cannot mark remediation tasks as VALIDATED_CLOSED. Submission for closure requires independent CloudE5 assessor validation.",
+      403
     );
   }
 
@@ -199,10 +232,11 @@ export async function updateRemediationProgress(
       [taskId]
     );
     if (existingRes.rowCount === 0) {
-      throw new Error(`Remediation task ${taskId} not found or access denied.`);
+      throw new RemediationError(`Remediation task ${taskId} not found or access denied.`, 404);
     }
 
     const current = existingRes.rows[0];
+    await assertValidOwner(client, input.ownerUserId, current.tenant_id);
     const newStatus = input.status || current.status;
     let submittedAt = current.closure_submitted_at;
 
@@ -263,7 +297,7 @@ export async function updateRemediationProgress(
 }
 
 /**
- * Validates a remediation task closure (TLI Assessors & Lead Consultants only).
+ * Validates a remediation task closure (CloudE5 Assessors & Lead Consultants only).
  * Sets status to VALIDATED_CLOSED or REJECTED_REOPENED.
  */
 export async function validateRemediationClosure(
@@ -272,8 +306,9 @@ export async function validateRemediationClosure(
   input: ValidateRemediationInput
 ): Promise<RemediationTask> {
   if (!isTliRole(sessionUser.role)) {
-    throw new Error(
-      `Authority violation: Role ${sessionUser.role} is not authorized to validate remediation closures. Independent TLI assessor review required.`
+    throw new RemediationError(
+      `Authority violation: Role ${sessionUser.role} is not authorized to validate remediation closures. Independent CloudE5 assessor review required.`,
+      403
     );
   }
 
@@ -286,7 +321,7 @@ export async function validateRemediationClosure(
       [taskId]
     );
     if (existingRes.rowCount === 0) {
-      throw new Error(`Remediation task ${taskId} not found or access denied.`);
+      throw new RemediationError(`Remediation task ${taskId} not found or access denied.`, 404);
     }
 
     const current = existingRes.rows[0];
