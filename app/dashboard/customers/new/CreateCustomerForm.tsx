@@ -33,7 +33,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
   const [provisionUser, setProvisionUser] = useState(true);
   const [userFullName, setUserFullName] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const [userPassword, setUserPassword] = useState("SyntheticTestPassword123!");
+  const [userPassword, setUserPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -328,19 +328,19 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Initial Account Password <span className="text-rose-500">*</span>
+                  Initial Account Password (optional)
                 </label>
                 <div className="relative">
                   <input
-                    type="text"
-                    required={provisionUser}
+                    type="password"
+                    autoComplete="new-password"
                     value={userPassword}
                     onChange={(e) => setUserPassword(e.target.value)}
                     className="w-full px-3 py-2 font-mono text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-slate-50/50"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Default seed password pre-filled for demo convenience. User can update credentials upon initial login.
+                  Leave blank (recommended): the user receives a verification email and chooses their own password with &quot;Forgot password&quot;. If you set one, share it securely.
                 </p>
               </div>
             </div>
