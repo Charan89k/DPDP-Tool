@@ -2,52 +2,21 @@
  * CloudE5 — Password Security Module
  *
  * Implements secure password verification and hashing using bcryptjs.
- * Handles synthetic development test fixtures safely without compromising production rules.
  */
 
 import bcrypt from "bcryptjs";
 
-// Canonical synthetic placeholder hash seeded in migrations/004_seed_synthetic_data.sql
-export const SYNTHETIC_SEED_HASH =
-  "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
-export const SYNTHETIC_SEED_PASSWORD = "SyntheticTestPassword123!";
-
-export function getDemoPassword(): string {
-  return process.env.DEMO_USER_PASSWORD || SYNTHETIC_SEED_PASSWORD;
-}
+// Publicly known passwords (the former demo password is in this repository's history).
+const PUBLICLY_KNOWN_PASSWORDS = new Set(["SyntheticTestPassword123!"]);
 
 /**
- * Verifies a plain text password against a stored password hash.
- * Fails closed on empty strings or null values.
- * In production environments, synthetic test hashes and credentials are unconditionally rejected.
+ * Verifies a plain text password against a stored bcrypt hash (constant time).
+ * Fails closed on empty values and on anything that is not a valid bcrypt hash.
  */
-export async function verifyPassword(
-  plainText: string,
-  storedHash: string
-): Promise<boolean> {
+export async function verifyPassword(plainText: string, storedHash: string): Promise<boolean> {
   if (!plainText || !storedHash) {
     return false;
   }
-
-  const isProduction = process.env.NODE_ENV === "production";
-
-  // 1. Synthetic development seed check
-  // In local test environments seeded with Migration 004 or scripts/seed_demo_users.py,
-  // the synthetic placeholder hash corresponds to 'SyntheticTestPassword123!' or DEMO_USER_PASSWORD.
-  // CRITICAL SECURITY ENFORCEMENT: Synthetic fixtures are strictly rejected in production.
-  if (storedHash === SYNTHETIC_SEED_HASH) {
-    if (isProduction) {
-      return false;
-    }
-    return plainText === getDemoPassword();
-  }
-
-  // In production, synthetic credentials must never match any production hash
-  if (isProduction && (plainText === SYNTHETIC_SEED_PASSWORD || (process.env.DEMO_USER_PASSWORD && plainText === process.env.DEMO_USER_PASSWORD))) {
-    return false;
-  }
-
-  // 2. Standard constant-time bcrypt verification
   try {
     return await bcrypt.compare(plainText, storedHash);
   } catch (err) {
@@ -113,7 +82,7 @@ export function describePasswordProblem(password: string, context: { email?: str
   if (localPart && localPart.length >= 4 && password.toLowerCase().includes(localPart)) {
     return "Do not include your email address in your password.";
   }
-  if (password === SYNTHETIC_SEED_PASSWORD) {
+  if (PUBLICLY_KNOWN_PASSWORDS.has(password)) {
     return "Choose a different password.";
   }
   return null;

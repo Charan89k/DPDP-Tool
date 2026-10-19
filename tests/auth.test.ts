@@ -4,8 +4,7 @@ import assert from "node:assert/strict";
 import {
   verifyPassword,
   hashPassword,
-  SYNTHETIC_SEED_HASH,
-  SYNTHETIC_SEED_PASSWORD,
+  describePasswordProblem,
 } from "../lib/auth/passwords.ts";
 import { getSafeRedirectUrl } from "../lib/auth/redirects.ts";
 import {
@@ -43,35 +42,14 @@ describe("Phase 3C: Authentication & Session Tests", () => {
     assert.equal(invalid, false, "Bcrypt verification should reject incorrect password");
   });
 
-  it("should support synthetic development test fixtures safely in dev mode", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
-    try {
-      const valid = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
-      assert.equal(valid, true, "Should recognize synthetic seed password in development");
-
-      const invalid = await verifyPassword("IncorrectPassword123!", SYNTHETIC_SEED_HASH);
-      assert.equal(invalid, false, "Should reject incorrect password for synthetic seed");
-    } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
-    }
+  it("never accepts a non-bcrypt placeholder hash, such as the test fixtures' accounts", async () => {
+    const placeholder = "$2b$12$e80yvV3n2YfV3n2YfV3n2Oe2Z3iP1W5e2Z3iP1W5e2Z3iP1W5e2Z3";
+    assert.equal(await verifyPassword("SyntheticTestPassword123!", placeholder), false);
+    assert.equal(await verifyPassword("anything-at-all-1", placeholder), false);
   });
 
-  it("should unconditionally reject synthetic development credentials in production mode", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
-    try {
-      // 1. Synthetic hash with synthetic password must fail closed in production
-      const attempt1 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, SYNTHETIC_SEED_HASH);
-      assert.equal(attempt1, false, "Production mode must reject synthetic test hash");
-
-      // 2. Synthetic password with any password hash must fail closed in production
-      const realHash = await hashPassword("RealProductionPassword123!");
-      const attempt2 = await verifyPassword(SYNTHETIC_SEED_PASSWORD, realHash);
-      assert.equal(attempt2, false, "Production mode must reject synthetic test password");
-    } finally {
-      (process.env as Record<string, string | undefined>).NODE_ENV = originalEnv;
-    }
+  it("refuses the former, publicly known demo password as a new password", () => {
+    assert.ok(describePasswordProblem("SyntheticTestPassword123!"));
   });
 
   it("should fail closed on null, undefined, or empty password verification", async () => {

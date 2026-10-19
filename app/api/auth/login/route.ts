@@ -13,7 +13,6 @@ import { pool } from "@/lib/db/pool";
 import {
   consumePasswordVerificationTime,
   verifyPassword,
-  SYNTHETIC_SEED_HASH,
 } from "@/lib/auth/passwords";
 import { loadSessionUser, startSession } from "@/lib/auth/signin";
 import { createMfaChallenge, MFA_CHALLENGE_COOKIE, MFA_CHALLENGE_MAX_AGE_SECONDS } from "@/lib/auth/mfa";
@@ -85,10 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
 
-    const isSyntheticAccountInProduction =
-      process.env.NODE_ENV === "production" && row.password_hash === SYNTHETIC_SEED_HASH;
-    const isValidPassword =
-      !isSyntheticAccountInProduction && (await verifyPassword(password, row.password_hash));
+    const isValidPassword = await verifyPassword(password, row.password_hash);
 
     if (!isValidPassword) {
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });

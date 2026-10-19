@@ -69,7 +69,6 @@ Requires Node.js 22 or later.
 ```bash
 npm ci
 npm run db:migrate          # creates .cloude5/cloude5.db
-npm run db:seed-demo        # optional synthetic demo data (never in production)
 npm run dev                 # http://localhost:3000
 ```
 

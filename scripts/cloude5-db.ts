@@ -11,7 +11,6 @@
  *                                       Operator override: mark an address verified (when SMTP is unavailable).
  *   npm run db:reset-mfa -- <email> --confirm
  *                                       Operator override: remove two-factor for a locked-out user.
- *   npm run db:seed-demo                Load synthetic demo tenants/users (refused in production).
  *
  * The database path comes from CLOUDE5_DATABASE_PATH (required in production). Output never
  * contains secrets.
@@ -29,7 +28,6 @@ import {
   MigrationError,
 } from "../lib/db/sqlite/migrate.ts";
 
-const DEMO_SEED_FILE = path.resolve(process.cwd(), "tests", "fixtures", "synthetic_seed.sql");
 
 function open(databasePath: string, create = false): Database.Database {
   if (!create && !fs.existsSync(databasePath)) {
@@ -224,32 +222,9 @@ async function main(): Promise<number> {
       return 0;
     }
 
-    case "seed-demo": {
-      if (process.env.NODE_ENV === "production") {
-        console.error("Refusing to load synthetic demo data with NODE_ENV=production.");
-        return 2;
-      }
-      const db = open(databasePath);
-      try {
-        const already = db.prepare("SELECT 1 FROM tenants WHERE slug = 'alpha-healthcare'").get();
-        if (already) {
-          console.log("Demo data already present.");
-          return 0;
-        }
-        db.transaction(() => {
-          db.exec(fs.readFileSync(DEMO_SEED_FILE, "utf8"));
-          db.exec("UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL");
-        })();
-        console.log("Synthetic demo data loaded (consultant.demo@tli.local / customer.demo@tli.local).");
-      } finally {
-        db.close();
-      }
-      return 0;
-    }
-
     default:
       console.error(
-        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | verify-email <email> --confirm | reset-mfa <email> --confirm | seed-demo"
+        "Commands: migrate | status | verify | backup [file] | restore <file> --confirm | verify-email <email> --confirm | reset-mfa <email> --confirm"
       );
       return 2;
   }

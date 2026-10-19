@@ -15,7 +15,6 @@
     "db:verify": "node --experimental-strip-types scripts/cloude5-db.ts verify",
     "db:backup": "node --experimental-strip-types scripts/cloude5-db.ts backup",
     "db:restore": "node --experimental-strip-types scripts/cloude5-db.ts restore",
-    "db:seed-demo": "node --experimental-strip-types scripts/cloude5-db.ts seed-demo",
     "admin:create": "node --experimental-strip-types scripts/create-platform-admin.ts",
     "db:verify-email": "node --experimental-strip-types scripts/cloude5-db.ts verify-email",
     "db:reset-mfa": "node --experimental-strip-types scripts/cloude5-db.ts reset-mfa",
