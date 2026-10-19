@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Info,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -162,7 +163,7 @@ export default async function ReportsListPage() {
                     <span className="text-stone-400 block text-[10px] uppercase font-mono font-semibold">Target Completion</span>
                     <span className="font-medium text-stone-800 font-mono">
                       {a.target_completion_date
-                        ? new Date(a.target_completion_date).toLocaleDateString()
+                        ? formatDate(a.target_completion_date)
                         : "Q4 2026 Audit"}
                     </span>
                   </div>

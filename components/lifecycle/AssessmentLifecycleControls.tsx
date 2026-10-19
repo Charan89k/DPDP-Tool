@@ -18,6 +18,7 @@ import type {
   TransitionAuditLogEntry,
   AssessmentStatus,
 } from "@/lib/lifecycle/types";
+import { formatDateTime } from "@/lib/format/dates";
 
 interface AssessmentLifecycleControlsProps {
   assessmentId: string;
@@ -511,7 +512,7 @@ export function AssessmentLifecycleControls({
                     )}
                   </div>
                   <div className="text-[11px] text-slate-400 font-mono shrink-0">
-                    {new Date(entry.timestamp).toLocaleString()}
+                    {formatDateTime(entry.timestamp)}
                   </div>
                 </div>
               ))}

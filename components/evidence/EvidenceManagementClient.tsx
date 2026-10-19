@@ -23,6 +23,7 @@ import {
   Check,
 } from "lucide-react";
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
+import { formatDate } from "@/lib/format/dates";
 
 interface EvidenceItem {
   id: string;
@@ -139,11 +140,7 @@ export function EvidenceManagementClient({
           category: it.category || "Policy / Procedure",
           description: it.description || "",
           uploadedOn: it.createdAt
-            ? new Date(it.createdAt).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })
+            ? formatDate(it.createdAt)
             : "Today",
           uploadedBy: it.uploadedByName || userName,
           status:
@@ -230,7 +227,7 @@ export function EvidenceManagementClient({
         questionCode: qCode,
         category: selectedCategory,
         description: uploadDescription || file.name,
-        uploadedOn: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        uploadedOn: formatDate(new Date()),
         uploadedBy: userName,
         status: "Received",
         rawStatus: "ACTIVE",

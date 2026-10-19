@@ -18,6 +18,7 @@ import type {
   CanonicalResponseOption,
   RespondentQuestionResponse,
 } from "@/lib/questionnaire/types";
+import { formatDate, formatTime } from "@/lib/format/dates";
 
 interface AttachedEvidenceItem {
   id: string;
@@ -173,7 +174,7 @@ export function QuestionCard({
                 sha256: m.sha256 || "",
                 status: m.status === "VERIFIED" ? "Reviewed" : "Received",
                 uploadedAt: m.createdAt
-                  ? new Date(m.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                  ? formatDate(m.createdAt)
                   : "Recent",
                 description: m.description || m.fileName,
                 fileType: m.fileName.split(".").pop()?.toUpperCase() || "File",
@@ -260,7 +261,7 @@ export function QuestionCard({
         mimeType: data.evidence.mimeType,
         sha256: data.evidence.sha256,
         status: "Received",
-        uploadedAt: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        uploadedAt: formatDate(new Date()),
         description: evidenceDescription || file.name,
         fileType: file.name.split(".").pop()?.toUpperCase() || "File",
       };
@@ -583,7 +584,7 @@ export function QuestionCard({
                           {msg.authorName} {msg.authorRole ? `(${msg.authorRole})` : ""}
                         </span>
                         {msg.createdAt && (
-                          <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>{formatTime(msg.createdAt)}</span>
                         )}
                       </div>
                       <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{msg.messageText}</p>

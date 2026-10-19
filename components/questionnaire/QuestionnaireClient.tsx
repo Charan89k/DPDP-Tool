@@ -18,6 +18,7 @@ import { QuestionCard } from "./QuestionCard";
 import { SectionNavigator } from "./SectionNavigator";
 import { ReviewStep } from "./ReviewStep";
 import { errorMessage } from "@/lib/http/errors";
+import { formatDate } from "@/lib/format/dates";
 
 interface QuestionnaireClientProps {
   assessmentId: string;
@@ -41,7 +42,7 @@ function needsJustification(response: RespondentQuestionResponse | undefined): b
 }
 
 function formatDisplayDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return formatDate(iso);
 }
 
 export function QuestionnaireClient({

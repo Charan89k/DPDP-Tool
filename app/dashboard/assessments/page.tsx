@@ -15,6 +15,7 @@ import {
   FileText,
   Paperclip,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -179,7 +180,7 @@ export default async function AssessmentsPage() {
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Commencement Date</span>
                     <span className="font-medium text-slate-800">
                       {assessment.start_date
-                        ? new Date(assessment.start_date).toLocaleDateString()
+                        ? formatDate(assessment.start_date)
                         : "—"}
                     </span>
                   </div>
@@ -191,7 +192,7 @@ export default async function AssessmentsPage() {
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Target Completion</span>
                     <span className="font-medium text-slate-800">
                       {assessment.target_completion_date
-                        ? new Date(assessment.target_completion_date).toLocaleDateString()
+                        ? formatDate(assessment.target_completion_date)
                         : "Not set"}
                     </span>
                   </div>

@@ -24,6 +24,7 @@ import {
   MessageSquare,
   Wrench,
 } from "lucide-react";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -571,11 +572,7 @@ export default async function DashboardPage() {
                   {assessments.map((item) => {
                     const statusInfo = getStatusPill(item.status);
                     const completion = listProgress.completionByAssessment.get(item.id) ?? 0;
-                    const formattedDate = new Date(item.created_at).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    });
+                    const formattedDate = formatDate(item.created_at);
 
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">

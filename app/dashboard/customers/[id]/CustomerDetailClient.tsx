@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { SessionUser } from "@/lib/auth/types";
 import { getRoleBadgeLabel, canManageTenantUsers } from "@/lib/auth/rbac";
+import { formatDate, formatDateTime } from "@/lib/format/dates";
 
 interface CustomerRecord {
   id: string;
@@ -198,7 +199,7 @@ export function CustomerDetailClient({
           <p className="text-xs text-slate-500 mt-0.5">
             Industry: <strong className="text-slate-700">{customer.industry}</strong> • Created:{" "}
             <span className="text-slate-700">
-              {new Date(customer.created_at).toLocaleDateString()}
+              {formatDate(customer.created_at)}
             </span>
           </p>
         </div>
@@ -350,11 +351,11 @@ export function CustomerDetailClient({
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
                           {u.last_login_at
-                            ? new Date(u.last_login_at).toLocaleString()
+                            ? formatDateTime(u.last_login_at)
                             : "Never logged in"}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(u.created_at).toLocaleDateString()}
+                          {formatDate(u.created_at)}
                         </td>
                       </tr>
                     );
@@ -433,10 +434,10 @@ export function CustomerDetailClient({
                           )}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(inv.expires_at).toLocaleDateString()}
+                          {formatDate(inv.expires_at)}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
-                          {new Date(inv.created_at).toLocaleDateString()}
+                          {formatDate(inv.created_at)}
                         </td>
                       </tr>
                     ))}

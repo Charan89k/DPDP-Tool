@@ -65,6 +65,9 @@ export function proxy(req: NextRequest) {
   requestHeaders.set("Content-Security-Policy", policy);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", policy);
+  // Pages are per-user and never cached. no-transform stops proxies such as Cloudflare from
+  // rewriting the HTML (e.g. email obfuscation), which injects a script the CSP blocks and breaks hydration.
+  response.headers.set("Cache-Control", "private, no-cache, no-store, max-age=0, must-revalidate, no-transform");
   return response;
 }
 

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { AssessmentSummaryView } from "@/components/questionnaire/AssessmentSummaryView";
+import { formatDate } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -65,11 +66,7 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
   const tenantName: string = assessmentData.tenant_name || sessionUser.tenantName;
   const assessmentCode: string = assessmentData.engagement_code;
   const visitDate = assessmentData?.created_at
-    ? new Date(assessmentData.created_at).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+    ? formatDate(assessmentData.created_at)
     : "—";
 
   return (

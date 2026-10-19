@@ -15,6 +15,7 @@ import {
 import type { RemediationTask, RemediationStatus, RemediationPriority } from "@/lib/remediation/types";
 import type { SessionUser } from "@/lib/auth/types";
 import { errorMessage } from "@/lib/http/errors";
+import { formatDateTime } from "@/lib/format/dates";
 
 interface Props {
   assessment: {
@@ -377,7 +378,7 @@ export function RemediationManagementClient({
                 <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg text-xs space-y-1 text-blue-900">
                   <div className="flex items-center justify-between font-mono text-[10px] text-blue-700">
                     <span className="font-bold">Client Closure Submission:</span>
-                    <span>{task.closureSubmittedAt ? new Date(task.closureSubmittedAt).toLocaleString("en-IN") : ""}</span>
+                    <span>{task.closureSubmittedAt ? formatDateTime(task.closureSubmittedAt) : ""}</span>
                   </div>
                   <p className="text-stone-800 text-xs leading-relaxed">{task.closureSubmissionNotes}</p>
                 </div>
@@ -396,7 +397,7 @@ export function RemediationManagementClient({
                     <span className="font-bold">
                       Assessor Validation ({task.closureValidatedByName || "CloudE5 Consultant"}):
                     </span>
-                    <span>{task.validatedAt ? new Date(task.validatedAt).toLocaleString("en-IN") : ""}</span>
+                    <span>{task.validatedAt ? formatDateTime(task.validatedAt) : ""}</span>
                   </div>
                   <p className="text-stone-800 text-xs leading-relaxed">{task.closureValidationNotes}</p>
                 </div>

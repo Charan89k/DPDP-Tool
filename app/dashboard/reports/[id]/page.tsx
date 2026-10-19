@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ArrowLeft,
 } from "lucide-react";
+import { formatDate, formatDateTime } from "@/lib/format/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -204,7 +205,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
 
             <div className="text-right font-mono text-xs text-stone-500 space-y-0.5">
               <div>REF: <strong className="text-stone-800">CE5-REP-{assessment.id.slice(0, 8).toUpperCase()}</strong></div>
-              <div>DATE: {new Date().toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}</div>
+              <div>DATE: {formatDate(new Date())}</div>
               <div>STATUS: <strong className="text-stone-900">{assessment.status}</strong></div>
             </div>
           </div>
@@ -412,7 +413,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
                         {snap.reportType} • {snap.versionLabel}
                       </span>
                       <strong className="text-stone-900 font-sans text-xs">
-                        Issued on {new Date(snap.createdAt).toLocaleString("en-IN")}
+                        Issued on {formatDateTime(snap.createdAt)}
                       </strong>
                     </div>
                     <span className="text-stone-500 text-[10px]">

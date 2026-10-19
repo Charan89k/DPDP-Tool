@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 import { errorMessage } from "@/lib/http/errors";
+import { formatDate, formatTime } from "@/lib/format/dates";
 
 interface CanonicalQuestion {
   code: string;
@@ -465,7 +466,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
             </span>
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>Target: <strong className="text-slate-800">{assessment?.target_completion_date ? new Date(assessment.target_completion_date).toLocaleDateString() : "Pending"}</strong></span>
+              <span>Target: <strong className="text-slate-800">{assessment?.target_completion_date ? formatDate(assessment.target_completion_date) : "Pending"}</strong></span>
             </span>
           </p>
         </div>
@@ -744,7 +745,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                         <span>Client Response</span>
                         {q.clientResponse?.updatedAt && (
                           <span className="text-[10px] text-slate-400 normal-case font-normal">
-                            Updated {new Date(q.clientResponse.updatedAt).toLocaleDateString()}
+                            Updated {formatDate(q.clientResponse.updatedAt)}
                           </span>
                         )}
                       </div>
@@ -957,7 +958,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                           <span>
                             Evaluated by <strong>{q.assessorReview.reviewedByUserName}</strong>
                             {q.assessorReview.reviewedAt && (
-                              <span> on {new Date(q.assessorReview.reviewedAt).toLocaleDateString()}</span>
+                              <span> on {formatDate(q.assessorReview.reviewedAt)}</span>
                             )}
                           </span>
                         ) : (
@@ -1038,7 +1039,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                         <div>
                           <h4 className="text-xs font-bold text-slate-900">{th.title}</h4>
                           <span className="text-[10px] text-slate-400">
-                            Raised by {th.raisedByUserName} on {th.createdAt ? new Date(th.createdAt).toLocaleDateString() : ""}
+                            Raised by {th.raisedByUserName} on {th.createdAt ? formatDate(th.createdAt) : ""}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -1067,7 +1068,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                               <span className="font-semibold text-slate-800">
                                 {m.authorName} <span className="text-slate-400 font-normal">({m.authorRole})</span>
                               </span>
-                              <span>{m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                              <span>{m.createdAt ? formatTime(m.createdAt) : ""}</span>
                             </div>
                             <p className="text-slate-700 whitespace-pre-wrap">{m.messageText}</p>
                           </div>
