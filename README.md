@@ -42,7 +42,30 @@ Without SMTP settings, development emails (verification and reset links) are wri
 ## Production
 
 See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)** for installation on a Linux server with Docker,
-configuration, HTTPS, backups, upgrades and troubleshooting.
+configuration, HTTPS, backups, upgrades and troubleshooting, and
+**[docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md)** for moving from a trial to a server.
+
+```bash
+cp .env.example .env            # set CLOUDE5_PUBLIC_URL, SESSION_SECRET, CLOUDE5_ENCRYPTION_KEY, SMTP_*
+docker compose build
+docker compose run --rm cloude5 migrate
+docker compose run --rm cloude5 admin:create --email=you@example.com --name="Your Name"
+CLOUDE5_DOMAIN=cloude5.example.com docker compose --profile proxy --profile antivirus up -d
+```
+
+To try it on a laptop without a domain, use the `tunnel` and `mail` profiles instead
+([laptop setup](docs/SELF_HOSTING.md#trying-it-on-a-laptop-no-server-no-domain)).
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Components, request flow, deployment modes and design limits |
+| [docs/ONBOARDING.md](docs/ONBOARDING.md) | Onboarding customer organisations and users, roles, two-factor |
+| [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) | Installation, configuration, backups, upgrades, troubleshooting |
+| [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
+| [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md) | Tenant isolation, account security and security headers |
+| [docs/README.md](docs/README.md) | Assessment methodology, control library, legal sources and design history |
 
 ## Checks
 
