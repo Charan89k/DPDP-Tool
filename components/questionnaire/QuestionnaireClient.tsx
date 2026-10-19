@@ -271,18 +271,18 @@ export function QuestionnaireClient({
         </div>
 
         {/* 3-Step Stepper (matching 03_questionnaire_workspace.jpeg) */}
-        <div className="flex items-center space-x-3 self-start md:self-auto select-none">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 self-start md:self-auto select-none">
           {/* Step 1: Customer Details (Completed) */}
           <Link href="/dashboard/assessments/new" className="flex items-center space-x-2">
             <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Customer Details
             </span>
           </Link>
 
-          <div className="w-10 h-0.5 bg-emerald-500" />
+          <div className="w-4 sm:w-10 h-0.5 bg-emerald-500" />
 
           {/* Step 2: Questionnaire (Active) */}
           <div className="flex items-center space-x-2">
@@ -294,7 +294,7 @@ export function QuestionnaireClient({
             </span>
           </div>
 
-          <div className="w-10 h-0.5 bg-slate-200" />
+          <div className="w-4 sm:w-10 h-0.5 bg-slate-200" />
 
           {/* Step 3: Review & Submit */}
           <button
@@ -305,7 +305,7 @@ export function QuestionnaireClient({
             <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
               3
             </div>
-            <span className="text-xs font-medium text-slate-500 hover:text-slate-800">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-500 hover:text-slate-800">
               Review & Submit
             </span>
           </button>
@@ -313,7 +313,7 @@ export function QuestionnaireClient({
           {/* Save & Exit Button */}
           <Link
             href="/dashboard/assessments"
-            className="ml-4 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors"
+            className="sm:ml-4 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors"
           >
             <Save className="w-3.5 h-3.5 text-slate-500" />
             <span>Save & Exit</span>
@@ -324,7 +324,7 @@ export function QuestionnaireClient({
       {/* 2. Main Content Grid (3 Columns) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column (3 cols): Section Navigator */}
-        <div className="lg:col-span-3 sticky top-6">
+        <div className="lg:col-span-3 lg:sticky lg:top-6">
           <SectionNavigator
             sections={sections}
             summaries={progress.sectionSummaries}
@@ -415,7 +415,7 @@ export function QuestionnaireClient({
         </div>
 
         {/* Right Column (3 cols): Assessment Progress & Question Jump List */}
-        <div className="lg:col-span-3 space-y-4 sticky top-6">
+        <div className="lg:col-span-3 space-y-4 lg:sticky lg:top-6">
           {/* Progress Card */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs space-y-3">
             <h4 className="font-bold text-xs text-slate-900">

@@ -227,8 +227,8 @@ export function GapAnalysisDashboardClient({
 
       {/* 2. Governance Alert & Provisional Methodology Watermark */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 shadow-xs space-y-2">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-start gap-2.5 min-w-0">
             <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -249,7 +249,7 @@ export function GapAnalysisDashboardClient({
           <button
             type="button"
             onClick={() => setShowDisclaimerDetails(!showDisclaimerDetails)}
-            className="text-[11px] font-semibold text-amber-800 hover:underline flex-shrink-0"
+            className="self-start text-[11px] font-semibold text-amber-800 hover:underline flex-shrink-0"
           >
             {showDisclaimerDetails ? "Hide Details" : "View Governance Notice"}
           </button>
@@ -669,7 +669,7 @@ export function GapAnalysisDashboardClient({
         {/* Filters Bar */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {/* Severity Filter */}
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+          <div className="flex flex-wrap items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200 max-w-full">
             <span className="text-[11px] text-slate-400 font-medium px-1.5">Severity:</span>
             {["ALL", "CRITICAL_GAP", "HIGH_DEFICIT", "MEDIUM_DEFICIT", "LOW_DEFICIT", "INFORMATIONAL"].map((sev) => (
               <button
@@ -691,7 +691,7 @@ export function GapAnalysisDashboardClient({
           <select
             value={sectionFilter}
             onChange={(e) => setSectionFilter(e.target.value)}
-            className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
+            className="w-full sm:w-auto sm:max-w-[16rem] min-w-0 px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
           >
             <option value="ALL">All Sections (8)</option>
             {data.sectionSummaries.map((sec) => (
@@ -705,7 +705,7 @@ export function GapAnalysisDashboardClient({
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
+            className="w-full sm:w-auto min-w-0 px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
           >
             <option value="ALL">All Gap Types</option>
             <option value="NEGATIVE_RESPONSE">Not Implemented</option>
@@ -765,8 +765,8 @@ export function GapAnalysisDashboardClient({
                         </td>
 
                         {/* Question Text & Control Mapping */}
-                        <td className="py-3 px-3 space-y-0.5">
-                          <p className="font-semibold text-slate-800 line-clamp-1">
+                        <td className="py-3 px-3 space-y-0.5 min-w-[14rem]">
+                          <p className="font-semibold text-slate-800 line-clamp-2 sm:line-clamp-1">
                             {item.questionText}
                           </p>
                           <div className="flex items-center gap-2 text-[11px] text-slate-500">
