@@ -24,6 +24,7 @@ import { canReviewAssessment } from "@/lib/auth/rbac";
 import { z } from "zod";
 import { errorMessage } from "@/lib/http/errors";
 import manifestData from "../../../../../data/questionnaire_v1.json" with { type: "json" };
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -397,6 +398,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       isAssessor: canReviewAssessment(sessionUser.role),
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to load assessor review workspace:", err);
     return NextResponse.json(
       { error: "Failed to retrieve review workspace under tenant boundary." },
@@ -543,6 +546,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       updatedCount: result.updatedCount,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },

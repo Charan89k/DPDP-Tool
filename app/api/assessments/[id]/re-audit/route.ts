@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { cloneAssessmentForReaudit, LifecycleError } from "@/lib/lifecycle";
 import type { ReauditCloneRequest } from "@/lib/lifecycle/types";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -48,6 +49,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 201 }
     );
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (err instanceof LifecycleError) {
       return NextResponse.json(
         { error: err.message, code: err.code },

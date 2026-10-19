@@ -8,6 +8,7 @@
 
 import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -209,6 +210,17 @@ describe("CloudE5 self-service account lifecycle", () => {
       /signed out/
     );
     assert.equal(await executeWithRls(await sessionFor(EMAIL), async () => true), true);
+  });
+
+  it("rejects a signed-out session even if its cookie is replayed, without signing out other sessions", async () => {
+    const signedOut = { ...(await sessionFor(EMAIL)), sessionId: crypto.randomUUID() };
+    const otherDevice = { ...(await sessionFor(EMAIL)), sessionId: crypto.randomUUID() };
+    assert.equal(await executeWithRls(signedOut, async () => true), true);
+
+    await account.revokeSession(signedOut);
+
+    await assert.rejects(executeWithRls(signedOut, async () => true), /signed out/);
+    assert.equal(await executeWithRls(otherDevice, async () => true), true);
   });
 
   it("scopes a self-registered organisation to its own data only", async () => {

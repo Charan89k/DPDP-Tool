@@ -10,6 +10,7 @@ import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 const createCustomerSchema = z.object({
   name: z.string().min(2, "Organisation name must be at least 2 characters.").max(255),
@@ -71,6 +72,8 @@ export async function GET(req: NextRequest) {
       customers,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to query customers:", err);
     return NextResponse.json(
       { error: "Unable to retrieve customers. Please verify your permissions." },
@@ -123,6 +126,8 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (err instanceof OnboardingError) {
       return NextResponse.json(
         { error: err.message, code: err.code },

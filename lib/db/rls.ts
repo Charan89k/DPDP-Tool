@@ -123,6 +123,15 @@ export async function assertSessionMatchesDatabase(
     );
   }
 
+  if (context.sessionId) {
+    const revoked = await client.query("SELECT 1 FROM revoked_sessions WHERE session_id = $1;", [context.sessionId]);
+    if (revoked.rows.length > 0) {
+      throw new DatabaseAuthorizationError(
+        "Database identity verification failed: this session has been signed out. Please sign in again."
+      );
+    }
+  }
+
   if (context.role === "TLI_SUPER_ADMIN" && dbUser.tenant_type !== "TLI") {
     throw new DatabaseAuthorizationError(
       "Database identity verification failed: TLI_SUPER_ADMIN must belong to the platform operator tenant."

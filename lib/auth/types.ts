@@ -27,6 +27,8 @@ export interface SessionUser {
   isSdf: boolean;
   /** users.session_version at sign-in; sessions with an older version are revoked. */
   sessionVersion?: number;
+  /** Unique id of this signed session (JWT jti), used to revoke it on sign-out. */
+  sessionId?: string;
 }
 
 export interface AuthSuccessResult {

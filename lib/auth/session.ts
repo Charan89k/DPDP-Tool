@@ -73,6 +73,7 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
     .setAudience(TOKEN_AUDIENCE)
     .setIssuedAt(iat)
     .setExpirationTime(exp)
+    .setJti(crypto.randomUUID())
     .sign(getSigningKey());
 }
 
@@ -114,6 +115,7 @@ export async function verifySessionToken(
       tenantType: (payload.tenantType as TenantType) || "CLIENT",
       isSdf: Boolean(payload.isSdf),
       sessionVersion: typeof payload.sv === "number" ? payload.sv : 0,
+      sessionId: typeof payload.jti === "string" ? payload.jti : undefined,
     };
   } catch {
     // Fails closed on signature mismatch, expired token, issuer/audience mismatch, or malformed bytes

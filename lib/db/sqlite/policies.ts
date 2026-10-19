@@ -201,6 +201,9 @@ export const TABLE_POLICIES: TablePolicy[] = [
   { table: "rate_limit_buckets", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
   // MFA recovery codes are handled only by the privileged authentication service.
   { table: "mfa_recovery_codes", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
+  // Signed-out sessions: users may see only their own (the session check runs in tenant context);
+  // rows are written only by the privileged sign-out path.
+  { table: "revoked_sessions", select: `$.user_id = ${USER}`, insert: "DENY", update: "DENY", delete: "DENY" },
 ];
 
 /** Reference data readable by every authenticated user but never writable at runtime. */

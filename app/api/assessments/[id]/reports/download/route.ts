@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { generateReportDocument } from "@/lib/reports";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Report download error:", err);
     return NextResponse.json(
       { error: "Failed to generate report document" },

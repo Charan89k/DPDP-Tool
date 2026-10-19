@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { issueOfficialFinalReport } from "@/lib/reports";
 import { isTliRole, canFinalizeAssessment } from "@/lib/auth/rbac";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ ok: true, snapshot }, { status: 200 });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Report issuance error:", err);
     return NextResponse.json(
       { error: "Failed to issue final report" },

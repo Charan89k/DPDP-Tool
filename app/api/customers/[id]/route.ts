@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { isTliRole } from "@/lib/auth/rbac";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export async function GET(
   req: NextRequest,
@@ -97,6 +98,8 @@ export async function GET(
       ...data,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error(`Failed to fetch customer ${customerId}:`, err);
     return NextResponse.json(
       { error: "Unable to retrieve customer details." },

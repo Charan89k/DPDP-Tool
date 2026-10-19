@@ -23,6 +23,7 @@ import {
   persistAssessmentScores,
   ScoringServiceError,
 } from "@/lib/scoring";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -57,6 +58,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       { status: 200 }
     );
   } catch (error) {
+    const sessionError = sessionErrorResponse(error);
+    if (sessionError) return sessionError;
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -112,6 +115,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 201 }
     );
   } catch (error) {
+    const sessionError = sessionErrorResponse(error);
+    if (sessionError) return sessionError;
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },

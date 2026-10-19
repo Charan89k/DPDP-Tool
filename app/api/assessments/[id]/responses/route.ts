@@ -14,6 +14,7 @@ import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { errorMessage } from "@/lib/http/errors";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -112,6 +113,8 @@ export async function GET(request: Request, { params }: RouteParams) {
       responses,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to fetch assessment questionnaire responses:", err);
     return NextResponse.json(
       { error: "Failed to retrieve questionnaire responses under tenant security boundary." },
@@ -259,6 +262,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       savedCount: result.savedCount,
     });
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     if (errorMessage(err) === "ASSESSMENT_NOT_FOUND_OR_FORBIDDEN") {
       return NextResponse.json(
         { error: "Assessment not found or access denied." },

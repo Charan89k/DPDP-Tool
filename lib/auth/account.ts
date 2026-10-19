@@ -28,6 +28,8 @@ import {
   passwordResetEmail,
   verificationEmail,
 } from "../email/templates.ts";
+import { SESSION_MAX_AGE_SECONDS } from "./session.ts";
+import type { SessionUser } from "./types.ts";
 
 export type TokenPurpose = "EMAIL_VERIFICATION" | "PASSWORD_RESET";
 
@@ -387,6 +389,22 @@ export async function resetPassword(
 }
 
 /** Revokes every session of a user (sign out everywhere). */
+/**
+ * Signs out one session: its id is recorded until the token would have expired, so a replayed
+ * cookie is refused. Expired records are pruned on the way.
+ */
+export async function revokeSession(sessionUser: SessionUser): Promise<void> {
+  if (!sessionUser.sessionId) return;
+  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString();
+  await inTransaction(async (client) => {
+    await client.query("DELETE FROM revoked_sessions WHERE expires_at < $1;", [new Date().toISOString()]);
+    await client.query(
+      "INSERT INTO revoked_sessions (session_id, user_id, expires_at) VALUES ($1, $2, $3) ON CONFLICT (session_id) DO NOTHING;",
+      [sessionUser.sessionId, sessionUser.userId, expiresAt]
+    );
+  });
+}
+
 export async function revokeAllSessions(userId: string, tenantId: string, meta: RequestMeta = {}): Promise<void> {
   await inTransaction(async (client) => {
     await client.query("UPDATE users SET session_version = session_version + 1 WHERE id = $1;", [userId]);

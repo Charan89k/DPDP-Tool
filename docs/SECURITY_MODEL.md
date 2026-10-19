@@ -48,7 +48,8 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   `users.mfa_last_used_step`, `user_invitations.token_hash`) read as NULL in every tenant context;
   only the system context (sign-in, MFA, account recovery) can read them.
 - Tables that only the system context uses (`auth_tokens`, `rate_limit_buckets`,
-  `mfa_recovery_codes`) are deny-all in tenant contexts.
+  `mfa_recovery_codes`) are deny-all in tenant contexts; `revoked_sessions` shows a user only their
+  own rows (the session check runs in tenant context) and is written only by sign-out.
 - In a tenant context, statements that name a schema explicitly (`main.`, `temp.`) or use
   `ATTACH`, `DETACH`, `PRAGMA` or `VACUUM` are refused, so no query can reach the base tables behind
   the policy views or alter the policy context.
@@ -91,8 +92,12 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   reverse proxy so clients cannot write the rightmost entry themselves. If no trusted header carries
   a valid address, all such requests share the bucket `127.0.0.1`; running without a proxy therefore
   makes per-IP limits installation-wide (per-email limits still apply).
-- Signing out clears the session cookie on that device; "sign out everywhere" (and any password
-  reset) revokes every session. `/api/auth/me` re-checks the database on each call.
+- Each session token carries a unique id. Signing out records that id in `revoked_sessions` until
+  the token would have expired, so a copied cookie cannot be replayed; other devices stay signed in.
+  "Sign out everywhere" (and any password reset) revokes every session. A revoked, deactivated or
+  demoted session gets HTTP 401 ("sign in again"). `/api/auth/me` re-checks the database on each call.
+- Accounts can only sign in with a real bcrypt hash; there is no demo or fixture login path, and the
+  former public demo password is refused as a new password.
 - CSRF: in addition to SameSite cookies, every state-changing API request must come from this site's
   origin.
 
@@ -105,6 +110,10 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   remain allowed (React renders them). API responses get `default-src 'none'`. Pages are rendered
   per request so each can carry its nonce. The development server also allows `'unsafe-eval'` and
   WebSocket connections for hot reload.
+- Pages are sent with `Cache-Control: private, no-store, no-transform`. `no-transform` stops proxies
+  such as Cloudflare from rewriting the HTML (for example email obfuscation), which would inject a
+  script the CSP blocks. Displayed dates use one fixed zone (India) so server and browser render
+  identical HTML.
 - Other headers on every route: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy`, `Permissions-Policy` (camera, microphone, geolocation off),
   `Cross-Origin-Opener-Policy: same-origin`, and in production `Strict-Transport-Security` (one year,
