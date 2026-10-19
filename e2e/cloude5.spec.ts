@@ -1,6 +1,6 @@
 /**
  * Critical user journeys through the real UI: registration, email verification, onboarding,
- * starting an assessment, two-factor enrolment and two-factor sign-in, plus a phone-width check.
+ * starting an assessment, two-factor enrolment and two-factor sign-in, plus phone and tablet layout checks.
  */
 import crypto from "node:crypto";
 import zlib from "node:zlib";
@@ -183,5 +183,60 @@ test("landing and sign-in pages fit a phone screen @mobile", async ({ page }) =>
     await page.goto(path);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `${path} scrolls horizontally`).toBeLessThanOrEqual(0);
+  }
+});
+
+/** How far content in the workspace reaches past the screen, ignoring tables that scroll sideways on purpose. */
+async function workspaceOverflow(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const main = document.getElementById("main-content");
+    if (!main) return ["no #main-content"];
+    const edge = main.getBoundingClientRect().right;
+    const problems: string[] = [];
+    if (main.scrollWidth > main.clientWidth) problems.push(`main scrolls sideways by ${main.scrollWidth - main.clientWidth}px`);
+    for (const el of main.querySelectorAll<HTMLElement>("*")) {
+      const box = el.getBoundingClientRect();
+      if (!box.width || (box.right <= edge + 1 && box.left >= -1)) continue;
+      let scrolls = false;
+      for (let p = el.parentElement; p && p !== main; p = p.parentElement) {
+        if (/(auto|scroll)/.test(getComputedStyle(p).overflowX)) scrolls = true;
+      }
+      if (!scrolls) problems.push(`${el.tagName.toLowerCase()} "${(el.innerText || "").trim().slice(0, 40)}" ends at ${Math.round(box.right)}px`);
+    }
+    return problems.slice(0, 5);
+  });
+}
+
+test("the assessment workspace fits phone and tablet screens @mobile", async ({ page }) => {
+  const account = newAccount();
+  await registerAndVerify(page, account);
+  await signIn(page, account.email, account.password);
+  await expect(page).toHaveURL(/\/dashboard\/onboarding/);
+  await page.getByText("No", { exact: true }).click();
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Start assessment" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/assessments\/[^/]+\/questionnaire/, { timeout: 30_000 });
+  const assessmentId = page.url().match(/assessments\/([^/]+)\/questionnaire/)![1];
+
+  // The navigation is a drawer on small screens.
+  await page.getByRole("button", { name: "Open navigation" }).click();
+  await expect(page.locator("#app-sidebar").getByRole("link", { name: "Reports" })).toBeInViewport();
+  await page.keyboard.press("Escape");
+
+  const pages = [
+    "/dashboard",
+    "/dashboard/assessments",
+    `/dashboard/assessments/${assessmentId}/questionnaire`,
+    `/dashboard/assessments/${assessmentId}/summary`,
+    `/dashboard/assessments/${assessmentId}/gaps`,
+    `/dashboard/assessments/${assessmentId}/remediation`,
+    `/dashboard/assessments/${assessmentId}/evidence`,
+    "/dashboard/reports",
+    "/dashboard/settings",
+  ];
+  for (const path of pages) {
+    await page.goto(path);
+    await page.waitForLoadState("networkidle");
+    expect(await workspaceOverflow(page), `${path} fits the screen`).toEqual([]);
   }
 });

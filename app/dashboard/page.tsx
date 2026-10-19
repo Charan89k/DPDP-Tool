@@ -215,8 +215,8 @@ export default async function DashboardPage() {
       {/* 2. Top 5 KPI Status Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {/* Card 1: Total Assessments */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0">
             <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
               <ClipboardList className="w-5 h-5" />
             </div>
@@ -232,8 +232,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Card 2: In Progress */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0">
             <div className="w-11 h-11 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0">
               <Clock className="w-5 h-5" />
             </div>
@@ -255,8 +255,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Card 3: Pending Validation */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0">
             <div className="w-11 h-11 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
               <Clock className="w-5 h-5" />
             </div>
@@ -278,8 +278,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Card 4: Report Draft */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3.5">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0">
             <div className="w-11 h-11 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
               <FileText className="w-5 h-5" />
             </div>
@@ -302,7 +302,7 @@ export default async function DashboardPage() {
 
         {/* Card 5: Completed */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
-          <div className="flex items-center space-x-3.5">
+          <div className="flex items-center space-x-3 sm:space-x-3.5 min-w-0">
             <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>

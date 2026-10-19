@@ -200,7 +200,7 @@ export default async function AssessmentsPage() {
               </div>
 
               {/* Actions Footer */}
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-end gap-2.5">
+              <div className="pt-4 mt-4 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2.5">
                 <Link
                   href={`/dashboard/assessments/${assessment.id}/evidence`}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg shadow-2xs transition-colors"

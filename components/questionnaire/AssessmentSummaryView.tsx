@@ -300,18 +300,18 @@ export function AssessmentSummaryView({
         </div>
 
         {/* 4-Step Stepper */}
-        <div className="flex items-center space-x-3 self-start md:self-auto select-none">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 self-start md:self-auto select-none">
           {/* Step 1: Customer Details */}
           <Link href="/dashboard/assessments/new" className="flex items-center space-x-1.5">
             <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[11px] font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Customer Details
             </span>
           </Link>
 
-          <div className="w-8 h-0.5 bg-emerald-500" />
+          <div className="w-4 sm:w-8 h-0.5 bg-emerald-500" />
 
           {/* Step 2: Questionnaire */}
           <Link
@@ -321,12 +321,12 @@ export function AssessmentSummaryView({
             <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[11px] font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Questionnaire
             </span>
           </Link>
 
-          <div className="w-8 h-0.5 bg-emerald-500" />
+          <div className="w-4 sm:w-8 h-0.5 bg-emerald-500" />
 
           {/* Step 3: Evidence */}
           <Link
@@ -336,12 +336,12 @@ export function AssessmentSummaryView({
             <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[11px] font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Evidence
             </span>
           </Link>
 
-          <div className="w-8 h-0.5 bg-blue-500" />
+          <div className="w-4 sm:w-8 h-0.5 bg-blue-500" />
 
           {/* Step 4: Review & Submit (Active) */}
           <div className="flex items-center space-x-1.5">
@@ -356,7 +356,7 @@ export function AssessmentSummaryView({
           {/* Action CTAs */}
           <Link
             href={`/dashboard/assessments/${assessmentId}/evidence`}
-            className="ml-3 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            className="sm:ml-3 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
           >
             &larr; Back to Evidence
           </Link>
@@ -725,7 +725,7 @@ export function AssessmentSummaryView({
                 </h3>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
                 {/* Search */}
                 <div className="relative">
                   <input
@@ -733,7 +733,7 @@ export function AssessmentSummaryView({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search question code or text..."
-                    className="pl-7 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 w-48 sm:w-56"
+                    className="pl-7 pr-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 w-full sm:w-56"
                   />
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-2 pointer-events-none" />
                 </div>
@@ -742,7 +742,7 @@ export function AssessmentSummaryView({
                 <select
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white font-medium text-slate-700"
+                  className="w-full sm:w-auto sm:max-w-[16rem] min-w-0 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white font-medium text-slate-700"
                 >
                   <option value="ALL">All Sections</option>
                   {canonicalSections.map((s) => (

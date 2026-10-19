@@ -173,26 +173,26 @@ export function CreateAssessmentForm({
         </div>
 
         {/* 3-Step Stepper */}
-        <ol className="flex items-center space-x-3 self-start md:self-auto select-none" aria-label="Assessment setup steps">
+        <ol className="flex flex-wrap items-center gap-x-3 gap-y-2 self-start md:self-auto select-none" aria-label="Assessment setup steps">
           <li className="flex items-center space-x-2" aria-current="step">
             <span className="w-7 h-7 rounded-full bg-[#0066FF] text-white flex items-center justify-center text-xs font-bold shadow-xs">
               1
             </span>
             <span className="text-xs font-semibold text-[#0066FF]">Engagement Setup</span>
           </li>
-          <li aria-hidden="true" className="w-12 h-0.5 bg-blue-300" />
+          <li aria-hidden="true" className="w-4 sm:w-12 h-0.5 bg-blue-300" />
           <li className="flex items-center space-x-2">
             <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
               2
             </span>
-            <span className="text-xs font-medium text-slate-500">Questionnaire</span>
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-500">Questionnaire</span>
           </li>
-          <li aria-hidden="true" className="w-12 h-0.5 bg-slate-200" />
+          <li aria-hidden="true" className="w-4 sm:w-12 h-0.5 bg-slate-200" />
           <li className="flex items-center space-x-2">
             <span className="w-7 h-7 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold">
               3
             </span>
-            <span className="text-xs font-medium text-slate-500">Review & Submit</span>
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-500">Review & Submit</span>
           </li>
         </ol>
       </div>

@@ -342,18 +342,18 @@ export function EvidenceManagementClient({
         </div>
 
         {/* 3-Step Stepper (matching 04_evidence_management.jpeg) */}
-        <div className="flex items-center space-x-3 self-start md:self-auto select-none">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 self-start md:self-auto select-none">
           {/* Step 1: Customer Details */}
           <Link href="/dashboard/assessments/new" className="flex items-center space-x-2">
             <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Customer Details
             </span>
           </Link>
 
-          <div className="w-10 h-0.5 bg-emerald-500" />
+          <div className="w-4 sm:w-10 h-0.5 bg-emerald-500" />
 
           {/* Step 2: Questionnaire */}
           <Link
@@ -363,12 +363,12 @@ export function EvidenceManagementClient({
             <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
               ✓
             </div>
-            <span className="text-xs font-medium text-slate-600">
+            <span className="sr-only sm:not-sr-only text-xs font-medium text-slate-600">
               Questionnaire
             </span>
           </Link>
 
-          <div className="w-10 h-0.5 bg-blue-500" />
+          <div className="w-4 sm:w-10 h-0.5 bg-blue-500" />
 
           {/* Step 3: Review & Submit */}
           <Link
@@ -386,7 +386,7 @@ export function EvidenceManagementClient({
           {/* Nav Buttons */}
           <Link
             href={`/dashboard/assessments/${assessmentId}/questionnaire`}
-            className="ml-3 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
+            className="sm:ml-3 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg shadow-2xs transition-colors"
           >
             &larr; Back to Questionnaire
           </Link>

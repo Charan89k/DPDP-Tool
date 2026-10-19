@@ -24,5 +24,6 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] }, grepInvert: /@mobile/ },
     { name: "mobile", use: { ...devices["Pixel 7"] }, grep: /@mobile/ },
+    { name: "tablet", use: { ...devices["Galaxy Tab S4"] }, grep: /@mobile/ },
   ],
 });

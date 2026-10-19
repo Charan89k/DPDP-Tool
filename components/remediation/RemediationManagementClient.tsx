@@ -313,7 +313,7 @@ export function RemediationManagementClient({
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-stone-500 font-mono text-[11px]">Priority:</span>
           {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"].map((pr) => (
             <button

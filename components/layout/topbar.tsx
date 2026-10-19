@@ -83,18 +83,18 @@ export function Topbar({ user, onOpenNavigation, navigationOpen = false }: Topba
         <Menu className="w-5 h-5" aria-hidden="true" />
       </button>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center space-x-2.5">
-          <h2 className="text-base font-bold text-slate-900 tracking-tight">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight truncate">
             {user.tenantName}
           </h2>
         </div>
-        <p className="text-[11px] text-slate-500 font-medium">
+        <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate">
           CloudE5 · DPDP compliance workspace
         </p>
       </div>
 
       {/* Right: Actions, Notifications & User Profile */}
-      <div className="flex items-center space-x-5">
+      <div className="flex items-center space-x-2 sm:space-x-5 flex-shrink-0">
         {/* Tasks shortcut (counts are computed on the dashboard from live data) */}
         <Link
           href="/dashboard#my-tasks"
