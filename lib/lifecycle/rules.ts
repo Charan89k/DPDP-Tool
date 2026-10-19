@@ -2,7 +2,7 @@
  * CloudE5 — Assessment Lifecycle Rules Engine
  *
  * Implements the deterministic state transition graph, authorized roles,
- * and precondition rules documented in docs/03, docs/09, and docs/31.
+ * and precondition rules documented in docs/reference/03, docs/reference/09 and docs/archive/31.
  */
 
 import type {

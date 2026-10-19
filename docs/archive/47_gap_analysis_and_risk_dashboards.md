@@ -1,7 +1,7 @@
 # Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool
 ## Phase 4 Implementation Report: Gap Analysis Engine, Risk Prioritization & Dashboards
 
-**Document Reference:** `docs/47_gap_analysis_and_risk_dashboards.md`  
+**Document Reference:** `docs/archive/47_gap_analysis_and_risk_dashboards.md`  
 **Classification:** Internal Technical Architecture & Compliance Governance Report  
 **Lifecycle Stage:** Phase 4 Implementation Complete  
 **Date:** 2026-10-11  
@@ -29,9 +29,9 @@ The implementation strictly maintains the foundational architectural distinction
 1. The **30-Control Statutory Library** (`data/dpdp_controls.json`), which represents codified legal obligations and organizational controls across 13 statutory domains.
 2. The **60-Question Respondent Questionnaire** (`data/questionnaire_v1.json`), which represents the operational data gathering instrument organized into 8 assessment sections.
 
-Every questionnaire finding is linked to canonical controls exclusively via explicit, approved question-to-control mappings (`canonical_control_id`). The **four unresolved question records** (`GOV-005`, `GOV-006`, `GOV-008`, and `APP-006`) identified in `docs/09_unresolved_decisions_and_tl_assumptions.md` as pending the canonical Excel cross-reference sheet are strictly isolated: they are never mapped to statutory controls, never assigned statutory domains, and never counted in legal penalty calculations.
+Every questionnaire finding is linked to canonical controls exclusively via explicit, approved question-to-control mappings (`canonical_control_id`). The **four unresolved question records** (`GOV-005`, `GOV-006`, `GOV-008`, and `APP-006`) identified in `docs/reference/09_unresolved_decisions_and_tl_assumptions.md` as pending the canonical Excel cross-reference sheet are strictly isolated: they are never mapped to statutory controls, never assigned statutory domains, and never counted in legal penalty calculations.
 
-Crucially, in compliance with advisory governance and legal review standards (`docs/19_legal_review_and_interpretation_register.md`), the engine **never asserts a legal violation or organizational liability** solely on the basis of a self-attested questionnaire response or an unreviewed gap. Observed deficits are formally classified as *factual compliance gaps* or *potential statutory exposures*, while statutory penalty ceilings under Section 33(1) of the DPDP Act (up to ₹250 Crores) are explicitly labeled as statutory maximums rather than assessed fines.
+Crucially, in compliance with advisory governance and legal review standards (`docs/reference/19_legal_review_and_interpretation_register.md`), the engine **never asserts a legal violation or organizational liability** solely on the basis of a self-attested questionnaire response or an unreviewed gap. Observed deficits are formally classified as *factual compliance gaps* or *potential statutory exposures*, while statutory penalty ceilings under Section 33(1) of the DPDP Act (up to ₹250 Crores) are explicitly labeled as statutory maximums rather than assessed fines.
 
 ---
 

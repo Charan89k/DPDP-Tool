@@ -24,17 +24,17 @@ Every proposed control is explicitly mapped to primary legislative text (DPDPA 2
 
 | File Ref | Title | Scope & Purpose |
 |---|---|---|
-| `docs/11_legal_source_register.md` | Authoritative Legal Source Register | Establishes the 7 primary legal sources (`SRC-01` to `SRC-07`), official gazette citations, verified URLs, commencement status, and regulatory transition analysis. |
-| `docs/12_source_to_control_coverage_matrix.md` | Source-to-Control Coverage Matrix | Section-by-section statutory mapping of DPDPA 2023 and DPDP Rules 2025; identifies covered provisions, inclusion/exclusion rationale, and sovereign/judicial powers unmapped to commercial fiduciaries. |
-| `docs/13_control_library_schema_and_data_dictionary.md` | Control-Library Schema & Data Dictionary | Formal field definitions, database constraints, enumeration domains, and Draft 2020-12 JSON Schema for control definitions. |
-| `docs/14_dpdp_control_library_v1.md` | DPDP Control Library (Release 1.0.0) | Complete production catalogue of 30 controls (`TLI-DPDP-SCO-01` to `PEN-01`) detailing exact statutory provisions, assessment questions, implementation expectations, evidence, limitations, and CAPA remediation. |
-| `docs/15_evidence_catalogue.md` | Evidence Catalogue & Verification Standards | Catalogue of 27 evidence types (`EVID-ROPA-01` to `RSK-01`), linked controls, verification procedures, common evidentiary traps, and risk-based masking standards. |
-| `docs/16_assessment_and_review_guidance.md` | Assessment & Review Guidance | Objective evaluation standards for the 5 response states, 4-step evidence sufficiency verification protocol, non-compensatory scoring rules, and consultant bias mitigation. |
-| `docs/17_applicability_methodology.md` | Applicability & Scoping Methodology | Scoping decision trees, non-excludable core baselines, factual justification criteria, TLI Lead Consultant approval gates, and specific scoping rules (B2B, minors, SDF, cross-border, employment). |
-| `docs/18_provisional_scoring_and_risk_methodology.md` | Provisional Scoring & Risk Methodology | Provisional mathematical scoring model (`SCORING-V1-PROVISIONAL`): Maturity Score (0.00–5.00), Coverage %, Statutory Deficit Counter, DPDPA Schedule penalty exposure tiers (up to ₹250 Cr), and perception gap metric ($\Delta_{\text{Perception}}$). |
-| `docs/19_legal_review_and_interpretation_register.md` | Legal Review & Interpretation Register | Itemized register of 10 legal interpretation records (`LEG-INT-01` to `LEG-INT-10`) flagged `LEGAL_VERIFICATION_REQUIRED` for TLI Legal Counsel approval under Decision DEC-08. |
-| `docs/20_control_library_versioning_and_change_management.md` | Control Library Versioning & Change Management | Semantic versioning rules, lifecycle states (`DRAFT` $\rightarrow$ `APPROVED` $\rightarrow$ `DEPRECATED`), impact analysis on active assessments, and pinned assessment versioning architecture. |
-| `docs/21_phase_2_completion_and_quality_report.md` | Phase 2 QA & Completion Report | This handover document, summarizing audit metrics, referential integrity results, outstanding decisions, and Phase 3 readiness. |
+| `docs/reference/11_legal_source_register.md` | Authoritative Legal Source Register | Establishes the 7 primary legal sources (`SRC-01` to `SRC-07`), official gazette citations, verified URLs, commencement status, and regulatory transition analysis. |
+| `docs/reference/12_source_to_control_coverage_matrix.md` | Source-to-Control Coverage Matrix | Section-by-section statutory mapping of DPDPA 2023 and DPDP Rules 2025; identifies covered provisions, inclusion/exclusion rationale, and sovereign/judicial powers unmapped to commercial fiduciaries. |
+| `docs/reference/13_control_library_schema_and_data_dictionary.md` | Control-Library Schema & Data Dictionary | Formal field definitions, database constraints, enumeration domains, and Draft 2020-12 JSON Schema for control definitions. |
+| `docs/reference/14_dpdp_control_library_v1.md` | DPDP Control Library (Release 1.0.0) | Complete production catalogue of 30 controls (`TLI-DPDP-SCO-01` to `PEN-01`) detailing exact statutory provisions, assessment questions, implementation expectations, evidence, limitations, and CAPA remediation. |
+| `docs/reference/15_evidence_catalogue.md` | Evidence Catalogue & Verification Standards | Catalogue of 27 evidence types (`EVID-ROPA-01` to `RSK-01`), linked controls, verification procedures, common evidentiary traps, and risk-based masking standards. |
+| `docs/reference/16_assessment_and_review_guidance.md` | Assessment & Review Guidance | Objective evaluation standards for the 5 response states, 4-step evidence sufficiency verification protocol, non-compensatory scoring rules, and consultant bias mitigation. |
+| `docs/reference/17_applicability_methodology.md` | Applicability & Scoping Methodology | Scoping decision trees, non-excludable core baselines, factual justification criteria, TLI Lead Consultant approval gates, and specific scoping rules (B2B, minors, SDF, cross-border, employment). |
+| `docs/reference/18_provisional_scoring_and_risk_methodology.md` | Provisional Scoring & Risk Methodology | Provisional mathematical scoring model (`SCORING-V1-PROVISIONAL`): Maturity Score (0.00–5.00), Coverage %, Statutory Deficit Counter, DPDPA Schedule penalty exposure tiers (up to ₹250 Cr), and perception gap metric ($\Delta_{\text{Perception}}$). |
+| `docs/reference/19_legal_review_and_interpretation_register.md` | Legal Review & Interpretation Register | Itemized register of 10 legal interpretation records (`LEG-INT-01` to `LEG-INT-10`) flagged `LEGAL_VERIFICATION_REQUIRED` for TLI Legal Counsel approval under Decision DEC-08. |
+| `docs/reference/20_control_library_versioning_and_change_management.md` | Control Library Versioning & Change Management | Semantic versioning rules, lifecycle states (`DRAFT` $\rightarrow$ `APPROVED` $\rightarrow$ `DEPRECATED`), impact analysis on active assessments, and pinned assessment versioning architecture. |
+| `docs/archive/21_phase_2_completion_and_quality_report.md` | Phase 2 QA & Completion Report | This handover document, summarizing audit metrics, referential integrity results, outstanding decisions, and Phase 3 readiness. |
 
 ---
 
@@ -129,7 +129,7 @@ CSV evidence_catalogue.csv row count:           27 (PASSED)
 
 ## 6. Stakeholder Decision Register & Phase 3 Blockers
 
-The following items from the Stakeholder Decision Register (`docs/09_unresolved_decisions_and_tl_assumptions.md`) require formal sign-off before Phase 3 execution:
+The following items from the Stakeholder Decision Register (`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`) require formal sign-off before Phase 3 execution:
 
 ```mermaid
 flowchart TD
@@ -144,9 +144,9 @@ flowchart TD
 ```
 
 1. **Decision DEC-08 (Mandatory Legal Sign-Off)**:
-   - TLI Legal Counsel must formally review the 10 statutory interpretations documented in `docs/19_legal_review_and_interpretation_register.md` (`LEG-INT-01` to `LEG-INT-10`), including the grandfathering notice window (Rule 3(3)), Section 7(i) employment scope, and Consent Manager registration enforcement.
+   - TLI Legal Counsel must formally review the 10 statutory interpretations documented in `docs/reference/19_legal_review_and_interpretation_register.md` (`LEG-INT-01` to `LEG-INT-10`), including the grandfathering notice window (Rule 3(3)), Section 7(i) employment scope, and Consent Manager registration enforcement.
 2. **Decision DEC-05 (Evidence Masking Standard)**:
-   - TLI CISO/Security Lead must formally approve the 3-tier masking guidelines in `docs/15_evidence_catalogue.md` Section 4.
+   - TLI CISO/Security Lead must formally approve the 3-tier masking guidelines in `docs/reference/15_evidence_catalogue.md` Section 4.
 3. **Decision DEC-09 (MVP Six-Phase Canonical Roadmap)**:
    - TLI Executive Sponsor confirmation of the phased delivery plan prior to provisioning database infrastructure.
 

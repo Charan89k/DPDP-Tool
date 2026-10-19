@@ -15,33 +15,33 @@ Under milestone **Phase 3B.2**, a comprehensive, evidence-based pre-commit verif
 The objective was to independently audit the actual repository codebase, live test outputs, database schema migrations, and documentation artifacts to ensure complete coherence with TLI's architecture, security standards, and stakeholder governance register before proceeding to Phase 3C (*Next.js Application Core, Authentication & API Scaffolding*).
 
 ### Inspected Files & Architecture Boundaries:
-- **Canonical Governance**: [`docs/09_unresolved_decisions_and_tl_assumptions.md`](09_unresolved_decisions_and_tl_assumptions.md) (DEC-01 through DEC-10).
-- **Architecture & Review Documentation**: [`docs/25_phase_3b_evidence_storage_vault.md`](25_phase_3b_evidence_storage_vault.md), [`docs/26_phase_3b_security_review_and_remediation.md`](26_phase_3b_security_review_and_remediation.md), [`docs/README.md`](README.md).
+- **Canonical Governance**: [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](../reference/09_unresolved_decisions_and_tl_assumptions.md) (DEC-01 through DEC-10).
+- **Architecture & Review Documentation**: [`docs/archive/25_phase_3b_evidence_storage_vault.md`](25_phase_3b_evidence_storage_vault.md), [`docs/archive/26_phase_3b_security_review_and_remediation.md`](26_phase_3b_security_review_and_remediation.md), [`docs/README.md`](../README.md).
 - **Core Storage Service & Engine**:
-  - [`storage/__init__.py`](../storage/__init__.py)
-  - [`storage/interface.py`](../storage/interface.py)
-  - [`storage/s3_adapter.py`](../storage/s3_adapter.py)
-  - [`storage/scanner.py`](../storage/scanner.py)
-  - [`storage/service.py`](../storage/service.py)
-  - [`storage/validation.py`](../storage/validation.py)
+  - [`storage/__init__.py`](../../storage/__init__.py)
+  - [`storage/interface.py`](../../storage/interface.py)
+  - [`storage/s3_adapter.py`](../../storage/s3_adapter.py)
+  - [`storage/scanner.py`](../../storage/scanner.py)
+  - [`storage/service.py`](../../storage/service.py)
+  - [`storage/validation.py`](../../storage/validation.py)
 - **Database Migrations & Tooling**:
-  - [`migrations/005_evidence_vault_lifecycle.sql`](../migrations/005_evidence_vault_lifecycle.sql)
-  - [`scripts/migrate.py`](../scripts/migrate.py)
+  - [`migrations/005_evidence_vault_lifecycle.sql`](../../migrations/005_evidence_vault_lifecycle.sql)
+  - [`scripts/migrate.py`](../../scripts/migrate.py)
 - **Automated Verification Suites**:
-  - [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py)
-  - [`scripts/test_database_rls.py`](../scripts/test_database_rls.py)
-  - [`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py)
+  - [`scripts/validate_phase2_data.py`](../../scripts/validate_phase2_data.py)
+  - [`scripts/test_database_rls.py`](../../scripts/test_database_rls.py)
+  - [`scripts/test_evidence_vault.py`](../../scripts/test_evidence_vault.py)
 - **Environment & Git Configuration**:
-  - [`.env.example`](../.env.example)
-  - [`.gitignore`](../.gitignore)
+  - [`.env.example`](../../.env.example)
+  - [`.gitignore`](../../.gitignore)
 
 ---
 
 ## 2. In-Depth Technical Verification & Security Assessment
 
 ### 2.1 Identity and Authorization
-- **Server-Derived Security Context**: The service strictly accepts identity parameters via the immutable [`RequestContext`](../storage/service.py#L61-L69) dataclass (`user_id`, `tenant_id`, `role`, `client_ip`, `user_agent`). These values originate exclusively from verified server-side session tokens, never from client-controlled request bodies or URL path parameters.
-- **Fail-Closed Context Validation**: [`_validate_context`](../storage/service.py#L99-L105) asserts the presence and non-emptiness of `user_id`, `tenant_id`, and `role`. Missing, malformed, or empty context dictionaries immediately raise `AuthorizationError` before any database query or S3 call.
+- **Server-Derived Security Context**: The service strictly accepts identity parameters via the immutable [`RequestContext`](../../storage/service.py#L61-L69) dataclass (`user_id`, `tenant_id`, `role`, `client_ip`, `user_agent`). These values originate exclusively from verified server-side session tokens, never from client-controlled request bodies or URL path parameters.
+- **Fail-Closed Context Validation**: [`_validate_context`](../../storage/service.py#L99-L105) asserts the presence and non-emptiness of `user_id`, `tenant_id`, and `role`. Missing, malformed, or empty context dictionaries immediately raise `AuthorizationError` before any database query or S3 call.
 - **Independent Authorization on Every Operation**:
   - `authorize_upload`: Validates affirmative redaction certification, blocks `CLIENT_VIEWER` role, and executes an RLS-scoped check verifying assessment existence and state.
   - `complete_upload`: Re-queries the record under RLS, enforces ownership, validates `PENDING_UPLOAD` status, and checks expiration.
@@ -75,7 +75,7 @@ The objective was to independently audit the actual repository codebase, live te
 - **Audit Log Redaction**: Audit log entries emitted to PostgreSQL systematically exclude presigned URLs, authorization query parameters, cloud credentials, and raw file payloads.
 
 ### 2.4 Database and Migrations
-- **Migration 005 Safety**: [`migrations/005_evidence_vault_lifecycle.sql`](../migrations/005_evidence_vault_lifecycle.sql) expands the `evidence_status` enum, relaxes `sha256_hash NOT NULL` during initial upload, adds constraint `chk_evidence_active_hash`, adds forensic columns, and builds indexes. All statements are idempotent.
+- **Migration 005 Safety**: [`migrations/005_evidence_vault_lifecycle.sql`](../../migrations/005_evidence_vault_lifecycle.sql) expands the `evidence_status` enum, relaxes `sha256_hash NOT NULL` during initial upload, adds constraint `chk_evidence_active_hash`, adds forensic columns, and builds indexes. All statements are idempotent.
 - **Migration Runner Consistency**: All 5 migrations were verified against the live PostgreSQL test database using `python3 scripts/migrate.py verify`. Checksums match disk files 100%.
 
 ### 2.5 Governance and Stakeholder Decision Alignment
@@ -166,7 +166,7 @@ git diff --check
 ## 4. Minor Defect Remediated During Milestone
 
 During the pre-commit audit, one minor configuration comment defect was identified and corrected:
-- **Location**: [`.env.example`](../.env.example#L53)
+- **Location**: [`.env.example`](../../.env.example#L53)
 - **Defect**: The encryption section referenced stale decision IDs (`DEC-05/DEC-08`).
 - **Correction**: Updated comment to reference canonical **`DEC-03`** (Hosting Provider & Data Location / Key Management).
 - **Impact**: Zero runtime disruption; perfect governance alignment.

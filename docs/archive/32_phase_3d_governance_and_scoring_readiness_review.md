@@ -14,7 +14,7 @@
 This review conducts a rigorous governance audit, statutory penalty mapping verification, and mathematical specification check of the Phase 3D implementation plan ([`docs/31`](31_phase_3d_assessment_workflow_implementation_plan.md)) for the **Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool**.
 
 Before creating any Phase 3D application features or database migrations, this review verifies:
-1. **Canonical Decision-Register Alignment**: Complete reconciliation against [`docs/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) and [`docs/19_legal_review_and_interpretation_register.md`](file:///home/charan/Documents/DPDP%20Tool/docs/19_legal_review_and_interpretation_register.md), confirming that all 10 canonical decisions remain unresolved stakeholder decisions where recommended defaults have been adopted as working architectural baselines, but formal stakeholder approvals are still pending.
+1. **Canonical Decision-Register Alignment**: Complete reconciliation against [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) and [`docs/reference/19_legal_review_and_interpretation_register.md`](file:///home/charan/Documents/DPDP%20Tool/docs/19_legal_review_and_interpretation_register.md), confirming that all 10 canonical decisions remain unresolved stakeholder decisions where recommended defaults have been adopted as working architectural baselines, but formal stakeholder approvals are still pending.
 2. **Statutory Penalty Mapping Fidelity**: Verification of penalty tier ceilings under DPDPA 2023 Section 33(1) and the Schedule, distinguishing statutory ceilings from automatic fines, and auditing enactment, commencement, and Section 28(2) mitigating factors.
 3. **Deterministic Scoring Mathematics**: Formal specification of the non-compensatory dual-metric model, 13-domain weighting, zero-denominator edge-case handling, assessment coverage percentages, perception gap deltas, and three provisional worked synthetic examples.
 4. **Evidence Vault & Concurrency Controls**: Inspection of Phase 3B storage interfaces, client redaction certification status, presigned URL lifecycles, fail-closed quarantine enforcement, and optimistic locking tokens.
@@ -24,7 +24,7 @@ Before creating any Phase 3D application features or database migrations, this r
 
 ## 2. Canonical Decision-Register Reconciliation
 
-An inspection of `docs/09_unresolved_decisions_and_tl_assumptions.md` and Git history confirms that **no formal stakeholder sign-offs have been recorded in Git** for DEC-01 through DEC-10. All 10 items remain unresolved stakeholder decisions:
+An inspection of `docs/reference/09_unresolved_decisions_and_tl_assumptions.md` and Git history confirms that **no formal stakeholder sign-offs have been recorded in Git** for DEC-01 through DEC-10. All 10 items remain unresolved stakeholder decisions:
 
 ```mermaid
 flowchart TD
@@ -170,7 +170,7 @@ An audit of `control_domains` in [`migrations/003_seed_canonical_library.sql`](f
 
 ## 6. Reconciled Assessment Lifecycle & Permission Matrix
 
-The 14-state lifecycle defined in [`docs/03`](03_assessment_workflow_and_state_machine.md) and PostgreSQL enum `assessment_status` contains 14 canonical states:
+The 14-state lifecycle defined in [`docs/03`](../reference/03_assessment_workflow_and_state_machine.md) and PostgreSQL enum `assessment_status` contains 14 canonical states:
 `DRAFT`, `SCOPING`, `SCOPE_LOCKED`, `DATA_GATHERING`, `SUBMITTED_FOR_REVIEW`, `UNDER_REVIEW`, `CLARIFICATION_PENDING`, `REVIEW_COMPLETED`, `DRAFT_REPORT_GENERATED`, `LEAD_APPROVED`, `FINAL_ISSUED`, `REMEDIATION_ACTIVE`, `CANCELLED`, `ARCHIVED`.
 
 `CANCELLED` is a pre-existing canonical enum value and terminal state.
@@ -211,9 +211,9 @@ Inspection of `git log` and `git status` reveals:
      - `tests/auth.test.ts`
      - `tests/rls_database.test.ts`
    - Untracked files:
-     - `docs/30_phase_3c_final_security_and_commit_readiness.md`
-     - `docs/31_phase_3d_assessment_workflow_implementation_plan.md`
-     - `docs/32_phase_3d_governance_and_scoring_readiness_review.md`
+     - `docs/archive/30_phase_3c_final_security_and_commit_readiness.md`
+     - `docs/archive/31_phase_3d_assessment_workflow_implementation_plan.md`
+     - `docs/archive/32_phase_3d_governance_and_scoring_readiness_review.md`
 3. **Multi-Stack Test Stability**:
    - `npm test`: 27/27 Node application tests pass (Auth, RBAC, live RLS pool isolation).
    - `python3 scripts/validate_phase2_data.py`: 100% Phase 2 data and schema integrity passes.

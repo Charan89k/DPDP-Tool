@@ -16,7 +16,7 @@ import type { RespondentQuestionResponse } from "../lib/questionnaire/types.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const BASE_DIR = path.dirname(path.dirname(__filename));
-const DOCX_PATH = path.join(BASE_DIR, "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx");
+const DOCX_PATH = path.join(BASE_DIR, "data", "source", "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx");
 const JSON_PATH = path.join(BASE_DIR, "data", "questionnaire_v1.json");
 
 const DEMO_CUSTOMER: SessionUser = {

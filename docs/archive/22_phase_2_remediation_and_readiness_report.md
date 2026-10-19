@@ -10,14 +10,14 @@
 
 ## 1. Executive Summary
 
-Following the **PASS WITH CONDITIONS** verdict delivered in the Phase 2 Quality Gate Review ([`docs/11_phase_2_quality_gate_review.md`](11_phase_2_quality_gate_review.md)), a controlled remediation milestone was executed to resolve all identified drafting discrepancies, schema omissions, and cross-reference mismatches.
+Following the **PASS WITH CONDITIONS** verdict delivered in the Phase 2 Quality Gate Review ([`docs/archive/11_phase_2_quality_gate_review.md`](11_phase_2_quality_gate_review.md)), a controlled remediation milestone was executed to resolve all identified drafting discrepancies, schema omissions, and cross-reference mismatches.
 
 This remediation was conducted under strict development boundaries:
 - **Zero application code, zero database migrations, and zero cloud infrastructure** were introduced.
-- The canonical six-phase product roadmap in [`docs/08_implementation_roadmap.md`](08_implementation_roadmap.md) was fully preserved.
+- The canonical six-phase product roadmap in [`docs/archive/08_implementation_roadmap.md`](08_implementation_roadmap.md) was fully preserved.
 - No real client personal data, production credentials, or secret keys were introduced.
 - All 30 production controls and 27 evidence types remain traceable to primary legal authorities.
-- Repeatable, offline automated testing was introduced via [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py), verifying 100% schema compliance and zero referential defects.
+- Repeatable, offline automated testing was introduced via [`scripts/validate_phase2_data.py`](../../scripts/validate_phase2_data.py), verifying 100% schema compliance and zero referential defects.
 
 With these corrections applied, Phase 2 achieves **complete technical readiness**. Transition to **Phase 3: Database Schema Implementation, Migrations, and Synthetic Seed Data** is cleared, subject to documented stakeholder sign-offs.
 
@@ -27,20 +27,20 @@ With these corrections applied, Phase 2 achieves **complete technical readiness*
 
 | Audit Finding ID | Severity | Description of Identified Defect | Affected File(s) | Remediation Executed | Post-Remediation Verification Status |
 |---|:---:|---|---|---|:---:|
-| **ISSUE-P2-01** | **HIGH** | Penalty Tier 5 recorded as ₹10 Crores instead of statutory cap ₹10,000; Section 14 Nomination control erroneously mapped to Section 15 Data Principal duties. | `docs/18_provisional_scoring_and_risk_methodology.md` | - Corrected Tier 5 penalty ceiling to **₹10,000 (Ten Thousand Rupees)** under Schedule Item 5 for Section 15.<br>- Re-mapped control `TLI-DPDP-DSR-04` (Nomination Facility under Sec 14) to Tier 4 (Schedule Item 6: general statutory breach up to ₹50 Crores).<br>- Documented explicit legal note clarifying that statutory ceilings are not automatic fines (DPBI Section 28(2) discretion). | **RESOLVED & VERIFIED** |
-| **ISSUE-P2-02** | **HIGH** | 12 control definitions in markdown prose cited 18 legacy uncatalogued evidence tokens (`EVID-POL-01`, `EVID-SYS-01`, `EVID-API-01`, `EVID-GOV-01`, etc.) while JSON data was clean. | `docs/14_dpdp_control_library_v1.md` | Reconciled all 24 affected bullet points in `docs/14` with the exact canonical evidence IDs from `data/dpdp_controls.json` and `data/evidence_catalogue.json`. | **RESOLVED & VERIFIED** (0 legacy IDs remaining) |
+| **ISSUE-P2-01** | **HIGH** | Penalty Tier 5 recorded as ₹10 Crores instead of statutory cap ₹10,000; Section 14 Nomination control erroneously mapped to Section 15 Data Principal duties. | `docs/reference/18_provisional_scoring_and_risk_methodology.md` | - Corrected Tier 5 penalty ceiling to **₹10,000 (Ten Thousand Rupees)** under Schedule Item 5 for Section 15.<br>- Re-mapped control `TLI-DPDP-DSR-04` (Nomination Facility under Sec 14) to Tier 4 (Schedule Item 6: general statutory breach up to ₹50 Crores).<br>- Documented explicit legal note clarifying that statutory ceilings are not automatic fines (DPBI Section 28(2) discretion). | **RESOLVED & VERIFIED** |
+| **ISSUE-P2-02** | **HIGH** | 12 control definitions in markdown prose cited 18 legacy uncatalogued evidence tokens (`EVID-POL-01`, `EVID-SYS-01`, `EVID-API-01`, `EVID-GOV-01`, etc.) while JSON data was clean. | `docs/reference/14_dpdp_control_library_v1.md` | Reconciled all 24 affected bullet points in `docs/14` with the exact canonical evidence IDs from `data/dpdp_controls.json` and `data/evidence_catalogue.json`. | **RESOLVED & VERIFIED** (0 legacy IDs remaining) |
 | **ISSUE-P2-03** | **HIGH** | Coverage, scoping, and legal registers cited unauthored target controls (`TLI-DPDP-CHD-03`, `TLI-DPDP-EXM-01`, `TLI-DPDP-PEN-02`). | `docs/12`<br>`docs/17`<br>`docs/19` | - In `docs/12`: Re-mapped Sec 9(4)-(5) to Scoping Rule in `docs/17` Section 3.2; re-mapped Sec 17 to Scoping Rule and `TLI-DPDP-RET-02`; re-mapped Schedule to `TLI-DPDP-PEN-01` r/w scoring engine in `docs/18`.<br>- In `docs/17`: Removed `CHD-03` from line 65; expanded shorthand IDs in lines 58 & 102.<br>- In `docs/19`: Updated `LEG-INT-07` to reference Scoping Rule Section 3.2 on `TLI-DPDP-CHD-01` & `CHD-02`. | **RESOLVED & VERIFIED** (0 phantom IDs remaining) |
-| **ISSUE-P2-04** | **MEDIUM** | JSON schema regex `^EVID-[A-Z]{3}-\d{2}$` rejected valid 4-letter evidence tokens (`EVID-ROPA-01`, `EVID-VAPT-01`). | `docs/13_control_library_schema_and_data_dictionary.md`<br>`schemas/control_schema.json` | Updated regex pattern to `^EVID-[A-Z]{3,4}-\d{2}$` across data dictionary table, JSON schema in `docs/13`, and formal schema files. | **RESOLVED & VERIFIED** |
-| **ISSUE-P2-05** | **MEDIUM** | `source_status` schema enum omitted `SECTORAL_REGULATION`, failing validation on control `TLI-DPDP-XBD-02`. | `docs/13_control_library_schema_and_data_dictionary.md`<br>`schemas/control_schema.json` | Added `SECTORAL_REGULATION` to permitted enums across Section 2, Section 3.1, and Section 4 JSON Schema. | **RESOLVED & VERIFIED** |
-| **ISSUE-P2-06** | **LOW** | Shorthand control IDs (`LGL-01`, `FID-01`) used in scoping methodology prose. | `docs/17_applicability_methodology.md` | Expanded all shorthand citations to canonical `TLI-DPDP-*` identifiers in Sections 3.1 and 3.5. | **RESOLVED & VERIFIED** |
-| **ISSUE-P2-07** | **LOW** | Absence of architectural rationale regarding per-control vs framework-level `response_options`. | `docs/13_control_library_schema_and_data_dictionary.md` | Added Section 5 formally documenting the architectural decision to standardize response options at the framework level (`DPDPA-2023-V1.0`), eliminating 30x payload bloat and preserving version pinning immutability. | **RESOLVED & VERIFIED** |
+| **ISSUE-P2-04** | **MEDIUM** | JSON schema regex `^EVID-[A-Z]{3}-\d{2}$` rejected valid 4-letter evidence tokens (`EVID-ROPA-01`, `EVID-VAPT-01`). | `docs/reference/13_control_library_schema_and_data_dictionary.md`<br>`schemas/control_schema.json` | Updated regex pattern to `^EVID-[A-Z]{3,4}-\d{2}$` across data dictionary table, JSON schema in `docs/13`, and formal schema files. | **RESOLVED & VERIFIED** |
+| **ISSUE-P2-05** | **MEDIUM** | `source_status` schema enum omitted `SECTORAL_REGULATION`, failing validation on control `TLI-DPDP-XBD-02`. | `docs/reference/13_control_library_schema_and_data_dictionary.md`<br>`schemas/control_schema.json` | Added `SECTORAL_REGULATION` to permitted enums across Section 2, Section 3.1, and Section 4 JSON Schema. | **RESOLVED & VERIFIED** |
+| **ISSUE-P2-06** | **LOW** | Shorthand control IDs (`LGL-01`, `FID-01`) used in scoping methodology prose. | `docs/reference/17_applicability_methodology.md` | Expanded all shorthand citations to canonical `TLI-DPDP-*` identifiers in Sections 3.1 and 3.5. | **RESOLVED & VERIFIED** |
+| **ISSUE-P2-07** | **LOW** | Absence of architectural rationale regarding per-control vs framework-level `response_options`. | `docs/reference/13_control_library_schema_and_data_dictionary.md` | Added Section 5 formally documenting the architectural decision to standardize response options at the framework level (`DPDPA-2023-V1.0`), eliminating 30x payload bloat and preserving version pinning immutability. | **RESOLVED & VERIFIED** |
 | **ISSUE-P2-08** | **LOW** | Automated data integrity and schema validation scripts were executed ad-hoc without permanent repository check-in. | `scripts/validate_phase2_data.py`<br>`schemas/` | Checked in permanent offline test suite `scripts/validate_phase2_data.py` and Draft 2020-12 formal schemas (`control_schema.json`, `evidence_schema.json`, `legal_source_schema.json`). | **RESOLVED & VERIFIED** |
 
 ---
 
 ## 3. Repeatable Validation Script & Test Results
 
-A dedicated validation suite was implemented in [`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py). It operates entirely offline using the Python standard library.
+A dedicated validation suite was implemented in [`scripts/validate_phase2_data.py`](../../scripts/validate_phase2_data.py). It operates entirely offline using the Python standard library.
 
 ### 3.1 Execution Command 1: Self-Test Suite (`--test`)
 ```bash
@@ -147,7 +147,7 @@ flowchart TD
   10. `LEG-INT-10`: Statutory effect of Removal of Difficulties Order 2026 (S.O. 4120(E)) on Sections 9 and 10.
 
 ### 4.2 Decision DEC-05: Risk-Based Evidence Masking Protocol
-- **Status**: Proposed in [`docs/15`](15_evidence_catalogue.md) Section 4.
+- **Status**: Proposed in [`docs/15`](../reference/15_evidence_catalogue.md) Section 4.
 - **Reason Unresolved**: Requires formal sign-off by TLI CISO/Security Lead confirming that synthetic data and `XXXX-XXXX-1234` masking meet TLI forensic evidentiary standards.
 
 ### 4.3 Decision DEC-09: Six-Phase Canonical MVP Roadmap
@@ -162,7 +162,7 @@ We confirm:
 2. **Zero database migrations or cloud infrastructure instances** have been provisioned.
 3. **No stakeholder approvals have been fabricated**; all items requiring TLI approval are explicitly tracked in Decision Registers DEC-05, DEC-08, and DEC-09.
 4. **Security, least-privilege RBAC, and tenant isolation designs** have not been weakened.
-5. **The canonical six-phase roadmap** in [`docs/08_implementation_roadmap.md`](08_implementation_roadmap.md) remains authoritatively intact.
+5. **The canonical six-phase roadmap** in [`docs/archive/08_implementation_roadmap.md`](08_implementation_roadmap.md) remains authoritatively intact.
 
 ---
 
@@ -173,11 +173,11 @@ We confirm:
 From an architectural, data-structural, and referential integrity perspective, Phase 2 is **100% complete and fully verified**.
 
 The repository contains a clean, validated baseline consisting of:
-- 7 Authoritative Legal Sources ([`data/legal_sources.json`](../data/legal_sources.json), [`docs/11`](11_legal_source_register.md))
-- 30 DPDP Production Controls ([`data/dpdp_controls.json`](../data/dpdp_controls.json), [`docs/14`](14_dpdp_control_library_v1.md))
-- 27 Evidence Types & Masking Standards ([`data/evidence_catalogue.json`](../data/evidence_catalogue.json), [`docs/15`](15_evidence_catalogue.md))
-- Formal JSON Schemas ([`schemas/`](../schemas/))
-- Automated Offline Validation Harness ([`scripts/validate_phase2_data.py`](../scripts/validate_phase2_data.py))
+- 7 Authoritative Legal Sources ([`data/legal_sources.json`](../../data/legal_sources.json), [`docs/11`](../reference/11_legal_source_register.md))
+- 30 DPDP Production Controls ([`data/dpdp_controls.json`](../../data/dpdp_controls.json), [`docs/14`](../reference/14_dpdp_control_library_v1.md))
+- 27 Evidence Types & Masking Standards ([`data/evidence_catalogue.json`](../../data/evidence_catalogue.json), [`docs/15`](../reference/15_evidence_catalogue.md))
+- Formal JSON Schemas ([`schemas/`](../../schemas/))
+- Automated Offline Validation Harness ([`scripts/validate_phase2_data.py`](../../scripts/validate_phase2_data.py))
 
 ### Recommended Next Action:
 Present this report to TLI Leadership. Upon receipt of formal written sign-offs on DEC-05, DEC-08, and DEC-09, the project is fully prepared to execute **Phase 3: Database Schema Implementation, Migrations, and Synthetic Seed Data**.

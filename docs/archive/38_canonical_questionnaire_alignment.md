@@ -1,6 +1,6 @@
 # Phase 3D: Canonical Questionnaire Alignment & Implementation Audit
 
-**Document Reference:** `docs/38_canonical_questionnaire_alignment.md`  
+**Document Reference:** `docs/archive/38_canonical_questionnaire_alignment.md`  
 **Milestone:** Phase 3D — Canonical Questionnaire Implementation  
 **Working Directory:** `/home/charan/Documents/DPDP Tool`  
 **Authoritative Source Document:** `Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx`  
@@ -181,7 +181,7 @@ A forward-only migration was implemented to support 60-question response persist
 2. **Excel Build Sheet Ingestion:**
    Formal binding for the 4 unmapped questions (`GOV-005`, `GOV-006`, `GOV-008`, `APP-006`) awaits receipt of the separate Excel build sheet referenced in the Word document notes.
 3. **Legal Verification Register:**
-   Statutory interpretations flagged in `docs/19_legal_review_and_interpretation_register.md` remain marked `LEGAL_VERIFICATION_REQUIRED` pending TLI legal counsel review.
+   Statutory interpretations flagged in `docs/reference/19_legal_review_and_interpretation_register.md` remain marked `LEGAL_VERIFICATION_REQUIRED` pending TLI legal counsel review.
 
 ---
 
@@ -202,6 +202,6 @@ A forward-only migration was implemented to support 60-question response persist
 - `components/questionnaire/QuestionnaireClient.tsx` *(Updated client state & auto-save)*
 - `tests/canonical_questionnaire_parity.test.ts` *(New parity & persistence test suite)*
 - `tests/questionnaire_and_storage.test.ts` *(Updated questionnaire constraints)*
-- `docs/38_canonical_questionnaire_alignment.md` *(This audit report)*
+- `docs/archive/38_canonical_questionnaire_alignment.md` *(This audit report)*
 - `docs/README.md` *(Updated documentation index)*
 

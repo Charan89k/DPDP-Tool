@@ -47,17 +47,17 @@ graph TD
 
 | Component | Module Path | Authoritative Responsibility |
 |---|---|---|
-| **Storage Adapter Interface** | [`storage/interface.py`](../storage/interface.py) | Defines abstract contracts (`generate_presigned_upload`, `generate_presigned_download`, `head_object`, `get_object_header`, `get_object_hash`, `copy_object`, `delete_object`). |
-| **S3 Provider Adapter** | [`storage/s3_adapter.py`](../storage/s3_adapter.py) | Concrete Boto3 adapter implementing SigV4 pre-signing, S3 path-style addressing, and object operations for AWS S3 and MinIO. |
-| **File Validation Engine** | [`storage/validation.py`](../storage/validation.py) | Enforces MIME/extension allowlists, filename path-traversal sanitization, binary magic signatures, and partitioned object keys. |
-| **Malware Scanner Integration** | [`storage/scanner.py`](../storage/scanner.py) | Defines `MalwareScannerInterface`, ClamAV socket adapter, GuardDuty EventBridge parser, and local mock scanner with EICAR detection. |
-| **Evidence Vault Service** | [`storage/service.py`](../storage/service.py) | High-level orchestrator: binds database RLS sessions, enforces role gates, authorizes uploads/downloads, executes completion checks, and emits audit logs. |
+| **Storage Adapter Interface** | [`storage/interface.py`](../../storage/interface.py) | Defines abstract contracts (`generate_presigned_upload`, `generate_presigned_download`, `head_object`, `get_object_header`, `get_object_hash`, `copy_object`, `delete_object`). |
+| **S3 Provider Adapter** | [`storage/s3_adapter.py`](../../storage/s3_adapter.py) | Concrete Boto3 adapter implementing SigV4 pre-signing, S3 path-style addressing, and object operations for AWS S3 and MinIO. |
+| **File Validation Engine** | [`storage/validation.py`](../../storage/validation.py) | Enforces MIME/extension allowlists, filename path-traversal sanitization, binary magic signatures, and partitioned object keys. |
+| **Malware Scanner Integration** | [`storage/scanner.py`](../../storage/scanner.py) | Defines `MalwareScannerInterface`, ClamAV socket adapter, GuardDuty EventBridge parser, and local mock scanner with EICAR detection. |
+| **Evidence Vault Service** | [`storage/service.py`](../../storage/service.py) | High-level orchestrator: binds database RLS sessions, enforces role gates, authorizes uploads/downloads, executes completion checks, and emits audit logs. |
 
 ---
 
 ## 3. Object Key Strategy & Tenant Partitioning
 
-All evidence objects reside in private buckets under a deterministic, tenant-partitioned, strictly opaque hierarchy in accordance with Section 3.1 of `docs/05_tenant_isolation_and_evidence_security.md` and the Phase 3B.1 security remediation:
+All evidence objects reside in private buckets under a deterministic, tenant-partitioned, strictly opaque hierarchy in accordance with Section 3.1 of `docs/archive/05_tenant_isolation_and_evidence_security.md` and the Phase 3B.1 security remediation:
 
 ### 3.1 Active Evidence Storage Key Format (Strictly Opaque)
 ```text
@@ -185,7 +185,7 @@ sequenceDiagram
 
 ## 6. Additive Database Migration 005
 
-To support the end-to-end evidence lifecycle without altering applied historical migrations, [`migrations/005_evidence_vault_lifecycle.sql`](../migrations/005_evidence_vault_lifecycle.sql) was authored and applied:
+To support the end-to-end evidence lifecycle without altering applied historical migrations, [`migrations/005_evidence_vault_lifecycle.sql`](../../migrations/005_evidence_vault_lifecycle.sql) was authored and applied:
 
 ### Schema Additions:
 1. **`evidence_status` Enum Expansion**:
@@ -219,7 +219,7 @@ To support the end-to-end evidence lifecycle without altering applied historical
 
 ## 7. Automated Test Suite & Verification Results
 
-Verification was performed using an automated test runner ([`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py)) executing against the live PostgreSQL 18.6 test cluster (`127.0.0.1:54329`) and a local S3-compatible service (`ThreadedMotoServer` on `127.0.0.1:54331`).
+Verification was performed using an automated test runner ([`scripts/test_evidence_vault.py`](../../scripts/test_evidence_vault.py)) executing against the live PostgreSQL 18.6 test cluster (`127.0.0.1:54329`) and a local S3-compatible service (`ThreadedMotoServer` on `127.0.0.1:54331`).
 
 ### Test Execution Summary (39/39 Passed — 100% Success)
 
@@ -308,7 +308,7 @@ All prior milestone quality gates remain 100% operational:
 
 ## 8. Configuration & Developer Experience
 
-All configuration parameters are documented with safe placeholders in [`.env.example`](../.env.example):
+All configuration parameters are documented with safe placeholders in [`.env.example`](../../.env.example):
 
 ```bash
 # ----------------------------------------------------------------------------
@@ -354,7 +354,7 @@ python3 scripts/validate_phase2_data.py
 
 ## 9. Governance, Decisions & Production Readiness
 
-The following stakeholder governance items from canonical `docs/09_unresolved_decisions_and_tl_assumptions.md` directly interface with the Evidence Storage Vault and remain documented pending formal TLI leadership sign-off:
+The following stakeholder governance items from canonical `docs/reference/09_unresolved_decisions_and_tl_assumptions.md` directly interface with the Evidence Storage Vault and remain documented pending formal TLI leadership sign-off:
 
 1. **DEC-03 — Hosting Provider & Data Location**:
    - *Status*: Open stakeholder decision.

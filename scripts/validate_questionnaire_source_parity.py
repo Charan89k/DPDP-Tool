@@ -3,7 +3,7 @@
 Truth Labs International (TLI) — DPDP Gap Assessment
 Questionnaire Source Parity & Integrity Validator
 
-Independently extracts content from Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx
+Independently extracts content from data/source/Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx
 and verifies 100% exact parity with data/questionnaire_v1.json and data/dpdp_controls.json.
 """
 
@@ -15,7 +15,7 @@ import re
 import xml.etree.ElementTree as ET
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOCX_PATH = os.path.join(BASE_DIR, "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx")
+DOCX_PATH = os.path.join(BASE_DIR, "data", "source", "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx")
 JSON_PATH = os.path.join(BASE_DIR, "data", "questionnaire_v1.json")
 CONTROLS_PATH = os.path.join(BASE_DIR, "data", "dpdp_controls.json")
 

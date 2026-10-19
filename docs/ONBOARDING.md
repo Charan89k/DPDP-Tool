@@ -37,7 +37,7 @@ profile, emails are caught by Mailpit at `http://localhost:8025` instead of bein
 | BU lead, contributor (`CLIENT_BU_LEAD`, `CLIENT_CONTRIBUTOR`) | own organisation | answer questions, upload evidence |
 | Viewer (`CLIENT_VIEWER`) | own organisation | read only |
 
-The full permission matrix is in [02_roles_and_permissions_matrix.md](02_roles_and_permissions_matrix.md).
+The full permission matrix is in [02_roles_and_permissions_matrix.md](reference/02_roles_and_permissions_matrix.md).
 
 ## Two-factor sign-in
 

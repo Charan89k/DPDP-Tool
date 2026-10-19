@@ -24,8 +24,8 @@
 The TLI DPDP Compliance Gap Analysis Tool is designed to execute deterministic, forensically auditable, multi-tenant compliance evaluations against India's **Digital Personal Data Protection Act, 2023 (DPDPA 2023)** and forthcoming **DPDP Rules, 2025**.
 
 Phases 1 through 3C established:
-1. **Phase 1**: Product requirements ([`docs/01`](01_product_requirements_specification.md)), 7-role RBAC ([`docs/02`](02_roles_and_permissions_matrix.md)), 14-state lifecycle ([`docs/03`](03_assessment_workflow_and_state_machine.md)), 23-table relational schema ([`docs/04`](04_database_schema_and_erd.md)), and master decision register ([`docs/09`](09_unresolved_decisions_and_tl_assumptions.md)).
-2. **Phase 2**: 7 authoritative legal sources, 30 canonical DPDP controls, 27 evidence types, Draft 2020-12 JSON schemas, and provisional scoring methodology ([`docs/18`](18_provisional_scoring_and_risk_methodology.md)).
+1. **Phase 1**: Product requirements ([`docs/01`](../reference/01_product_requirements_specification.md)), 7-role RBAC ([`docs/02`](../reference/02_roles_and_permissions_matrix.md)), 14-state lifecycle ([`docs/03`](../reference/03_assessment_workflow_and_state_machine.md)), 23-table relational schema ([`docs/04`](04_database_schema_and_erd.md)), and master decision register ([`docs/09`](../reference/09_unresolved_decisions_and_tl_assumptions.md)).
+2. **Phase 2**: 7 authoritative legal sources, 30 canonical DPDP controls, 27 evidence types, Draft 2020-12 JSON schemas, and provisional scoring methodology ([`docs/18`](../reference/18_provisional_scoring_and_risk_methodology.md)).
 3. **Phase 3A / 3A.1**: PostgreSQL 16+ database foundation, UUIDv7 generation, versioned migrations (`001`–`004`), row-level security (RLS) policies, and synthetic seed datasets verified against live PostgreSQL 18.6.
 4. **Phase 3B / 3B.1 / 3B.2**: Provider-neutral S3 evidence storage vault (`lib/storage/`), presigned upload/download workflows, file magic-byte validation, fail-closed malware quarantine, Migration `005`, and automated storage test suites.
 5. **Phase 3C / 3C.1 / 3C.2**: Next.js 15 App Router shell, Argon2id/bcrypt passwords, encrypted jose JWT session cookies, edge IP resolution, client/consultant shell workspaces, and `executeWithRls` transaction pooling integration verified with 27 automated tests.
@@ -55,7 +55,7 @@ A comprehensive audit of the active repository (`/home/charan/Documents/DPDP Too
 
 ### 1.3 Authoritative Decision Register Reconciliation
 
-A Git history audit of [`docs/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) confirms that **all 10 canonical decisions (DEC-01 to DEC-10) remain unresolved stakeholder decisions** requiring formal sign-off from Truth Labs International leadership before or during development. No commits exist recording executive sign-off.
+A Git history audit of [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) confirms that **all 10 canonical decisions (DEC-01 to DEC-10) remain unresolved stakeholder decisions** requiring formal sign-off from Truth Labs International leadership before or during development. No commits exist recording executive sign-off.
 
 To maintain strict governance fidelity, decisions are categorized into:
 
@@ -86,10 +86,10 @@ Engineering has adopted the documented "Recommended Default" from `docs/09` as t
 - **DEC-10 (Statutory Legal Disclaimer Language)**: Standard advisory disclaimer clarifying that assessments are professional advisory evaluations, not legal immunity certificates. Blocks Phase 5 report generation.
 
 #### 3. Proposed Policies (Marked: PROPOSED — NOT APPROVED)
-- **Formal Scoring Model Approval**: The mathematical model `SCORING-V1-STANDARD-WEIGHTED` is currently marked `PROVISIONAL` in [`docs/18`](18_provisional_scoring_and_risk_methodology.md). Status: **PROPOSED — NOT APPROVED**. Must receive formal methodology sign-off under DEC-08/DEC-09 before Phase 3D.4 scoring calculations can be declared definitive.
+- **Formal Scoring Model Approval**: The mathematical model `SCORING-V1-STANDARD-WEIGHTED` is currently marked `PROVISIONAL` in [`docs/18`](../reference/18_provisional_scoring_and_risk_methodology.md). Status: **PROPOSED — NOT APPROVED**. Must receive formal methodology sign-off under DEC-08/DEC-09 before Phase 3D.4 scoring calculations can be declared definitive.
 - **Rapid Diagnostic Coverage Threshold**: Proposed policy that an assessment must achieve at least 50% coverage ($Cov \ge 50\%$) before a TLI Lead Consultant may approve an interim report (`is_partial_assessment = TRUE`). Status: **PROPOSED — NOT APPROVED**.
 - **Mandatory Evidence Requirement**: Proposed policy that Tier 1 controls (`SEC-01`, `SEC-02`) require attached documentary proof to achieve maturity $\ge 3$. Status: **PROPOSED — NOT APPROVED**. (Engineering default: Soft UI warning in MVP; consultant discretion governs).
-- **Executive Report Disclaimer Text**: The exact disclaimer wording drafted in Section 4 of [`docs/09`](09_unresolved_decisions_and_tl_assumptions.md). Status: **PROPOSED — NOT APPROVED** (awaiting TLI Legal sign-off under DEC-10).
+- **Executive Report Disclaimer Text**: The exact disclaimer wording drafted in Section 4 of [`docs/09`](../reference/09_unresolved_decisions_and_tl_assumptions.md). Status: **PROPOSED — NOT APPROVED** (awaiting TLI Legal sign-off under DEC-10).
 
 #### 4. Engineering Recommendations (No Legal Approval Required)
 - Implementation of optimistic concurrency control using `updated_at` / version tokens (HTTP 409 on conflict).
@@ -98,7 +98,7 @@ Engineering has adopted the documented "Recommended Default" from `docs/09` as t
 - Cascading transaction rollback and socket purging on tainted database pool connections.
 
 #### 5. Legal Interpretations Requiring TLI Counsel (`LEG-INT-01` to `LEG-INT-10`)
-- 10 itemized legal interpretation records in [`docs/19`](19_legal_review_and_interpretation_register.md) remain in status `LEGAL_VERIFICATION_REQUIRED`.
+- 10 itemized legal interpretation records in [`docs/19`](../reference/19_legal_review_and_interpretation_register.md) remain in status `LEGAL_VERIFICATION_REQUIRED`.
 - The questionnaire and scoring engines treat these areas with statutory fidelity without guessing unsettled subordinate rules.
 
 ---
@@ -286,7 +286,7 @@ stateDiagram-v2
 
 > [!WARNING]
 > **PROVISIONAL STATUS NOTICE**:
-> The formulas and models below represent the **engineering proposal** grounded in [`docs/18`](18_provisional_scoring_and_risk_methodology.md) (`SCORING-V1-PROVISIONAL`) and seeded in PostgreSQL as `SCORING-V1-STANDARD-WEIGHTED`. They carry status **PROPOSED — NOT APPROVED** until formal methodology sign-off by TLI Leadership under DEC-08 and DEC-09.
+> The formulas and models below represent the **engineering proposal** grounded in [`docs/18`](../reference/18_provisional_scoring_and_risk_methodology.md) (`SCORING-V1-PROVISIONAL`) and seeded in PostgreSQL as `SCORING-V1-STANDARD-WEIGHTED`. They carry status **PROPOSED — NOT APPROVED** until formal methodology sign-off by TLI Leadership under DEC-08 and DEC-09.
 
 ### 4.1 Mathematical Formulas
 1. **Domain Maturity Score ($S_D$)**:

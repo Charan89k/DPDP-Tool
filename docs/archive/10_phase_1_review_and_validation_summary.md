@@ -13,16 +13,16 @@ All Phase 1 architectural documents in the repository have been inspected in ful
 
 | Document | Title | Scope & Authoritative Topic |
 |---|---|---|
-| [`docs/README.md`](README.md) | Documentation Index & Principles | Master catalog and global system architecture principles. |
-| [`docs/01_product_requirements_specification.md`](01_product_requirements_specification.md) | Product Requirements Specification | **Authoritative** for DPDPA 2023 statutory alignment, business capabilities, functional scope, and NFRs. |
-| [`docs/02_roles_and_permissions_matrix.md`](02_roles_and_permissions_matrix.md) | Roles and Permissions Matrix | **Authoritative** for 7-role RBAC, least privilege boundaries, and operation matrices. |
-| [`docs/03_assessment_workflow_and_state_machine.md`](03_assessment_workflow_and_state_machine.md) | Assessment Workflow & State Machine | **Authoritative** for assessment lifecycle, control sub-states, and exception workflows. |
-| [`docs/04_database_schema_and_erd.md`](04_database_schema_and_erd.md) | Database Schema and ERD | **Authoritative** for PostgreSQL relational entities, DDL constraints, foreign keys, and ERD. |
-| [`docs/05_tenant_isolation_and_evidence_security.md`](05_tenant_isolation_and_evidence_security.md) | Tenant Isolation & Evidence Security | **Authoritative** for PostgreSQL RLS policies, connection pooling safety, S3 presigned URLs, and evidence policies. |
-| [`docs/06_system_architecture_and_deployment.md`](06_system_architecture_and_deployment.md) | System Architecture & Deployment | **Authoritative** for Next.js full-stack topology, MVP simplicity, and cloud sovereignty. |
-| [`docs/07_testing_strategy_and_threat_model.md`](07_testing_strategy_and_threat_model.md) | Testing Strategy & Threat Model | **Authoritative** for STRIDE threat vectors, automated test pyramid, and synthetic data protocol. |
-| [`docs/08_implementation_roadmap.md`](08_implementation_roadmap.md) | Implementation Roadmap | **Authoritative** for the 6 canonical product phases, milestones, deliverables, and verification gates. |
-| [`docs/09_unresolved_decisions_and_tl_assumptions.md`](09_unresolved_decisions_and_tl_assumptions.md) | Stakeholder Decisions & Assumptions | **Authoritative** for stakeholder decision registry, default recommendations, and assumption tracking. |
+| [`docs/README.md`](../README.md) | Documentation Index & Principles | Master catalog and global system architecture principles. |
+| [`docs/reference/01_product_requirements_specification.md`](../reference/01_product_requirements_specification.md) | Product Requirements Specification | **Authoritative** for DPDPA 2023 statutory alignment, business capabilities, functional scope, and NFRs. |
+| [`docs/reference/02_roles_and_permissions_matrix.md`](../reference/02_roles_and_permissions_matrix.md) | Roles and Permissions Matrix | **Authoritative** for 7-role RBAC, least privilege boundaries, and operation matrices. |
+| [`docs/reference/03_assessment_workflow_and_state_machine.md`](../reference/03_assessment_workflow_and_state_machine.md) | Assessment Workflow & State Machine | **Authoritative** for assessment lifecycle, control sub-states, and exception workflows. |
+| [`docs/archive/04_database_schema_and_erd.md`](04_database_schema_and_erd.md) | Database Schema and ERD | **Authoritative** for PostgreSQL relational entities, DDL constraints, foreign keys, and ERD. |
+| [`docs/archive/05_tenant_isolation_and_evidence_security.md`](05_tenant_isolation_and_evidence_security.md) | Tenant Isolation & Evidence Security | **Authoritative** for PostgreSQL RLS policies, connection pooling safety, S3 presigned URLs, and evidence policies. |
+| [`docs/archive/06_system_architecture_and_deployment.md`](06_system_architecture_and_deployment.md) | System Architecture & Deployment | **Authoritative** for Next.js full-stack topology, MVP simplicity, and cloud sovereignty. |
+| [`docs/archive/07_testing_strategy_and_threat_model.md`](07_testing_strategy_and_threat_model.md) | Testing Strategy & Threat Model | **Authoritative** for STRIDE threat vectors, automated test pyramid, and synthetic data protocol. |
+| [`docs/archive/08_implementation_roadmap.md`](08_implementation_roadmap.md) | Implementation Roadmap | **Authoritative** for the 6 canonical product phases, milestones, deliverables, and verification gates. |
+| [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](../reference/09_unresolved_decisions_and_tl_assumptions.md) | Stakeholder Decisions & Assumptions | **Authoritative** for stakeholder decision registry, default recommendations, and assumption tracking. |
 
 ---
 

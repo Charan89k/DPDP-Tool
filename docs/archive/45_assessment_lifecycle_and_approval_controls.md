@@ -1,7 +1,7 @@
 # Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool
 ## Phase 3D.5 Implementation Report: Assessment Lifecycle and Approval Controls
 
-**Document Reference:** `docs/45_assessment_lifecycle_and_approval_controls.md`  
+**Document Reference:** `docs/archive/45_assessment_lifecycle_and_approval_controls.md`  
 **Classification:** Internal Technical Architecture & Compliance Governance Report  
 **Lifecycle Stage:** Phase 3D.5 Implementation Complete  
 **Date:** 2026-10-11  
@@ -25,7 +25,7 @@
 
 In accordance with Phase 3D.5 requirements, this milestone implements the authoritative end-to-end **Assessment Lifecycle and Approval Control Architecture** for the Truth Labs International (TLI) Digital Personal Data Protection (DPDP) Compliance Gap Analysis Platform.
 
-The implementation strictly operationalizes the **canonical 14-state machine** defined in `docs/09_unresolved_decisions_and_tl_assumptions.md`, `docs/03_assessment_workflow_and_state_machine.md`, and `docs/31_phase_3d_assessment_workflow_implementation_plan.md`. Every lifecycle state transition is explicitly authorized by Role-Based Access Control (RBAC), validated by deterministic precondition guards, recorded to an append-only forensic audit trail, and enforced at the PostgreSQL database kernel level via Row-Level Security (RLS) policies and tamper-resistance triggers.
+The implementation strictly operationalizes the **canonical 14-state machine** defined in `docs/reference/09_unresolved_decisions_and_tl_assumptions.md`, `docs/reference/03_assessment_workflow_and_state_machine.md`, and `docs/archive/31_phase_3d_assessment_workflow_implementation_plan.md`. Every lifecycle state transition is explicitly authorized by Role-Based Access Control (RBAC), validated by deterministic precondition guards, recorded to an append-only forensic audit trail, and enforced at the PostgreSQL database kernel level via Row-Level Security (RLS) policies and tamper-resistance triggers.
 
 Under decision **DEC-01**, formal assessor review and Lead Consultant sign-off remain mandatory prerequisite gates before any final advisory report can be issued. Upon progression to `FINAL_ISSUED` or `ARCHIVED`, the assessment, its client questionnaire responses, assessor review decisions, and associated evidentiary records are cryptographically snapshotted and locked against modification by kernel database triggers. Subsequent evaluations are conducted by cloning the baseline assessment into an independent re-audit engagement linked via `parent_assessment_id`.
 
@@ -299,5 +299,5 @@ All automated test suites, kernel security checks, and builds were executed and 
 | `components/review/AssessorReviewClient.tsx` | Assessor review workspace integration. |
 | `components/questionnaire/AssessmentSummaryView.tsx` | Client summary and review integration. |
 | `tests/assessment_lifecycle.test.ts` | 13 automated lifecycle tests. |
-| `docs/45_assessment_lifecycle_and_approval_controls.md` | Authoritative architecture and verification document. |
+| `docs/archive/45_assessment_lifecycle_and_approval_controls.md` | Authoritative architecture and verification document. |
 

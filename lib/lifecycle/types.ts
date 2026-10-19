@@ -2,9 +2,9 @@
  * CloudE5 — Assessment Lifecycle Types
  *
  * Canonical 14-state assessment lifecycle types as defined in:
- * - docs/03_assessment_workflow_and_state_machine.md
- * - docs/09_unresolved_decisions_and_tl_assumptions.md
- * - docs/31_phase_3d_assessment_workflow_implementation_plan.md
+ * - docs/reference/03_assessment_workflow_and_state_machine.md
+ * - docs/reference/09_unresolved_decisions_and_tl_assumptions.md
+ * - docs/archive/31_phase_3d_assessment_workflow_implementation_plan.md
  */
 
 
