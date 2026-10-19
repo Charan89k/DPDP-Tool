@@ -34,6 +34,7 @@ external database or cloud services required.
 - Deterministic scoring and gap analysis; every finding traces back to the answer and control behind it
 - Assessor review, clarification threads, approval workflow and lifecycle history
 - Report generation (.docx) and remediation (CAPA) tracking with owners and due dates
+- Works on desktop, tablet and phone: the navigation becomes a drawer and every page fits the screen
 
 **Evidence**
 - Private, per-organisation evidence vault with type and content validation and SHA-256 integrity
@@ -119,7 +120,8 @@ E2E_BASE_URL=https://your-host npm run test:e2e   # Playwright browser tests aga
 ```
 
 The browser tests cover registration, email verification, onboarding, answer validation, evidence
-upload (including virus detection when ClamAV runs), two-factor sign-in and phone-width layouts.
+upload (including virus detection when ClamAV runs), two-factor sign-in, and phone and tablet
+layouts (the `mobile` and `tablet` projects fail if any workspace page spills past the screen).
 
 ## Documentation
 
