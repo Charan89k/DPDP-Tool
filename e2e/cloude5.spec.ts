@@ -6,6 +6,9 @@ import crypto from "node:crypto";
 import zlib from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import { Secret, TOTP } from "otpauth";
+import questionnaire from "../data/questionnaire_v1.json" with { type: "json" };
+
+const QUESTION_CODES = questionnaire.questions.map((q) => q.code);
 
 const MAILPIT = process.env.E2E_MAILPIT_URL || "http://localhost:8025";
 // Set E2E_EXPECT_VIRUS_SCANNER=1 when the installation runs ClamAV (CLOUDE5_CLAMAV_HOST).
@@ -171,6 +174,22 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
     expect(infected.status()).toBe(400);
     expect((await infected.json()).error).toMatch(/virus scanner/i);
   }
+
+  // A self-assessment opens ready for answers, and the customer can submit it once all 60 are answered.
+  const origin = { Origin: new URL(page.url()).origin };
+  const lifecycle = async () =>
+    (await (await page.request.get(`/api/assessments/${assessmentId}/transition`)).json()).lifecycle.currentStatus;
+  expect(await lifecycle()).toBe("DATA_GATHERING");
+  const allAnswers = Object.fromEntries(
+    QUESTION_CODES.map((code) => [code, { selectedOption: "Implemented", commentsAndJustification: "Confirmed in review." }])
+  );
+  expect((await saveAnswers(allAnswers)).status()).toBe(200);
+  const submitted = await page.request.post(`/api/assessments/${assessmentId}/transition`, {
+    headers: origin,
+    data: { targetStatus: "SUBMITTED_FOR_REVIEW" },
+  });
+  expect(submitted.status(), await submitted.text()).toBe(200);
+  expect(await lifecycle()).toBe("SUBMITTED_FOR_REVIEW");
 });
 
 test("two-factor enrolment and sign-in with an authenticator code", async ({ page }) => {

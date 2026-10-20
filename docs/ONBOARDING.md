@@ -10,7 +10,9 @@ profile, emails are caught by Mailpit at `http://localhost:8025` instead of bein
 1. Send the customer your CloudE5 address.
 2. They choose **Create account** and enter their name, work email, organisation name and password.
 3. They open the verification link from the email and sign in.
-4. A setup wizard records the organisation profile and starts the first assessment.
+4. A setup wizard records the organisation profile and starts the first assessment. A self-assessment opens ready
+   for answers (data gathering): the customer answers the questionnaire, attaches evidence and submits it for review
+   without waiting for a consultant. Assessments a consultant creates start in draft and go through scoping first.
 5. The person who registered becomes the organisation's administrator and invites colleagues from
    **Team**.
 

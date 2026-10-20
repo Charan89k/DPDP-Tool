@@ -216,15 +216,20 @@ export async function POST(req: NextRequest) {
           status,
           lead_consultant_id,
           target_completion_date
-        ) VALUES ($1, $2, $3, $4, $5, 'DRAFT', $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id, engagement_code, title, tenant_id, status, created_at;
       `;
+      // A customer's self-assessment has no consultant scoping step, so it opens ready for answers
+      // (DATA_GATHERING) and the customer can submit it for review. Consultant-led engagements start
+      // in DRAFT and go through scoping first.
+      const initialStatus = isSelfAssessment ? "DATA_GATHERING" : "DRAFT";
       const res = await client.query(insertSql, [
         requestedTenantId,
         frameworkId,
         scoringModelId,
         engagementCode,
         title,
+        initialStatus,
         resolvedLeadId,
         targetDate,
       ]);
@@ -283,6 +288,8 @@ export async function POST(req: NextRequest) {
           JSON.stringify({
             code: newAssessment.engagement_code,
             title: newAssessment.title,
+            status: newAssessment.status,
+            selfAssessment: isSelfAssessment,
             assignedUsersCount: assignedCount,
           }),
         ]
