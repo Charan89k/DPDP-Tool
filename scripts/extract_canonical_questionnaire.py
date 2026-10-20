@@ -4,7 +4,7 @@ Truth Labs International (TLI) — DPDP Gap Assessment
 Canonical Questionnaire Extractor & Validator
 
 Extracts the authoritative 60-question questionnaire directly from:
-./Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx
+./data/source/Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx
 
 Outputs:
 data/questionnaire_v1.json
@@ -17,7 +17,7 @@ import zipfile
 import re
 import xml.etree.ElementTree as ET
 
-DOCX_REL_PATH = "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx"
+DOCX_REL_PATH = os.path.join("data", "source", "Truth_Labs_DPDP_60_Question_MS_Forms_Quick_Import_v1.docx")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCX_PATH = os.path.join(BASE_DIR, DOCX_REL_PATH)
 OUTPUT_JSON = os.path.join(BASE_DIR, "data", "questionnaire_v1.json")

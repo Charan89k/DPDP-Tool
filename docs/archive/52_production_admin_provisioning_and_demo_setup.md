@@ -1,6 +1,6 @@
 # TLI DPDP Platform — Phase 8: Secure Production Admin Provisioning & Demo Customer Setup
 
-**Document Reference:** `docs/52_production_admin_provisioning_and_demo_setup.md`  
+**Document Reference:** `docs/archive/52_production_admin_provisioning_and_demo_setup.md`  
 **Classification:** Internal Advisory / Operations Runbook  
 **Target Environments:**
 - Deployed Application: `https://tl-assessment-tool.vercel.app/`
@@ -235,6 +235,6 @@ A dedicated 10-test suite validates all Phase 8 requirements against live Postgr
 | `tests/phase8_production_provisioning.test.ts` | **New:** 10-test automated verification suite testing production auth, RBAC permissions, live RLS cross-tenant barriers, hash security, and idempotency. |
 | `.gitignore` | **Modified:** Added `.credentials*` and `*.credentials` to prevent accidental tracking of provisioned credential files. |
 | `package.json` | **Modified:** Added `"provision:accounts"` npm run script. |
-| `docs/52_production_admin_provisioning_and_demo_setup.md` | **New:** Authoritative operations and deployment runbook for Phase 8. |
+| `docs/archive/52_production_admin_provisioning_and_demo_setup.md` | **New:** Authoritative operations and deployment runbook for Phase 8. |
 | `docs/README.md` | **Modified:** Updated master documentation index with Phase 8 reference. |
 

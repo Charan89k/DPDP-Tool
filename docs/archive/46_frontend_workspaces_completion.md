@@ -1,6 +1,6 @@
 # Phase 3D.6: Role-Specific Frontend Assessment Workspaces Completion
 
-**Document Reference:** `docs/46_frontend_workspaces_completion.md`  
+**Document Reference:** `docs/archive/46_frontend_workspaces_completion.md`  
 **Phase:** 3D.6 — Frontend Workspace Completion  
 **Target Platform:** Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool  
 **Status:** COMPLETE & VERIFIED  

@@ -12,7 +12,7 @@
 
 Following the implementation of Phase 3B (*Evidence Storage Vault & Presigned S3 Infrastructure*), a comprehensive security audit and governance alignment review was conducted under milestone **Phase 3B.1**. 
 
-While Phase 3B established a working S3 adapter and presigned upload/download mechanics, a critical code and architecture review identified several security vulnerabilities, architectural gaps, and governance discrepancies between the initial implementation and canonical design documents (`docs/05_tenant_isolation_and_evidence_security.md`, `docs/09_unresolved_decisions_and_tl_assumptions.md`).
+While Phase 3B established a working S3 adapter and presigned upload/download mechanics, a critical code and architecture review identified several security vulnerabilities, architectural gaps, and governance discrepancies between the initial implementation and canonical design documents (`docs/archive/05_tenant_isolation_and_evidence_security.md`, `docs/reference/09_unresolved_decisions_and_tl_assumptions.md`).
 
 This document provides a complete audit trail of the findings, root causes, remediations implemented across `storage/validation.py`, `storage/service.py`, and `scripts/test_evidence_vault.py`, verified automated test results, unverified real-cloud behaviors, and formal alignment with TLI's canonical stakeholder decisions (`DEC-01` through `DEC-10`).
 
@@ -28,7 +28,7 @@ This document provides a complete audit trail of the findings, root causes, reme
 | **SEC-3B1-04** | **Medium** | Claim Calibration / Trust | **Overstated File Validation Claims**: Initial documentation claimed magic byte checks categorically prevented polyglots and executable masquerading. | Inaccurate security posture. Short 4-to-512 byte header checks cannot detect advanced polyglots (e.g., PDF+ZIP) or weaponized embedded macros. | **REMEDIATED**: Magic-byte checking recalibrated and documented as a heuristic first line of defense; limitations explicitly detailed. |
 | **SEC-3B1-05** | **High** | Antivirus / Fail-Closed | **Scanner Downtime & Malformed Verdict Handling**: Initial implementation lacked explicit fail-closed handling for scanner timeouts, malformed EventBridge payloads, or repeated duplicate scan events. | Risk of premature activation or state corruption on scanner errors. | **REMEDIATED**: Implemented fail-closed handling in `process_scan_verdict`: downtime keeps items in `PENDING_SCAN`; malformed verdicts fail closed; duplicate events handled idempotently. |
 | **SEC-3B1-06** | **High** | Authorization Boundary | **Missing / Incomplete Context Validation**: Service methods did not strictly validate caller context dictionaries, risking execution with missing `tenant_id` or `user_id`. | Potential bypass of application-level authorization gates if caller passes malformed context. | **REMEDIATED**: Added `_validate_context` enforcing mandatory `user_id`, `tenant_id`, and `role`, failing closed with `AuthorizationError`. |
-| **SEC-3B1-07** | **Medium** | Governance Alignment | **Fabricated Stakeholder Decision IDs**: Document 25 referenced fabricated IDs (`DEC-05 Cloud Provider`, `DEC-08 KMS`, `DEC-09 Retention`), conflicting with canonical `docs/09`. | Inconsistent governance tracking; confusion during stakeholder review. | **REMEDIATED**: Realignment with canonical `docs/09_unresolved_decisions_and_tl_assumptions.md` (`DEC-01` through `DEC-10`). |
+| **SEC-3B1-07** | **Medium** | Governance Alignment | **Fabricated Stakeholder Decision IDs**: Document 25 referenced fabricated IDs (`DEC-05 Cloud Provider`, `DEC-08 KMS`, `DEC-09 Retention`), conflicting with canonical `docs/09`. | Inconsistent governance tracking; confusion during stakeholder review. | **REMEDIATED**: Realignment with canonical `docs/reference/09_unresolved_decisions_and_tl_assumptions.md` (`DEC-01` through `DEC-10`). |
 | **SEC-3B1-08** | **Informational** | Compliance Transparency | **Emulator vs Real-Cloud Distinction**: Previous reports did not clearly distinguish local Moto S3 / PostgreSQL test results from production cloud capabilities. | False assumption that production cloud security (AWS KMS CMK, Object Lock, GuardDuty) was certified. | **REMEDIATED**: Added explicit notices detailing test emulator boundaries and defining production cloud prerequisites. |
 
 ---
@@ -93,7 +93,7 @@ To completely eliminate PII leakage, IDOR vulnerabilities, and path traversal ve
 
 ## 4. Automated Verification Results
 
-The automated test runner ([`scripts/test_evidence_vault.py`](../scripts/test_evidence_vault.py)) was expanded from 28 to **39 comprehensive test cases**. All 39 tests executed and passed against the live PostgreSQL 18.6 test database (`127.0.0.1:54329`) and local S3 service (`ThreadedMotoServer` on `127.0.0.1:54331`).
+The automated test runner ([`scripts/test_evidence_vault.py`](../../scripts/test_evidence_vault.py)) was expanded from 28 to **39 comprehensive test cases**. All 39 tests executed and passed against the live PostgreSQL 18.6 test database (`127.0.0.1:54329`) and local S3 service (`ThreadedMotoServer` on `127.0.0.1:54331`).
 
 ### Test Execution Breakdown: 39 / 39 Passed (100% Success)
 
@@ -206,7 +206,7 @@ To maintain absolute technical transparency, the following production cloud feat
 
 ## 6. Canonical Stakeholder Decision Alignment
 
-The table below documents formal alignment between the Evidence Storage Vault and canonical stakeholder decisions from `docs/09_unresolved_decisions_and_tl_assumptions.md`:
+The table below documents formal alignment between the Evidence Storage Vault and canonical stakeholder decisions from `docs/reference/09_unresolved_decisions_and_tl_assumptions.md`:
 
 | Canonical Ref | Decision Title | Status | Vault Architecture Alignment |
 |---|---|:---:|---|

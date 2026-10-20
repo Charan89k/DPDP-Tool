@@ -1,7 +1,7 @@
 # Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool
 ## Phase 3D.2 Implementation Report: Assessor Review Workspace & Clarifications Engine
 
-**Document Reference:** `docs/42_assessor_review_workspace.md`  
+**Document Reference:** `docs/archive/42_assessor_review_workspace.md`  
 **Classification:** Internal Technical Architecture & Compliance Audit Report  
 **Lifecycle Stage:** Phase 3D.2 Implementation Complete  
 **Date:** 2026-10-11  
@@ -206,7 +206,7 @@ All 7 tests passed with zero failures.
 - `app/dashboard/assessments/[id]/review/page.tsx` *(New)*
 - `components/review/AssessorReviewClient.tsx` *(New)*
 - `tests/assessor_review_workspace.test.ts` *(New)*
-- `docs/42_assessor_review_workspace.md` *(New)*
+- `docs/archive/42_assessor_review_workspace.md` *(New)*
 - `scripts/test_database_rls.py` *(Updated expected migration list to 9)*
 - `app/dashboard/assessments/page.tsx` *(Added Assessor Review link to assessment cards)*
 - `app/dashboard/page.tsx` *(Added Review link to dashboard table rows)*

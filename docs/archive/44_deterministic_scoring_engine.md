@@ -1,7 +1,7 @@
 # Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool
 ## Phase 3D.4 Implementation Report: Deterministic Scoring Engine
 
-**Document Reference:** `docs/44_deterministic_scoring_engine.md`  
+**Document Reference:** `docs/archive/44_deterministic_scoring_engine.md`  
 **Classification:** Internal Technical Architecture & Compliance Governance Report  
 **Lifecycle Stage:** Phase 3D.4 Implementation Complete  
 **Date:** 2026-10-11  
@@ -53,7 +53,7 @@ The engine strictly implements the **non-compensatory dual-metric governance mod
 ```
 
 #### 1. Provisional Status & Mandatory Legal Disclaimer
-In adherence to the decision register (`docs/09_unresolved_decisions_and_tl_assumptions.md` and `docs/18_canonical_compliance_scoring_methodology.md`), the scoring values are an unratified engineering baseline. Every calculation output includes:
+In adherence to the decision register (`docs/reference/09_unresolved_decisions_and_tl_assumptions.md` and `docs/18_canonical_compliance_scoring_methodology.md`), the scoring values are an unratified engineering baseline. Every calculation output includes:
 - `methodologyStatus: "PROVISIONAL_PENDING_APPROVAL"`
 - `isOfficialScore: false`
 - The mandatory statutory legal disclaimer:

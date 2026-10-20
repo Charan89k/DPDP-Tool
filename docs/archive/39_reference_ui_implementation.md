@@ -1,6 +1,6 @@
 # Phase 3D — Exact Reference UI Implementation & Architectural Alignment
 
-**Document Reference:** `docs/39_reference_ui_implementation.md`  
+**Document Reference:** `docs/archive/39_reference_ui_implementation.md`  
 **Milestone:** Phase 3D Reference UI Implementation  
 **Project:** TLI DPDP Compliance Gap Analysis Tool  
 **Repository:** `/home/charan/Documents/DPDP Tool`  

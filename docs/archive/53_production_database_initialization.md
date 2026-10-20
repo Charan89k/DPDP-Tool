@@ -1,6 +1,6 @@
 # TLI DPDP Platform — Phase 9: Production Database Initialization & Deployment Readiness
 
-**Document Reference:** `docs/53_production_database_initialization.md`  
+**Document Reference:** `docs/archive/53_production_database_initialization.md`  
 **Classification:** Operational Security & Database Initialization Plan  
 **Target Infrastructure:**
 - Deployed Application: `https://tl-assessment-tool.vercel.app/`

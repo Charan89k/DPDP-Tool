@@ -349,6 +349,6 @@ This step-by-step walkthrough demonstrates onboarding without relying on pre-see
 | **UI Page** | `app/activate/page.tsx` | New | Public account activation page validating token and setting initial corporate password. |
 | **UI Page** | `app/dashboard/assessments/new/CreateAssessmentForm.tsx` | Modified | Upgraded to dynamically select customer organization, populate real contacts, and assign coordinators. |
 | **Automated Tests** | `tests/phase7_customer_onboarding.test.ts` | New | Comprehensive 14-test acceptance suite verifying all security boundaries and RLS isolation. |
-| **Documentation** | `docs/51_secure_customer_onboarding_and_assignment.md` | New | Authoritative architecture and verification document (this file). |
+| **Documentation** | `docs/archive/51_secure_customer_onboarding_and_assignment.md` | New | Authoritative architecture and verification document (this file). |
 | **Documentation** | `docs/README.md` | Modified | Indexed document 51 in the master documentation index. |
 

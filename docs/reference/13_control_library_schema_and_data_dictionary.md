@@ -176,7 +176,7 @@ The Control Library schema is engineered to guarantee:
 ### 5.1 Evaluation & Design Alternatives
 In designing the evaluation response model for the TLI tool, two architectural patterns were evaluated:
 1. **Alternative A (Embedded Per-Control Options)**: Duplicating a `response_options` array within each of the 30 individual control records in `data/dpdp_controls.json`.
-2. **Alternative B (Global Framework-Level Definition — ADOPTED)**: Defining standard response states globally at the framework level (`DPDPA-2023-V1.0`), documented in `docs/16_assessment_and_review_guidance.md` Section 2 and enforced via database enum `assessment_response_state`.
+2. **Alternative B (Global Framework-Level Definition — ADOPTED)**: Defining standard response states globally at the framework level (`DPDPA-2023-V1.0`), documented in `docs/reference/16_assessment_and_review_guidance.md` Section 2 and enforced via database enum `assessment_response_state`.
 
 ### 5.2 Rationale for Framework-Level Standardization
 1. **Mathematical & Semantic Consistency**: Every control in the DPDPA framework evaluates against the identical five states (`IMPLEMENTED`, `PARTIALLY_IMPLEMENTED`, `NOT_IMPLEMENTED`, `NOT_APPLICABLE`, `UNABLE_TO_DETERMINE`). Embedding this list 30 times introduces redundant maintenance overhead without operational benefit.

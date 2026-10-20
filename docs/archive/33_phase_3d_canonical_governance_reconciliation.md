@@ -22,10 +22,10 @@ In strict adherence to the project directive:
 
 | Source Artifact | Exact Repository Location | Inspection Focus |
 |---|---|---|
-| **Stakeholder Decision Register** | [`docs/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) | Canonical meanings and statuses of Decisions `DEC-01` through `DEC-10`. |
-| **Legal Interpretation Register** | [`docs/19_legal_review_and_interpretation_register.md`](file:///home/charan/Documents/DPDP%20Tool/docs/19_legal_review_and_interpretation_register.md) | 10 itemized legal interpretation records (`LEG-INT-01` to `LEG-INT-10`). |
-| **Phase 3D Implementation Plan** | [`docs/31_phase_3d_assessment_workflow_implementation_plan.md`](file:///home/charan/Documents/DPDP%20Tool/docs/31_phase_3d_assessment_workflow_implementation_plan.md) | Questionnaire architecture, transition matrices, and scoring mathematics. |
-| **Phase 3D Readiness Review** | [`docs/32_phase_3d_governance_and_scoring_readiness_review.md`](file:///home/charan/Documents/DPDP%20Tool/docs/32_phase_3d_governance_and_scoring_readiness_review.md) | Governance categorization, statutory mapping, and pre-implementation gates. |
+| **Stakeholder Decision Register** | [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) | Canonical meanings and statuses of Decisions `DEC-01` through `DEC-10`. |
+| **Legal Interpretation Register** | [`docs/reference/19_legal_review_and_interpretation_register.md`](file:///home/charan/Documents/DPDP%20Tool/docs/19_legal_review_and_interpretation_register.md) | 10 itemized legal interpretation records (`LEG-INT-01` to `LEG-INT-10`). |
+| **Phase 3D Implementation Plan** | [`docs/archive/31_phase_3d_assessment_workflow_implementation_plan.md`](file:///home/charan/Documents/DPDP%20Tool/docs/31_phase_3d_assessment_workflow_implementation_plan.md) | Questionnaire architecture, transition matrices, and scoring mathematics. |
+| **Phase 3D Readiness Review** | [`docs/archive/32_phase_3d_governance_and_scoring_readiness_review.md`](file:///home/charan/Documents/DPDP%20Tool/docs/32_phase_3d_governance_and_scoring_readiness_review.md) | Governance categorization, statutory mapping, and pre-implementation gates. |
 | **PostgreSQL Initial Schema** | [`migrations/001_initial_schema.sql`](file:///home/charan/Documents/DPDP%20Tool/migrations/001_initial_schema.sql) | `assessment_status` enum, `verification_status` enum, and append-only triggers. |
 | **PostgreSQL Canonical Seed** | [`migrations/003_seed_canonical_library.sql`](file:///home/charan/Documents/DPDP%20Tool/migrations/003_seed_canonical_library.sql) | 13 `control_domains`, 30 `controls`, 27 `evidence_types`, and `scoring_models`. |
 | **Machine-Readable Controls** | [`data/dpdp_controls.json`](file:///home/charan/Documents/DPDP%20Tool/data/dpdp_controls.json) | 30 canonical controls and their 13 normalized `topic` classifications. |
@@ -36,7 +36,7 @@ In strict adherence to the project directive:
 ## 2. Canonical Meaning and Status of Decision IDs (`DEC-01` to `DEC-10`)
 
 ### 2.1 Git History & Evidence Audit of `docs/09`
-A Git log inspection of [`docs/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) confirms:
+A Git log inspection of [`docs/reference/09_unresolved_decisions_and_tl_assumptions.md`](file:///home/charan/Documents/DPDP%20Tool/docs/09_unresolved_decisions_and_tl_assumptions.md) confirms:
 - Commit `dc15d91`: Initial creation of `docs/09` during Phase 1 design.
 - **Zero subsequent commits**: No commits exist in the Git log recording formal stakeholder sign-off from Truth Labs International executive leadership for any of the 10 decisions.
 - In `docs/09`, Section 3 is explicitly titled:
@@ -81,8 +81,8 @@ A complete, non-destructive audit of `migrations/003_seed_canonical_library.sql`
 ### 3.2 Resolution of the "10 Domains" vs. "13 Domains" Discrepancy
 
 Earlier draft documentation informally referred to "10 privacy domains" or "10 functional modules". The origin and resolution of this discrepancy are:
-1. **Phase 1 Functional Grouping (Conceptual 10 Modules)**: In [`docs/01_product_requirements_specification.md`](file:///home/charan/Documents/DPDP%20Tool/docs/01_product_requirements_specification.md), requirements grouped controls conceptually into 10 high-level operational modules (e.g., merging Scope with Notice, merging General Fiduciary Duties with Processor Oversight, and merging Rights with Grievance Handling).
-2. **Phase 2 & Phase 3 Normalized Relational Model (Authoritative 13 Domains)**: When the control library was formally normalized in Phase 2 ([`docs/14`](14_dpdp_control_library_v1.md)) and seeded into PostgreSQL in Migration 003, controls were partitioned into **13 distinct normalized domains**, each with its own primary key, statutory focus, order index, and individual database weight $W_D$:
+1. **Phase 1 Functional Grouping (Conceptual 10 Modules)**: In [`docs/reference/01_product_requirements_specification.md`](file:///home/charan/Documents/DPDP%20Tool/docs/01_product_requirements_specification.md), requirements grouped controls conceptually into 10 high-level operational modules (e.g., merging Scope with Notice, merging General Fiduciary Duties with Processor Oversight, and merging Rights with Grievance Handling).
+2. **Phase 2 & Phase 3 Normalized Relational Model (Authoritative 13 Domains)**: When the control library was formally normalized in Phase 2 ([`docs/14`](../reference/14_dpdp_control_library_v1.md)) and seeded into PostgreSQL in Migration 003, controls were partitioned into **13 distinct normalized domains**, each with its own primary key, statutory focus, order index, and individual database weight $W_D$:
    - `NOTICE_TRANSPARENCY` ($W_D = 1.25$, 4 controls)
    - `LEGITIMATE_USES` ($W_D = 1.00$, 3 controls)
    - `CONSENT_MANAGEMENT` ($W_D = 1.25$, 3 controls)
@@ -112,7 +112,7 @@ CREATE TYPE assessment_status AS ENUM (
     'FINAL_ISSUED', 'REMEDIATION_ACTIVE', 'CANCELLED', 'ARCHIVED'
 );
 ```
-- `CANCELLED` is **not a new proposal**. It is a pre-existing, compiled PostgreSQL enum value deployed in Migration 001 and documented in [`docs/03`](03_assessment_workflow_and_state_machine.md).
+- `CANCELLED` is **not a new proposal**. It is a pre-existing, compiled PostgreSQL enum value deployed in Migration 001 and documented in [`docs/03`](../reference/03_assessment_workflow_and_state_machine.md).
 - Total canonical states: **exactly 14 states**.
 
 ### 4.2 Terminal States and Reopening Boundaries
@@ -229,10 +229,10 @@ A live inspection of Git confirms:
   - `tests/rls_database.test.ts`
   - `docs/README.md`
 - **Untracked Documentation Deliverables**:
-  - `docs/30_phase_3c_final_security_and_commit_readiness.md`
-  - `docs/31_phase_3d_assessment_workflow_implementation_plan.md`
-  - `docs/32_phase_3d_governance_and_scoring_readiness_review.md`
-  - `docs/33_phase_3d_canonical_governance_reconciliation.md`
+  - `docs/archive/30_phase_3c_final_security_and_commit_readiness.md`
+  - `docs/archive/31_phase_3d_assessment_workflow_implementation_plan.md`
+  - `docs/archive/32_phase_3d_governance_and_scoring_readiness_review.md`
+  - `docs/archive/33_phase_3d_canonical_governance_reconciliation.md`
 
 ### 6.2 Recommended Two-Commit Sequence
 To maintain clean Git history and preserve the separation between technical application fixes and architectural governance deliverables:

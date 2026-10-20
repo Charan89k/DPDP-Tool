@@ -67,7 +67,7 @@ An inspection of `git log` and `git status` confirms the following repository st
    - [`tests/auth.test.ts`](file:///home/charan/Documents/DPDP%20Tool/tests/auth.test.ts): Added IP resolution and email normalization rate-limiting tests.
    - [`tests/rls_database.test.ts`](file:///home/charan/Documents/DPDP%20Tool/tests/rls_database.test.ts): Added sequential multi-tenant switching test following failed and successful transactions.
    - [`docs/README.md`](file:///home/charan/Documents/DPDP%20Tool/docs/README.md): Documentation index update.
-   - [`docs/30_phase_3c_final_security_and_commit_readiness.md`](file:///home/charan/Documents/DPDP%20Tool/docs/30_phase_3c_final_security_and_commit_readiness.md): This report.
+   - [`docs/archive/30_phase_3c_final_security_and_commit_readiness.md`](file:///home/charan/Documents/DPDP%20Tool/docs/30_phase_3c_final_security_and_commit_readiness.md): This report.
 
 ---
 

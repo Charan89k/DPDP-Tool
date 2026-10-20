@@ -132,7 +132,7 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 | [Self-hosting](docs/SELF_HOSTING.md) | Installation, configuration, backups, upgrades, troubleshooting |
 | [Production checklist](docs/PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
 | [Security model](docs/SECURITY_MODEL.md) | Tenant isolation, account security, security headers |
-| [Methodology and design history](docs/README.md) | Control library, evidence catalogue, scoring, legal sources |
+| [Methodology and reference](docs/README.md) | Control library, evidence catalogue, scoring, legal sources, design history |
 
 ## Project structure
 
@@ -145,10 +145,10 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 | `lib/scoring/`, `lib/gaps/`, `lib/lifecycle/`, `lib/reports/`, `lib/remediation/` | Assessment methodology |
 | `lib/storage/` | Evidence validation, virus scanning and storage |
 | `migrations/sqlite/` | Versioned SQLite migrations (never edit an applied migration) |
-| `data/` | Canonical control library, evidence catalogue and questionnaire |
+| `data/`, `schemas/` | Canonical control library, evidence catalogue, questionnaire and their source and schemas |
 | `e2e/`, `tests/` | Playwright browser tests; unit and integration tests |
-| `scripts/`, `deploy/` | Operations CLI, admin bootstrap, container entrypoint, Caddy configuration |
-| `docs/` | Architecture, operations, security, methodology and legal source register |
+| `scripts/`, `deploy/` | Operations CLI, admin bootstrap, data validators, container entrypoint, Caddy configuration |
+| `docs/` | Operating guides; `docs/reference/` methodology and legal sources; `docs/archive/` design history |
 
 ## License
 

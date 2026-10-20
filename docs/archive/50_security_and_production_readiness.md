@@ -119,7 +119,7 @@ Deploying within AWS `ap-south-1` (Mumbai) satisfies the physical domestic data 
 
 ## 4. Legal & Stakeholder Approval Gates
 
-The following items from the Stakeholder Decision Register ([`docs/09`](09_unresolved_decisions_and_tl_assumptions.md)) and Legal Interpretation Register ([`docs/19`](19_legal_review_and_interpretation_register.md)) require formal sign-off:
+The following items from the Stakeholder Decision Register ([`docs/09`](../reference/09_unresolved_decisions_and_tl_assumptions.md)) and Legal Interpretation Register ([`docs/19`](../reference/19_legal_review_and_interpretation_register.md)) require formal sign-off:
 
 ### 4.1 Master Decision Register (DEC-01 to DEC-10)
 
@@ -137,7 +137,7 @@ The following items from the Stakeholder Decision Register ([`docs/09`](09_unres
 | **DEC-10** | **Statutory Legal Disclaimer Language** | Embedded standard advisory disclaimer on all generated reports. | Formally approve the standard legal disclaimer text. | TLI Legal Counsel |
 
 ### 4.2 Legal Interpretation Register (`LEG-INT-01` to `LEG-INT-10`)
-All 10 legal interpretation records in `docs/19_legal_review_and_interpretation_register.md` carry the status **`LEGAL_VERIFICATION_REQUIRED`** awaiting review by TLI Legal Counsel:
+All 10 legal interpretation records in `docs/reference/19_legal_review_and_interpretation_register.md` carry the status **`LEGAL_VERIFICATION_REQUIRED`** awaiting review by TLI Legal Counsel:
 - `LEG-INT-01`: Section 5(3) Multilingual Notice Option (Phase 2 Blocker).
 - `LEG-INT-02`: Section 6(7)-(9) Consent Manager Interoperability.
 - `LEG-INT-03`: Section 7(g) Employment Legitimate Uses (workplace surveillance).

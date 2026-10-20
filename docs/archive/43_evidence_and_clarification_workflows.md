@@ -1,7 +1,7 @@
 # Truth Labs International (TLI) DPDP Compliance Gap Analysis Tool
 ## Phase 3D.3 Implementation Report: Evidence Vault & Clarification Workflows
 
-**Document Reference:** `docs/43_evidence_and_clarification_workflows.md`  
+**Document Reference:** `docs/archive/43_evidence_and_clarification_workflows.md`  
 **Classification:** Internal Technical Architecture & Compliance Audit Report  
 **Lifecycle Stage:** Phase 3D.3 Implementation Complete  
 **Date:** 2026-10-11  
