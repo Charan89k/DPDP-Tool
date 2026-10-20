@@ -131,8 +131,8 @@ export function AssessmentSummaryView({
       const trRes = await fetch(`/api/assessments/${assessmentId}/transition`);
       if (trRes.ok) {
         const trData = await trRes.json();
-        if (trData.success && trData.state?.status) {
-          setCurrentStatus(trData.state.status);
+        if (trData.success && trData.lifecycle?.currentStatus) {
+          setCurrentStatus(trData.lifecycle.currentStatus);
         }
       }
     } catch (err) {
@@ -728,7 +728,7 @@ export function AssessmentSummaryView({
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
                 {/* Search */}
                 <div className="relative">
-                  <input
+                  <input aria-label="Search questions by code or text"
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -739,7 +739,7 @@ export function AssessmentSummaryView({
                 </div>
 
                 {/* Section Filter */}
-                <select
+                <select aria-label="Filter by section"
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value)}
                   className="w-full sm:w-auto sm:max-w-[16rem] min-w-0 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white font-medium text-slate-700"

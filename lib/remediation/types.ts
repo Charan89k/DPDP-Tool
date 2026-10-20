@@ -59,10 +59,14 @@ export interface UpdateRemediationInput {
   ownerUserId?: string;
   status?: RemediationStatus;
   closureSubmissionNotes?: string;
+  /** When set, the task must belong to this assessment (the one named in the request URL). */
+  assessmentId?: string;
 }
 
 export interface ValidateRemediationInput {
   action: "VALIDATE_CLOSE" | "REJECT_REOPEN";
   validationNotes: string;
+  /** When set, the task must belong to this assessment (the one named in the request URL). */
+  assessmentId?: string;
 }
 

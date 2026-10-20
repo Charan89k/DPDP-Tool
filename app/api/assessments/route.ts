@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 import { z } from "zod";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 import {
@@ -86,6 +87,8 @@ export async function GET(req: NextRequest) {
       { status: 200 }
     );
   } catch (err) {
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Failed to query assessments under RLS context:", err);
     return NextResponse.json(
       { error: "Unable to retrieve assessments. Please verify your access permissions." },

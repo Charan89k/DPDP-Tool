@@ -29,6 +29,8 @@ interface ClarificationMessage {
   createdAt: string | null;
 }
 
+const THREAD_STATUSES = ["OPEN", "IN_PROGRESS", "REQUIRES_FURTHER_INFO", "RESOLVED"] as const;
+
 const optionalId = z.string().trim().max(64).nullable().optional();
 const clarificationBodySchema = z.object({
   threadId: optionalId,
@@ -37,8 +39,18 @@ const clarificationBodySchema = z.object({
   targetRole: z.string().trim().max(40).nullable().optional(),
   title: z.string().max(200).optional(),
   message: z.string().max(10_000).optional(),
-  status: z.string().max(40).optional(),
+  status: z.enum(THREAD_STATUSES).optional(),
 });
+
+/** A request problem the caller can fix (bad payload, or a thread/evidence item not in this assessment). */
+class ClarificationRequestError extends Error {
+  readonly statusCode: number;
+  constructor(message: string, statusCode: 400 | 404) {
+    super(message);
+    this.name = "ClarificationRequestError";
+    this.statusCode = statusCode;
+  }
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -212,12 +224,24 @@ export async function POST(request: Request, { params }: RouteParams) {
         throw new Error("ASSESSMENT_NOT_FOUND_OR_FORBIDDEN");
       }
 
+      // Threads are addressed through this assessment's URL, so they must belong to it.
+      const assertThreadInAssessment = async (id: string) => {
+        const threadRes = await client.query(
+          "SELECT id FROM clarification_threads WHERE id = $1 AND assessment_id = $2 LIMIT 1;",
+          [id, assessmentId]
+        );
+        if (threadRes.rowCount === 0) {
+          throw new ClarificationRequestError("Clarification thread not found for this assessment.", 404);
+        }
+      };
+
       // Case A: Reply to existing thread
       if (threadId && message) {
         const trimmedMessage = String(message).trim();
         if (!trimmedMessage) {
-          throw new Error("Message text cannot be empty.");
+          throw new ClarificationRequestError("Message text cannot be empty.", 400);
         }
+        await assertThreadInAssessment(threadId);
 
         const msgRes = await client.query(
           `INSERT INTO clarification_messages (
@@ -238,17 +262,13 @@ export async function POST(request: Request, { params }: RouteParams) {
 
       // Case B: Status update (OPEN, IN_PROGRESS, REQUIRES_FURTHER_INFO, RESOLVED)
       if (threadId && status) {
-        const validStatuses = ["OPEN", "IN_PROGRESS", "REQUIRES_FURTHER_INFO", "RESOLVED"];
-        if (!validStatuses.includes(status)) {
-          throw new Error(`Status must be one of: ${validStatuses.join(", ")}`);
-        }
-
+        await assertThreadInAssessment(threadId);
         await client.query(
           `UPDATE clarification_threads
            SET status = $1,
                resolved_at = CASE WHEN $1 = 'RESOLVED' THEN CURRENT_TIMESTAMP ELSE NULL END
-           WHERE id = $2;`,
-          [status, threadId]
+           WHERE id = $2 AND assessment_id = $3;`,
+          [status, threadId, assessmentId]
         );
 
         return {
@@ -264,17 +284,20 @@ export async function POST(request: Request, { params }: RouteParams) {
         const trimmedMessage = String(message).trim();
 
         if (!trimmedTitle || !trimmedMessage) {
-          throw new Error("Title and message cannot be empty.");
+          throw new ClarificationRequestError("Title and message cannot be empty.", 400);
         }
 
         let resolvedQuestionCode = questionCode ? String(questionCode).trim() : null;
 
-        if (!resolvedQuestionCode && evidenceItemId) {
+        if (evidenceItemId) {
           const evRes = await client.query(
-            "SELECT question_code FROM evidence_items WHERE id = $1 LIMIT 1;",
-            [evidenceItemId]
+            "SELECT question_code FROM evidence_items WHERE id = $1 AND assessment_id = $2 LIMIT 1;",
+            [evidenceItemId, assessmentId]
           );
-          if (evRes.rowCount && evRes.rows[0].question_code) {
+          if (evRes.rowCount === 0) {
+            throw new ClarificationRequestError("Evidence item not found for this assessment.", 404);
+          }
+          if (!resolvedQuestionCode && evRes.rows[0].question_code) {
             resolvedQuestionCode = evRes.rows[0].question_code;
           }
         }
@@ -321,8 +344,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         };
       }
 
-      throw new Error(
-        "Invalid clarification payload. Provide either (questionCode/evidenceItemId, title, message) or (threadId, message/status)."
+      throw new ClarificationRequestError(
+        "Invalid clarification payload. Provide either (questionCode/evidenceItemId, title, message) or (threadId, message/status).",
+        400
       );
     });
 
@@ -339,6 +363,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         { error: "Assessment not found or access denied." },
         { status: 404 }
       );
+    }
+    if (err instanceof ClarificationRequestError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode });
     }
 
     console.error("Failed to process clarification:", err);

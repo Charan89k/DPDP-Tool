@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { clearSessionCookie, getCurrentSession } from "@/lib/auth/session";
 import { DatabaseAuthorizationError, executeWithRls } from "@/lib/db/rls";
+import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export async function GET() {
   const sessionUser = await getCurrentSession();
@@ -23,6 +24,9 @@ export async function GET() {
       await clearSessionCookie();
       return NextResponse.json({ authenticated: false, user: null }, { status: 401 });
     }
+    // Signed in, but the organisation requires two-factor enrolment first (403 MFA_SETUP_REQUIRED).
+    const sessionError = sessionErrorResponse(err);
+    if (sessionError) return sessionError;
     console.error("Session check failed:", err instanceof Error ? err.message : err);
     return NextResponse.json({ error: "Unable to verify the session." }, { status: 500 });
   }

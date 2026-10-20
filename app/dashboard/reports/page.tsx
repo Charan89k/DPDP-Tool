@@ -1,4 +1,6 @@
 import React from "react";
+import { bucketAssessmentStatus } from "@/lib/dashboard/metrics";
+import type { DashboardStatusBucket } from "@/lib/dashboard/metrics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -55,20 +57,17 @@ export default async function ReportsListPage() {
     return res.rows;
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "FINALIZED":
-      case "COMPLETED":
-        return <Badge variant="emerald">{status}</Badge>;
-      case "DATA_GATHERING":
-      case "IN_PROGRESS":
-        return <Badge variant="blue">{status}</Badge>;
-      case "CONSULTANT_REVIEW":
-        return <Badge variant="amber">{status}</Badge>;
-      default:
-        return <Badge variant="slate">{status}</Badge>;
-    }
+  // Colour follows the real lifecycle buckets; the badge shows the exact lifecycle status.
+  const BUCKET_VARIANT: Record<DashboardStatusBucket, "emerald" | "blue" | "amber" | "slate"> = {
+    IN_PROGRESS: "blue",
+    PENDING_VALIDATION: "amber",
+    REPORT_DRAFT: "amber",
+    COMPLETED: "emerald",
+    CANCELLED: "slate",
   };
+  const getStatusBadge = (status: string) => (
+    <Badge variant={BUCKET_VARIANT[bucketAssessmentStatus(status)]}>{status}</Badge>
+  );
 
   return (
     <div className="space-y-6">
@@ -164,7 +163,7 @@ export default async function ReportsListPage() {
                     <span className="font-medium text-stone-800 font-mono">
                       {a.target_completion_date
                         ? formatDate(a.target_completion_date)
-                        : "Q4 2026 Audit"}
+                        : "Not set"}
                     </span>
                   </div>
                 </div>

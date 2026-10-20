@@ -7,10 +7,19 @@
  */
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { calendarDateSchema } from "@/lib/http/dates";
 import { getCurrentSession } from "@/lib/auth/session";
 import { cloneAssessmentForReaudit, LifecycleError } from "@/lib/lifecycle";
 import type { ReauditCloneRequest } from "@/lib/lifecycle/types";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
+
+const reauditBodySchema = z.object({
+  engagementCode: z.string().trim().max(100).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  targetCompletionDate: calendarDateSchema.optional(),
+  copyResponses: z.boolean().optional(),
+});
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -27,12 +36,25 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
   }
 
-  let body: ReauditCloneRequest = {};
-  try {
-    body = await request.json();
-  } catch {
-    // Optional JSON body
+  // The body is optional; when one is sent it must be valid JSON.
+  let raw: unknown = {};
+  const text = await request.text();
+  if (text.trim()) {
+    try {
+      raw = JSON.parse(text);
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
   }
+  const parsed = reauditBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return NextResponse.json(
+      { error: `Invalid re-audit request: ${issue?.message ?? "malformed"}${issue?.path.length ? ` (${issue.path.join(".")})` : ""}` },
+      { status: 400 }
+    );
+  }
+  const body: ReauditCloneRequest = parsed.data;
 
   try {
     const newAssessment = await cloneAssessmentForReaudit(

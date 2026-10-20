@@ -178,7 +178,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-950 flex items-start gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the CloudE5 lead consultant. The dataset snapshot is sealed and permanently immutable under PostgreSQL database triggers.
+            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the CloudE5 lead consultant. The issued document is archived as it was approved, and its snapshot record cannot be changed or deleted (enforced by database triggers).
           </div>
         </div>
       )}
@@ -274,7 +274,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             <div className="p-3 bg-rose-50 rounded border border-rose-200">
               <span className="text-rose-700 block text-[10px]">Critical Gaps:</span>
               <strong className="text-rose-900 text-sm">
-                {gapData ? `${gapData.summary.criticalGapsCount} Deficits` : "0 Deficits"}
+                {gapData ? `${gapData.summary.criticalGapsCount} Deficits` : "Pending"}
               </strong>
             </div>
             <div className="p-3 bg-stone-50 rounded border border-stone-200">

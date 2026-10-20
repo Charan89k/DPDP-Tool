@@ -1,4 +1,6 @@
 import React from "react";
+import { bucketAssessmentStatus } from "@/lib/dashboard/metrics";
+import type { DashboardStatusBucket } from "@/lib/dashboard/metrics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -54,35 +56,22 @@ export default async function AssessmentsPage() {
     return res.rows;
   });
 
+  const STATUS_BADGES: Record<DashboardStatusBucket, { label: string; className: string }> = {
+    IN_PROGRESS: { label: "In Progress", className: "bg-blue-50 text-blue-700 border-blue-200" },
+    PENDING_VALIDATION: { label: "Pending Validation", className: "bg-amber-50 text-amber-800 border-amber-200" },
+    REPORT_DRAFT: { label: "Report Draft", className: "bg-violet-50 text-violet-700 border-violet-200" },
+    COMPLETED: { label: "Completed", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    CANCELLED: { label: "Cancelled", className: "bg-slate-100 text-slate-700 border-slate-200" },
+  };
+
+  // Badges follow the real 14-state lifecycle (same buckets as the dashboard home page).
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "FINALIZED":
-      case "COMPLETED":
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            Completed
-          </span>
-        );
-      case "DATA_GATHERING":
-      case "IN_PROGRESS":
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            In Progress
-          </span>
-        );
-      case "CONSULTANT_REVIEW":
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            Pending Validation
-          </span>
-        );
-      default:
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-            Draft
-          </span>
-        );
-    }
+    const badge = STATUS_BADGES[bucketAssessmentStatus(status)];
+    return (
+      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${badge.className}`}>
+        {badge.label}
+      </span>
+    );
   };
 
   return (
@@ -170,7 +159,7 @@ export default async function AssessmentsPage() {
                   <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Lead Assessor</span>
-                    <span className="font-medium text-slate-800">{assessment.lead_consultant_name || "Anita Sharma"}</span>
+                    <span className="font-medium text-slate-800">{assessment.lead_consultant_name || "Not assigned"}</span>
                   </div>
                 </div>
 

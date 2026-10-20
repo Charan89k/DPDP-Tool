@@ -44,8 +44,19 @@ const responsesBodySchema = z.object({
     .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, "Invalid question code."), responseItemSchema)
     .refine((r) => Object.keys(r).length <= MAX_RESPONSES_PER_REQUEST, "Too many responses in one request.")
     .superRefine((r, ctx) => {
-      const unknown = Object.keys(r).find((code) => toCanonicalQuestionCode(code) === null);
-      if (unknown) ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Unknown question code ${unknown}.` });
+      const seen = new Set<string>();
+      for (const code of Object.keys(r)) {
+        const canonical = toCanonicalQuestionCode(code);
+        if (canonical === null) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Unknown question code ${code}.` });
+          return;
+        }
+        if (seen.has(canonical)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Question ${canonical} appears more than once.` });
+          return;
+        }
+        seen.add(canonical);
+      }
     }),
 });
 
@@ -80,7 +91,7 @@ export async function GET(request: Request, { params }: RouteParams) {
           updated_at
         FROM assessment_questionnaire_responses
         WHERE assessment_id = $1
-        ORDER BY question_code ASC;`,
+        ORDER BY updated_at ASC;`,
         [assessmentId]
       );
 
@@ -92,9 +103,16 @@ export async function GET(request: Request, { params }: RouteParams) {
         updatedAt: string;
       }> = {};
 
+      // Answers are returned under canonical codes, which is what the save endpoint accepts. Rows stored
+      // by earlier versions under variant codes ("GOV-01") map onto their question; when two rows map to
+      // the same question the most recently updated wins (rows are ordered by updated_at). Rows whose
+      // code is not a questionnaire question are left in the database but not returned: no screen or
+      // score uses them, and returning them would make every later autosave fail validation.
       for (const r of rows.rows) {
-        mapped[r.question_code] = {
-          questionCode: r.question_code,
+        const questionCode = toCanonicalQuestionCode(r.question_code);
+        if (!questionCode) continue;
+        mapped[questionCode] = {
+          questionCode,
           selectedOption: r.selected_option || undefined,
           commentsAndJustification: r.comments_and_justification || undefined,
           questionnaireVersion: r.questionnaire_version,
@@ -189,7 +207,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
       let savedCount = 0;
 
-      for (const [qCode, item] of Object.entries(responses)) {
+      for (const [rawCode, item] of Object.entries(responses)) {
+        // Stored under the canonical code so every reader matches it (validated above).
+        const qCode = toCanonicalQuestionCode(rawCode) ?? rawCode;
         if (!item || (!item.selectedOption && !item.commentsAndJustification)) {
           continue;
         }

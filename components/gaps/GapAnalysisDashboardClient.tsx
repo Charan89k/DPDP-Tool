@@ -656,7 +656,7 @@ export function GapAnalysisDashboardClient({
           {/* Search Bar */}
           <div className="relative w-full md:w-64">
             <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-            <input
+            <input aria-label="Search gaps by code, text or control"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -688,7 +688,7 @@ export function GapAnalysisDashboardClient({
           </div>
 
           {/* Section Filter */}
-          <select
+          <select aria-label="Filter by section"
             value={sectionFilter}
             onChange={(e) => setSectionFilter(e.target.value)}
             className="w-full sm:w-auto sm:max-w-[16rem] min-w-0 px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
@@ -702,7 +702,7 @@ export function GapAnalysisDashboardClient({
           </select>
 
           {/* Type Filter */}
-          <select
+          <select aria-label="Filter by gap type"
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             className="w-full sm:w-auto min-w-0 px-2 py-1 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
@@ -747,7 +747,15 @@ export function GapAnalysisDashboardClient({
                   return (
                     <React.Fragment key={item.id}>
                       <tr
+                        tabIndex={0}
+                        aria-expanded={isExpanded}
                         onClick={() => toggleRow(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleRow(item.id);
+                          }
+                        }}
                         className={`cursor-pointer transition-colors ${
                           isExpanded ? "bg-blue-50/50" : "hover:bg-slate-50/70"
                         }`}

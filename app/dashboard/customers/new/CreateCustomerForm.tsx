@@ -38,17 +38,20 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Sync DPO fields to Initial User if checked
+  // The initial admin mirrors the DPO until the admin fields are edited by hand.
+  const [userEmailEdited, setUserEmailEdited] = useState(false);
+  const [userNameEdited, setUserNameEdited] = useState(false);
+
   const handleDpoEmailChange = (val: string) => {
     setDpoEmail(val);
-    if (provisionUser && !userEmail) {
+    if (provisionUser && !userEmailEdited) {
       setUserEmail(val);
     }
   };
 
   const handleDpoNameChange = (val: string) => {
     setDpoName(val);
-    if (provisionUser && !userFullName) {
+    if (provisionUser && !userNameEdited) {
       setUserFullName(val);
     }
   };
@@ -158,7 +161,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Organisation / Company Legal Name <span className="text-rose-500">*</span>
               </label>
-              <input
+              <input aria-label="Organisation / Company Legal Name"
                 type="text"
                 required
                 value={name}
@@ -172,7 +175,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Sector / Industry Category <span className="text-rose-500">*</span>
               </label>
-              <select
+              <select aria-label="Sector / Industry Category"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white text-slate-800"
@@ -224,7 +227,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Data Protection Officer (DPO) / Primary Lead Name
               </label>
-              <input
+              <input aria-label="Data Protection Officer (DPO) / Primary Lead Name"
                 type="text"
                 value={dpoName}
                 onChange={(e) => handleDpoNameChange(e.target.value)}
@@ -237,7 +240,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 DPO / Statutory Corporate Email
               </label>
-              <input
+              <input aria-label="DPO / Statutory Corporate Email"
                 type="email"
                 value={dpoEmail}
                 onChange={(e) => handleDpoEmailChange(e.target.value)}
@@ -250,7 +253,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Contact Phone
               </label>
-              <input
+              <input aria-label="Contact Phone"
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
@@ -263,7 +266,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Corporate Headquarters / Address
               </label>
-              <input
+              <input aria-label="Corporate Headquarters / Address"
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
@@ -301,11 +304,14 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Client Admin Full Name <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Client Admin Full Name"
                     type="text"
                     required={provisionUser}
                     value={userFullName}
-                    onChange={(e) => setUserFullName(e.target.value)}
+                    onChange={(e) => {
+                    setUserNameEdited(true);
+                    setUserFullName(e.target.value);
+                  }}
                     placeholder="e.g. Dr. Ramesh Varma"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
                   />
@@ -315,11 +321,14 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Client Admin Corporate Email <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Client Admin Corporate Email"
                     type="email"
                     required={provisionUser}
                     value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
+                    onChange={(e) => {
+                    setUserEmailEdited(true);
+                    setUserEmail(e.target.value);
+                  }}
                     placeholder="admin@apexhealth.example.com"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
                   />
@@ -331,7 +340,7 @@ export function CreateCustomerForm(_props: CreateCustomerFormProps) {
                   Initial Account Password (optional)
                 </label>
                 <div className="relative">
-                  <input
+                  <input aria-label="Initial Account Password (optional)"
                     type="password"
                     autoComplete="new-password"
                     value={userPassword}

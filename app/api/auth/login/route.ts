@@ -19,8 +19,8 @@ import { createMfaChallenge, MFA_CHALLENGE_COOKIE, MFA_CHALLENGE_MAX_AGE_SECONDS
 import { loginRateLimiter, resolveClientIp } from "@/lib/auth/rate_limit";
 
 const loginSchema = z.object({
-  email: z.string().email("Please provide a valid corporate email address."),
-  password: z.string().min(1, "Password is required."),
+  email: z.string().email("Please provide a valid corporate email address.").max(254),
+  password: z.string().min(1, "Password is required.").max(200),
 });
 
 export async function POST(request: NextRequest) {

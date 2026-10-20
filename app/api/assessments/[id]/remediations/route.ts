@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { calendarDateSchema } from "@/lib/http/dates";
 import { getCurrentSession } from "@/lib/auth/session";
 import { DatabaseAuthorizationError } from "@/lib/db/rls";
 import { parseBody } from "@/lib/http/account_routes";
@@ -10,7 +11,7 @@ import {
 } from "@/lib/remediation";
 
 const PRIORITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"] as const;
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+const isoDate = calendarDateSchema;
 
 function remediationErrorResponse(err: unknown, context: string) {
   if (err instanceof RemediationError) {

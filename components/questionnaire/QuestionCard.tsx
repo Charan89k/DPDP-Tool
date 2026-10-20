@@ -284,13 +284,18 @@ export function QuestionCard({
 
   const handleDeleteEvidence = async (id: string) => {
     if (!canEdit) return;
+    setUploadError(null);
     try {
       const res = await fetch(`/api/evidence/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setCurrentEvidenceList((prev) => prev.filter((item) => item.id !== id));
+      const { errorMessage } = await readJsonResponse(res);
+      if (errorMessage) {
+        setUploadError(errorMessage);
+        return;
       }
-    } catch {
+      // Remove the item only once the server confirmed the deletion.
       setCurrentEvidenceList((prev) => prev.filter((item) => item.id !== id));
+    } catch {
+      setUploadError("Network error: the evidence item was not deleted. Please try again.");
     }
   };
 
@@ -493,7 +498,7 @@ export function QuestionCard({
               </div>
             )}
 
-            <textarea
+            <textarea aria-label="Comments and justification"
               rows={4}
               maxLength={1000}
               disabled={!canEdit}
@@ -594,7 +599,7 @@ export function QuestionCard({
 
                 {/* Reply Form */}
                 <div className="flex items-center space-x-2">
-                  <input
+                  <input aria-label="Reply to the assessor"
                     type="text"
                     value={replyText[thread.id] || ""}
                     onChange={(e) => setReplyText((prev) => ({ ...prev, [thread.id]: e.target.value }))}
@@ -652,7 +657,7 @@ export function QuestionCard({
               Attach Supporting Evidence
             </h5>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
+              <input aria-label="Evidence description"
                 type="text"
                 placeholder="Evidence description (e.g. Data Protection Charter v1.0)..."
                 value={evidenceDescription}
@@ -660,7 +665,7 @@ export function QuestionCard({
                 className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
               />
               <div className="relative">
-                <input
+                <input aria-label="Evidence file"
                   type="file"
                   onChange={handleFileUpload}
                   disabled={isUploading}

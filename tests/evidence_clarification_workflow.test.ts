@@ -70,31 +70,8 @@ function createValidPdfBuffer(contentStr = "DPDP Compliance Test Document"): Buf
 
 describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
   after(async () => {
-    if (createdEvidenceId) {
-      try {
-        await pool.query(
-          "ALTER TABLE evidence_review_history DISABLE TRIGGER trg_evidence_review_history_immutable;"
-        );
-        await pool.query(
-          "DELETE FROM evidence_review_history WHERE evidence_item_id = $1;",
-          [createdEvidenceId]
-        );
-        await pool.query(
-          "ALTER TABLE evidence_review_history ENABLE TRIGGER trg_evidence_review_history_immutable;"
-        );
-        await pool.query(
-          "DELETE FROM clarification_messages WHERE thread_id IN (SELECT id FROM clarification_threads WHERE evidence_item_id = $1);",
-          [createdEvidenceId]
-        );
-        await pool.query(
-          "DELETE FROM clarification_threads WHERE evidence_item_id = $1;",
-          [createdEvidenceId]
-        );
-        await pool.query("DELETE FROM evidence_items WHERE id = $1;", [createdEvidenceId]);
-      } catch (e) {
-        console.error("Cleanup error in after():", e);
-      }
-    }
+    // Each test process runs on its own copy of the template database (lib/db/sqlite/connection.ts),
+    // so the rows created here are discarded with it; append-only history needs no cleanup.
     await pool.end();
   });
 
@@ -195,7 +172,8 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
 
     assert.ok(record.id, "Must generate evidence record ID");
     assert.equal(record.status, "ACTIVE");
-    assert.equal(record.questionCode, "GOV-01");
+    // Questionnaire codes are stored in canonical form ("GOV-01" -> "GOV-001").
+    assert.equal(record.questionCode, "GOV-001");
     assert.equal(record.evidenceCategory, "Policy / Procedure");
     assert.equal(record.description, "Alpha Health Data Protection Policy approved by Board");
     assert.equal(record.uploadedByUserId, DEMO_CUSTOMER.userId);
@@ -212,7 +190,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
       const row = res.rows[0];
       assert.equal(row.tenant_id, DEMO_CUSTOMER.tenantId);
       assert.equal(row.assessment_id, ASSESSMENT_ALPHA_ID);
-      assert.equal(row.question_code, "GOV-01");
+      assert.equal(row.question_code, "GOV-001");
       assert.equal(row.evidence_category, "Policy / Procedure");
       assert.equal(row.status, "ACTIVE");
     });

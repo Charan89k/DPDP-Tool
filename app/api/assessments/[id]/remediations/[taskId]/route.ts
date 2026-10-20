@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { calendarDateSchema } from "@/lib/http/dates";
 import { getCurrentSession } from "@/lib/auth/session";
 import { DatabaseAuthorizationError } from "@/lib/db/rls";
 import {
@@ -8,8 +9,9 @@ import {
   RemediationError,
 } from "@/lib/remediation";
 
-const STATUSES = ["OPEN", "IN_REMEDIATION", "SUBMITTED_FOR_CLOSURE", "VALIDATED_CLOSED", "REJECTED_REOPENED"] as const;
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD.");
+// Progress updates may only move a task through these; assessor decisions use the closure action path.
+const PROGRESS_STATUSES = ["OPEN", "IN_REMEDIATION", "SUBMITTED_FOR_CLOSURE"] as const;
+const isoDate = calendarDateSchema;
 
 function remediationErrorResponse(err: unknown, context: string) {
   if (err instanceof RemediationError) {
@@ -32,7 +34,7 @@ const progressSchema = z.object({
   description: z.string().trim().max(5000).optional(),
   targetDate: isoDate.optional(),
   ownerUserId: z.string().uuid().optional(),
-  status: z.enum(STATUSES).optional(),
+  status: z.enum(PROGRESS_STATUSES).optional(),
   closureSubmissionNotes: z.string().trim().max(5000).optional(),
 });
 
@@ -49,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { taskId } = await params;
+    const { id: assessmentId, taskId } = await params;
     let raw: unknown;
     try {
       raw = await req.json();
@@ -65,6 +67,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Invalid closure decision." }, { status: 400 });
       }
       const task = await validateRemediationClosure(session, taskId, {
+        assessmentId,
         action: closure.data.action,
         validationNotes: closure.data.validationNotes ?? "",
       });
@@ -78,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         { status: 400 }
       );
     }
-    const task = await updateRemediationProgress(session, taskId, progress.data);
+    const task = await updateRemediationProgress(session, taskId, { ...progress.data, assessmentId });
 
     return NextResponse.json({ ok: true, task }, { status: 200 });
   } catch (err) {

@@ -15,14 +15,28 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomersPage() {
+interface CustomersPageProps {
+  searchParams: Promise<{ q?: string | string[] }>;
+}
+
+/** Case-insensitive match on the fields the search box promises: name, industry and contact. */
+function matchesSearch(tenant: Record<string, unknown>, query: string): boolean {
+  if (!query) return true;
+  return ["name", "industry", "dpo_name", "dpo_email"].some((field) =>
+    String(tenant[field] ?? "").toLowerCase().includes(query)
+  );
+}
+
+export default async function CustomersPage({ searchParams }: CustomersPageProps) {
+  const rawQuery = (await searchParams).q;
+  const query = (Array.isArray(rawQuery) ? rawQuery[0] : rawQuery ?? "").trim().slice(0, 100);
   const sessionUser = await getCurrentSession();
   if (!sessionUser) {
     redirect("/login?redirect=/dashboard/customers");
   }
 
   // Fetch tenants under RLS
-  const tenants = await executeWithRls(sessionUser, async (client) => {
+  const allTenants = await executeWithRls(sessionUser, async (client) => {
     const res = await client.query(`
       SELECT 
         t.id, 
@@ -41,6 +55,8 @@ export default async function CustomersPage() {
     `);
     return res.rows;
   });
+
+  const tenants = allTenants.filter((tenant) => matchesSearch(tenant, query.toLowerCase()));
 
   const canAddCustomer = canCreateCustomer(sessionUser.role);
 
@@ -80,24 +96,29 @@ export default async function CustomersPage() {
 
       {/* Search & Filter Bar */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
+        <form role="search" method="get" className="relative flex-1 max-w-md">
           <input
-            type="text"
+            type="search"
+            name="q"
+            defaultValue={query}
+            maxLength={100}
+            aria-label="Search customers by name, industry, or contact"
             placeholder="Search customers by name, industry, or contact..."
             className="w-full pl-9 pr-4 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
           />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
-        </div>
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" aria-hidden="true" />
+        </form>
 
         <div className="text-xs text-slate-500 font-medium">
-          Showing <span className="font-semibold text-slate-800">{tenants.length}</span> Data Fiduciaries
+          Showing <span className="font-semibold text-slate-800">{tenants.length}</span>
+          {query ? ` of ${allTenants.length}` : ""} Data Fiduciaries
         </div>
       </div>
 
       {/* Customer Grid */}
       {tenants.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-xs text-slate-500 shadow-xs">
-          <p>No customer records accessible under current scope.</p>
+          <p>{query ? `No customers match "${query}".` : "No customer records accessible under current scope."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -136,12 +157,12 @@ export default async function CustomersPage() {
               <div className="space-y-1.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
                 <div className="flex items-center space-x-2">
                   <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="truncate">{tenant.dpo_email || "compliance@client.com"}</span>
+                  <span className="truncate">{tenant.dpo_email || "No DPO email set"}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Users className="w-3.5 h-3.5 text-slate-400" />
                   <span className="truncate">
-                    {tenant.user_count || 0} User{(tenant.user_count === 1) ? "" : "s"} • DPO: {tenant.dpo_name || "Designated Lead"}
+                    {tenant.user_count || 0} User{(tenant.user_count === 1) ? "" : "s"} • DPO: {tenant.dpo_name || "not set"}
                   </span>
                 </div>
               </div>
