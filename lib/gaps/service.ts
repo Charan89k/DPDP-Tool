@@ -61,11 +61,14 @@ export function redactInternalAssessorNotes(result: GapAnalysisOutput): GapAnaly
 async function computeAssessmentGapAnalysis(
   sessionUser: SessionUser,
   assessmentId: string,
-  config: ScoringModelConfig
+  config: ScoringModelConfig,
+  includeTrend: boolean = true
 ): Promise<GapAnalysisOutput> {
   if (!assessmentId) {
     throw new GapsServiceError("Assessment ID is required", "INVALID_INPUT", 400);
   }
+
+  const priorAssessmentScores = includeTrend ? await priorBaselineFor(sessionUser, assessmentId, config) : undefined;
 
   return await executeWithRls(sessionUser, async (client) => {
     // 1. Fetch target assessment and parent assessment ID for re-audit trends
@@ -194,59 +197,7 @@ async function computeAssessmentGapAnalysis(
       messageCount: row.message_count,
     }));
 
-    // 6. Query parent assessment data if this is a re-audit / subsequent iteration
-    let priorAssessmentScores: GapEngineInput["priorAssessmentScores"];
-    if (assessment.parent_assessment_id) {
-      const priorRes = await client.query(
-        `SELECT 
-          a.id,
-          a.engagement_code,
-          s.overall_maturity_score,
-          s.overall_coverage_pct,
-          s.critical_gaps_count,
-          s.statutory_deficits_count,
-          s.calculated_at
-        FROM assessments a
-        LEFT JOIN assessment_scores s ON s.assessment_id = a.id
-        WHERE a.id = $1
-        ORDER BY s.calculated_at DESC
-        LIMIT 1;`,
-        [assessment.parent_assessment_id]
-      );
-
-      if (priorRes.rowCount && priorRes.rowCount > 0) {
-        const prior = priorRes.rows[0];
-
-        // Fetch prior responses for question-level delta
-        const priorRespRes = await client.query(
-          `SELECT question_code, selected_option
-           FROM assessment_questionnaire_responses
-           WHERE assessment_id = $1;`,
-          [assessment.parent_assessment_id]
-        );
-
-        const priorQuestionResponses: Record<string, string> = {};
-        for (const r of priorRespRes.rows) {
-          if (r.question_code && r.selected_option) {
-            priorQuestionResponses[r.question_code] = r.selected_option;
-          }
-        }
-
-        priorAssessmentScores = {
-          id: prior.id,
-          engagementCode: prior.engagement_code,
-          calculatedAt: prior.calculated_at
-            ? new Date(prior.calculated_at).toISOString()
-            : new Date().toISOString(),
-          overallReadinessPct: Number(prior.overall_coverage_pct || 0),
-          overallMaturityScore: Number(prior.overall_maturity_score || 0),
-          criticalGapsCount: Number(prior.critical_gaps_count || 0),
-          totalGapsCount: Number(prior.statutory_deficits_count || 0),
-          completenessPct: 100, // prior closed cycle baseline
-          questionResponses: priorQuestionResponses,
-        };
-      }
-    }
+    // 6. Re-audit baseline: computed before this transaction (see priorBaselineFor)
 
     // 7. Execute pure explainable gap analysis
     return evaluateAssessmentGaps(
@@ -270,3 +221,48 @@ async function computeAssessmentGapAnalysis(
   });
 }
 
+/**
+ * The re-audit baseline is the parent assessment evaluated by the same gap engine, so every trend
+ * delta compares like with like (readiness with readiness, critical gaps with critical gaps).
+ * Returns undefined when there is no parent or the user cannot see it.
+ */
+async function priorBaselineFor(
+  sessionUser: SessionUser,
+  assessmentId: string,
+  config: ScoringModelConfig
+): Promise<GapEngineInput["priorAssessmentScores"]> {
+  const parent = await executeWithRls(sessionUser, async (client) => {
+    const parentRes = await client.query("SELECT parent_assessment_id FROM assessments WHERE id = $1;", [assessmentId]);
+    const parentId: string | null = parentRes.rows[0]?.parent_assessment_id ?? null;
+    if (!parentId) return null;
+    const responses = await client.query(
+      "SELECT question_code, selected_option FROM assessment_questionnaire_responses WHERE assessment_id = $1;",
+      [parentId]
+    );
+    const questionResponses: Record<string, string> = {};
+    for (const r of responses.rows) {
+      if (r.question_code && r.selected_option) questionResponses[r.question_code] = r.selected_option;
+    }
+    return { parentId, questionResponses };
+  });
+  if (!parent) return undefined;
+
+  let baseline: GapAnalysisOutput;
+  try {
+    baseline = await computeAssessmentGapAnalysis(sessionUser, parent.parentId, config, false);
+  } catch (err) {
+    if (err instanceof GapsServiceError && err.statusCode === 404) return undefined;
+    throw err;
+  }
+  return {
+    id: baseline.assessmentId,
+    engagementCode: baseline.engagementCode,
+    calculatedAt: baseline.summary.calculatedAt,
+    overallReadinessPct: baseline.summary.provisionalReadinessPct,
+    overallMaturityScore: baseline.summary.provisionalMaturityScore,
+    criticalGapsCount: baseline.summary.criticalGapsCount,
+    totalGapsCount: baseline.summary.totalGapsCount,
+    completenessPct: baseline.summary.completenessPct,
+    questionResponses: parent.questionResponses,
+  };
+}

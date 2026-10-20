@@ -98,7 +98,14 @@ export function EvidenceManagementClient({
   const totalPages = 12;
 
   // Upload Form State
-  const [selectedQuestion, setSelectedQuestion] = useState("GOV-01 - Governance structure for data protection");
+  // Holds a canonical question code (e.g. "GOV-001"), the same value the select's options use.
+  const [selectedQuestion, setSelectedQuestion] = useState<string>(() => {
+    try {
+      return getCanonicalQuestionnaireSections()[0]?.questions[0]?.code ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [selectedCategory, setSelectedCategory] = useState("Policy / Procedure");
   const [uploadDescription, setUploadDescription] = useState("Data protection policy approved by management");
   const [isUploading, setIsUploading] = useState(false);
@@ -197,7 +204,12 @@ export function EvidenceManagementClient({
     }
 
     try {
-      const qCode = selectedQuestion.split(" - ")[0]?.trim() || "GOV-01";
+      const qCode = selectedQuestion.trim();
+      if (!qCode) {
+        setUploadError("Choose the question this evidence supports.");
+        setIsUploading(false);
+        return;
+      }
       const formData = new FormData();
       formData.append("file", file);
       formData.append("assessmentId", assessmentId);
@@ -536,10 +548,19 @@ export function EvidenceManagementClient({
 
             {/* Drag & Drop Upload Zone */}
             <div
+              role="button"
+              tabIndex={0}
+              aria-label="Choose an evidence file to upload"
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-blue-200 bg-[#F0F7FF]/50 hover:bg-[#F0F7FF] rounded-xl p-8 text-center cursor-pointer transition-colors"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  fileInputRef.current?.click();
+                }
+              }}
+              className="border-2 border-dashed border-blue-200 bg-[#F0F7FF]/50 hover:bg-[#F0F7FF] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] rounded-xl p-8 text-center cursor-pointer transition-colors"
             >
-              <input
+              <input aria-label="Choose evidence file to upload"
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
@@ -573,29 +594,21 @@ export function EvidenceManagementClient({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Question <span className="text-rose-500">*</span>
                 </label>
-                <select
+                <select aria-label="Question"
                   value={selectedQuestion}
                   onChange={(e) => setSelectedQuestion(e.target.value)}
                   className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white truncate"
                 >
                   {canonicalQuestions.length > 0 ? (
                     canonicalQuestions.map((q) => (
-                      <option key={q.code} value={`${q.code} - ${q.text.slice(0, 75)}`}>
+                      <option key={q.code} value={q.code}>
                         {q.code} - {q.text.slice(0, 75)}...
                       </option>
                     ))
                   ) : (
-                    <>
-                      <option value="GOV-01 - Governance structure for data protection">
-                        GOV-01 - Governance structure for data protection
-                      </option>
-                      <option value="DAT-01 - Personal data inventory and processing">
-                        DAT-01 - Personal data inventory and processing
-                      </option>
-                      <option value="SEC-01 - Security safeguards for personal data">
-                        SEC-01 - Security safeguards for personal data
-                      </option>
-                    </>
+                    <option value="" disabled>
+                      Questionnaire unavailable
+                    </option>
                   )}
                 </select>
               </div>
@@ -605,7 +618,7 @@ export function EvidenceManagementClient({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Evidence Category
                 </label>
-                <select
+                <select aria-label="Evidence Category"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white"
@@ -623,7 +636,7 @@ export function EvidenceManagementClient({
                   Evidence Description <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex space-x-2">
-                  <input
+                  <input aria-label="Evidence Description"
                     type="text"
                     value={uploadDescription}
                     onChange={(e) => setUploadDescription(e.target.value)}
@@ -682,10 +695,20 @@ export function EvidenceManagementClient({
                     {evidenceList.map((item) => (
                       <tr
                         key={item.id}
+                        tabIndex={0}
+                        aria-selected={selectedEvidence?.id === item.id}
                         onClick={() => {
                           setSelectedEvidence(item);
                           setVerificationNotes(item.verificationNotes || "");
                           setReviewFeedback(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setSelectedEvidence(item);
+                            setVerificationNotes(item.verificationNotes || "");
+                            setReviewFeedback(null);
+                          }
                         }}
                         className={`cursor-pointer transition-colors ${
                           selectedEvidence?.id === item.id
@@ -871,7 +894,7 @@ export function EvidenceManagementClient({
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                   Question Code
                 </label>
-                <input
+                <input aria-label="Question Code"
                   type="text"
                   readOnly
                   value={selectedEvidence.questionCode}
@@ -883,7 +906,7 @@ export function EvidenceManagementClient({
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                   Evidence Category
                 </label>
-                <input
+                <input aria-label="Evidence Category"
                   type="text"
                   readOnly
                   value={selectedEvidence.category}
@@ -896,23 +919,13 @@ export function EvidenceManagementClient({
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Status
               </label>
-              <select
+              {/* Status changes only through the assessor decision below (handleReviewDecision). */}
+              <input aria-label="Status"
+                type="text"
+                readOnly
                 value={selectedEvidence.status}
-                onChange={(e) => {
-                  const newStatus = e.target.value as EvidenceItem["status"];
-                  setEvidenceList((prev) =>
-                    prev.map((item) =>
-                      item.id === selectedEvidence.id ? { ...item, status: newStatus } : item
-                    )
-                  );
-                  setSelectedEvidence((prev) => (prev ? { ...prev, status: newStatus } : null));
-                }}
-                className="w-full px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white font-medium"
-              >
-                <option value="Reviewed">Reviewed</option>
-                <option value="Received">Received</option>
-                <option value="Not Received">Not Received</option>
-              </select>
+                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium focus:outline-none"
+              />
             </div>
 
             <div>
@@ -924,19 +937,11 @@ export function EvidenceManagementClient({
                   {selectedEvidence.description.length}/500
                 </span>
               </div>
-              <textarea
+              <textarea aria-label="Description"
                 rows={3}
+                readOnly
                 value={selectedEvidence.description}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedEvidence((prev) => (prev ? { ...prev, description: val } : null));
-                  setEvidenceList((prev) =>
-                    prev.map((item) =>
-                      item.id === selectedEvidence.id ? { ...item, description: val } : item
-                    )
-                  );
-                }}
-                className="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF]"
+                className="w-full p-2.5 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none"
               />
             </div>
 
@@ -960,7 +965,7 @@ export function EvidenceManagementClient({
                   <label className="block text-[10px] font-semibold text-slate-600 mb-1">
                     Verification Notes
                   </label>
-                  <textarea
+                  <textarea aria-label="Verification Notes"
                     rows={2}
                     value={verificationNotes}
                     onChange={(e) => setVerificationNotes(e.target.value)}

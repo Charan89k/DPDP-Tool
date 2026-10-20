@@ -15,7 +15,7 @@ changes, only hosting and configuration. Step-by-step commands are in [SELF_HOST
 | 8 | Off-server backups | Nightly `backup-all` from cron, copied encrypted to separate storage; test a restore | Survive losing the server |
 | 9 | Server hardening | Firewall allowing only 22, 80 and 443; SSH keys only; automatic security updates | Reduce attack surface |
 | 10 | Monitoring | External uptime check on `https://cloude5.example.com/api/ready` | Know when it is down |
-| 11 | Releases | Deploy from `main`: `git pull && docker compose build && docker compose up -d`. A backup is written automatically before each schema upgrade | Repeatable upgrades |
+| 11 | Releases | Deploy from `main`: `git pull && docker compose build && docker compose stop cloude5 && docker compose run --rm cloude5 migrate && docker compose up -d` ([Upgrade](SELF_HOSTING.md#upgrade)). `migrate` writes a backup before changing the schema; the app refuses to start while migrations are pending | Repeatable upgrades |
 
 After the switch:
 

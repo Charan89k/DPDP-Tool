@@ -218,6 +218,15 @@ export async function updateRemediationProgress(
   assertCanManageRemediation(sessionUser);
   const isConsultant = isTliRole(sessionUser.role);
 
+  // Assessor decisions (validate or reject a closure) only go through validateRemediationClosure,
+  // which requires validation notes; progress updates can never set them.
+  if (isConsultant && (input.status === "VALIDATED_CLOSED" || input.status === "REJECTED_REOPENED")) {
+    throw new RemediationError(
+      "Use the closure validation action to validate or reject a remediation task.",
+      400
+    );
+  }
+
   // Client cannot directly validate and close without assessor validation
   if (!isConsultant && input.status === "VALIDATED_CLOSED") {
     throw new RemediationError(
@@ -236,6 +245,9 @@ export async function updateRemediationProgress(
     }
 
     const current = existingRes.rows[0];
+    if (input.assessmentId && current.assessment_id !== input.assessmentId) {
+      throw new RemediationError(`Remediation task ${taskId} not found or access denied.`, 404);
+    }
     // An assessor's closure validation covers the content it reviewed; customers cannot change a
     // validated task underneath it.
     if (!isConsultant && current.status === "VALIDATED_CLOSED") {
@@ -333,6 +345,9 @@ export async function validateRemediationClosure(
     }
 
     const current = existingRes.rows[0];
+    if (input.assessmentId && current.assessment_id !== input.assessmentId) {
+      throw new RemediationError(`Remediation task ${taskId} not found or access denied.`, 404);
+    }
 
     const updateSql = `
       UPDATE remediation_tasks

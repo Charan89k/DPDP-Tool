@@ -74,7 +74,10 @@ async function main(): Promise<number> {
         for (const m of status.pending) console.log(`pending  ${m.name}`);
         for (const name of status.checksumMismatches) console.log(`MODIFIED ${name}`);
         for (const name of status.unknownApplied) console.log(`UNKNOWN  ${name}`);
-        return status.pending.length === 0 && status.checksumMismatches.length === 0 ? 0 : 1;
+        // Migrations applied by a newer release (UNKNOWN) also mean this version must not run here.
+        const current =
+          status.pending.length === 0 && status.checksumMismatches.length === 0 && status.unknownApplied.length === 0;
+        return current ? 0 : 1;
       } finally {
         db.close();
       }
@@ -91,6 +94,7 @@ async function main(): Promise<number> {
               ...report,
               pendingMigrations: status.pending.length,
               checksumMismatches: status.checksumMismatches,
+              unknownAppliedMigrations: status.unknownApplied,
             },
             null,
             2
@@ -100,7 +104,8 @@ async function main(): Promise<number> {
           report.integrity === "ok" &&
           report.foreignKeyViolations === 0 &&
           status.pending.length === 0 &&
-          status.checksumMismatches.length === 0;
+          status.checksumMismatches.length === 0 &&
+          status.unknownApplied.length === 0;
         return healthy ? 0 : 1;
       } finally {
         db.close();

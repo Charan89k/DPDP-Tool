@@ -124,6 +124,9 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   expect((await saveAnswers({ "GOV-001": { selectedOption: "Definitely" } })).status()).toBe(400);
   expect((await saveAnswers({ "<script>": { selectedOption: "Implemented" } })).status()).toBe(400);
   expect((await saveAnswers({ "GOV-001": { selectedOption: "Not applicable — justification required" } })).status()).toBe(400);
+  // Only canonical questions can be answered, and each only once per request.
+  expect((await saveAnswers({ "XYZ-001": { selectedOption: "Implemented" } })).status()).toBe(400);
+  expect((await saveAnswers({ "GOV-1": { selectedOption: "Implemented" }, "GOV-001": { selectedOption: "Implemented" } })).status()).toBe(400);
   const saved = await saveAnswers({ "GOV-001": { selectedOption: "Implemented", commentsAndJustification: "Policy approved" } });
   expect(saved.status(), await saved.text()).toBe(200);
 
@@ -138,6 +141,29 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
 
   const clean = await upload("privacy-policy.pdf", "application/pdf", Buffer.from(`%PDF-1.7\nPrivacy policy\n${"A".repeat(300)}\n%%EOF`));
   expect(clean.status(), await clean.text()).toBe(201);
+
+  // Oversized uploads are refused before the body is buffered; oversized text fields are refused.
+  const oversized = await upload("huge.pdf", "application/pdf", Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(52 * 1024 * 1024, 65)]));
+  expect(oversized.status()).toBe(413);
+  const longField = await page.request.post("/api/evidence/upload", {
+    headers: { Origin: new URL(page.url()).origin },
+    multipart: { file: { name: "p.pdf", mimeType: "application/pdf", buffer: Buffer.from(`%PDF-1.7\n${"A".repeat(300)}\n%%EOF`) }, assessmentId, controlCode: "GENERIC", description: "x".repeat(2_001) },
+  });
+  expect(longField.status()).toBe(400);
+
+  // Re-audit requests are schema-validated before any authorization or database work.
+  const badReaudit = await page.request.post(`/api/assessments/${assessmentId}/re-audit`, {
+    headers: { Origin: new URL(page.url()).origin },
+    data: { copyResponses: "yes" },
+  });
+  expect(badReaudit.status()).toBe(400);
+
+  // Credentials longer than any valid account value are refused by schema, before password hashing.
+  const longLogin = await page.request.post("/api/auth/login", {
+    headers: { Origin: new URL(page.url()).origin },
+    data: { email: account.email, password: "p".repeat(201) },
+  });
+  expect(longLogin.status()).toBe(400);
 
   if (EXPECT_VIRUS_SCANNER) {
     const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";

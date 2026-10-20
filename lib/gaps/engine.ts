@@ -192,7 +192,10 @@ export function evaluateAssessmentGaps(
       assessorReviews: input.assessorReviews,
       evidenceCoverage: {
         totalEvidenceItems: input.evidenceItems?.length || 0,
-        questionsWithEvidence: Array.from(evidenceMap.keys()),
+        // Same rule as the scores endpoint (lib/scoring/service.ts): quarantined files never count.
+        questionsWithEvidence: Array.from(evidenceMap.entries())
+          .filter(([, items]) => items.some((item) => item.status !== "QUARANTINED"))
+          .map(([code]) => code),
       },
     },
     config

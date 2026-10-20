@@ -98,11 +98,14 @@ export function calculateAssessmentScores(
     }
   }
 
-  // 3. Index evidence coverage by normalized question code
+  // 3. Index evidence coverage by normalized question code. Only canonical questions count: evidence
+  //    filed under a control code or "GENERIC" must not inflate coverage.
+  const canonicalCodes = new Set(manifestData.questions.map((q) => normalizeQuestionCode(q.code)));
   const evidenceCodeSet = new Set<string>();
   if (input.evidenceCoverage?.questionsWithEvidence) {
     for (const c of input.evidenceCoverage.questionsWithEvidence) {
-      evidenceCodeSet.add(normalizeQuestionCode(c));
+      const code = normalizeQuestionCode(c);
+      if (canonicalCodes.has(code)) evidenceCodeSet.add(code);
     }
   }
 

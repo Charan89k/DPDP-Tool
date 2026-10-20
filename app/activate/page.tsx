@@ -35,8 +35,9 @@ function ActivateAccountForm() {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+    // Mirrors the server policy (lib/auth/passwords.ts); the server re-checks and has the final say.
+    if (password.length < 12 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setErrorMessage("Use at least 12 characters, including a letter and a number.");
       return;
     }
 
@@ -162,7 +163,7 @@ function ActivateAccountForm() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
+                  placeholder="At least 12 characters"
                   className="w-full pl-10 pr-10 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:border-transparent"
                 />
                 <button

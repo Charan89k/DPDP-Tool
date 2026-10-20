@@ -88,6 +88,7 @@ export function CustomerDetailClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [generatedActivationUrl, setGeneratedActivationUrl] = useState<string | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<{ sent: boolean; message: string } | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
   const canManage = canManageTenantUsers(sessionUser.role);
@@ -148,8 +149,18 @@ export function CustomerDetailClient({
         }
 
         setInvitations([data.invitation, ...invitations]);
-        setGeneratedActivationUrl(data.activationUrl);
         setActiveTab("invitations");
+        if (data.activationUrl) {
+          // Development servers also return the link so the flow can be tried without email.
+          setGeneratedActivationUrl(data.activationUrl);
+        } else {
+          setShowAddUserModal(false);
+          resetForm();
+          setInviteNotice({
+            sent: Boolean(data.emailDelivery?.sent),
+            message: data.emailDelivery?.message || "Invitation created.",
+          });
+        }
       }
     } catch (err) {
       console.error("User management error:", err);
@@ -344,10 +355,17 @@ export function CustomerDetailClient({
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Active
-                          </span>
+                          {u.is_active ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                              Inactive
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-slate-500 text-[11px]">
                           {u.last_login_at
@@ -370,6 +388,18 @@ export function CustomerDetailClient({
       {/* TAB 2: Invitations & Activation */}
       {activeTab === "invitations" && (
         <div className="space-y-4">
+          {inviteNotice && (
+            <div
+              role="status"
+              className={`p-3 rounded-xl border text-xs ${
+                inviteNotice.sent
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                  : "bg-amber-50 border-amber-200 text-amber-900"
+              }`}
+            >
+              {inviteNotice.message}
+            </div>
+          )}
           <div className="p-4 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-start gap-3">
             <Clock className="w-5 h-5 text-[#0066FF] flex-shrink-0 mt-0.5" />
             <div className="text-xs">
@@ -377,7 +407,7 @@ export function CustomerDetailClient({
                 Single-Use Invitation Token Lifecycle
               </span>
               <span className="text-[11px] text-blue-800 mt-0.5 block leading-relaxed">
-                Tokens are single-use, 7-day expiring, and stored as SHA-256 hashes. Because external SMTP delivery is not configured in this environment, copy the activation links directly to simulate recipient account onboarding.
+                Tokens are single-use, expire after 7 days, and are stored only as SHA-256 hashes. Activation links are sent to the invitee by email; if delivery fails, re-send the invitation once email is configured.
               </span>
             </div>
           </div>
@@ -538,7 +568,7 @@ export function CustomerDetailClient({
                     <span>Invitation Token Generated Successfully</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-emerald-700">
-                    Email delivery is unconfigured in this environment. Copy the link below to evaluate the activation flow:
+                    This development server also shows the activation link (production servers only send it by email):
                   </p>
                   <div className="p-2 bg-white rounded border border-emerald-300 font-mono text-[11px] text-slate-800 break-all select-all">
                     {typeof window !== "undefined" ? window.location.origin : ""}{generatedActivationUrl}
@@ -598,7 +628,7 @@ export function CustomerDetailClient({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Full Name <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Full Name"
                     type="text"
                     required
                     value={fullName}
@@ -612,7 +642,7 @@ export function CustomerDetailClient({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Corporate Email Address <span className="text-rose-500">*</span>
                   </label>
-                  <input
+                  <input aria-label="Corporate Email Address"
                     type="email"
                     required
                     value={email}
@@ -626,7 +656,7 @@ export function CustomerDetailClient({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Client Role <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <select aria-label="Client Role"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-white"
@@ -643,14 +673,15 @@ export function CustomerDetailClient({
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Initial Password
                     </label>
-                    <input
-                      type="text"
+                    <input aria-label="Initial Password"
+                      type="password"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-3 py-2 font-mono text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-[#0066FF] bg-slate-50/50"
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Pre-filled with test credential for local demonstration.
+                      Optional. Leave empty and the user sets their own password from the emailed link.
                     </p>
                   </div>
                 )}

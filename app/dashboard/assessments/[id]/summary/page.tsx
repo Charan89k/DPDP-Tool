@@ -76,8 +76,8 @@ export default async function AssessmentSummaryPage({ params }: SummaryPageProps
         tenantName={tenantName}
         assessmentCode={assessmentCode}
         visitDate={visitDate}
-        leadConsultantName={assessmentData?.lead_consultant_name || "Anita Sharma"}
-        industry={assessmentData?.industry || "IT / ITES"}
+        leadConsultantName={assessmentData?.lead_consultant_name || "Not assigned"}
+        industry={assessmentData?.industry || "Not recorded"}
         assessmentStatus={assessmentData?.status || "DATA_GATHERING"}
         userRole={sessionUser.role}
       />

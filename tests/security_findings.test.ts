@@ -26,6 +26,14 @@ import {
   countCanonicalQuestions,
   toCanonicalQuestionCode,
 } from "../lib/questionnaire/codes.ts";
+import { executeStatement, withConnection } from "../lib/db/sqlite/client.ts";
+import { compileReportDocumentData } from "../lib/reports/generator.ts";
+import { generateWordReport } from "../lib/reports/docx.ts";
+import { calculateAssessmentScores } from "../lib/scoring/engine.ts";
+import { getAssessmentGapAnalysis } from "../lib/gaps/service.ts";
+import JSZip from "jszip";
+import { isCalendarDate } from "../lib/http/dates.ts";
+import { updateRemediationProgress } from "../lib/remediation/service.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 
 const TLI_TENANT = "018f3a5b-7c8d-7e90-8000-000000000001";
@@ -212,5 +220,110 @@ describe("Security review regressions", () => {
     assert.equal(fs.statSync(target).mode & 0o777, 0o600);
     await assert.rejects(backupDatabase(db, target), (err: unknown) => err instanceof MigrationError);
     db.close();
+  });
+});
+
+describe("CodeRabbit audit regressions (October 2026)", () => {
+  it("rolls back a transaction whose COMMIT failed instead of leaving the shared connection inside it", async () => {
+    await withConnection(async (db, unit) => {
+      executeStatement(db, unit, "BEGIN;");
+      db.pragma("defer_foreign_keys = ON");
+      db.prepare(
+        "INSERT INTO main.audit_logs (tenant_id, action, entity_type, entity_id) VALUES ('no-such-tenant', 'X', 'test', 'x');"
+      ).run();
+      assert.throws(() => executeStatement(db, unit, "COMMIT;"), /FOREIGN KEY/i);
+      assert.equal(db.inTransaction, true, "The failed COMMIT left the transaction open");
+      executeStatement(db, unit, "ROLLBACK;");
+      assert.equal(db.inTransaction, false, "The caller's ROLLBACK reached it");
+    });
+    // The connection is usable for new transactions afterwards.
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN;");
+      await client.query("COMMIT;");
+    } finally {
+      client.release();
+    }
+  });
+
+  it("lists only the assessment's own remediation tasks in its report", async () => {
+    await pool.query(
+      `INSERT INTO remediation_tasks (tenant_id, title, description, priority, target_date, status)
+       VALUES ($1, 'Task from another engagement', 'Not part of this assessment', 'LOW', '2027-01-31', 'OPEN');`,
+      [ALPHA_TENANT]
+    );
+    const report = await compileReportDocumentData(LEAD, ALPHA_ASSESSMENT);
+    assert.ok(!report.remediationTasks.some((task) => task.title === "Task from another engagement"));
+  });
+
+  it("counts evidence coverage only for canonical questions", () => {
+    const scores = calculateAssessmentScores({
+      responses: [],
+      evidenceCoverage: { totalEvidenceItems: 3, questionsWithEvidence: ["GENERIC", "DPDP-C-001", "SEC-001"] },
+    });
+    assert.equal(scores.metrics.evidenceCoveragePct, Math.round((1 / 60) * 1000) / 10);
+  });
+
+  it("writes multi-line report cells as real Word line breaks", async () => {
+    const report = await compileReportDocumentData(LEAD, ALPHA_ASSESSMENT);
+    const zip = await JSZip.loadAsync(await generateWordReport(report));
+    const xml = await zip.file("word/document.xml")!.async("string");
+    assert.ok(xml.includes("<w:br/>"), "Line breaks are present");
+    assert.ok(!/<w:t[^>]*>[^<]*\n[^<]*<\/w:t>/.test(xml), "No raw newlines inside text runs");
+  });
+
+  it("compares a re-audit with its parent using the same gap metrics", async () => {
+    const childId = crypto.randomUUID();
+    await pool.query(
+      `INSERT INTO assessments (id, tenant_id, framework_version_id, scoring_model_id, parent_assessment_id,
+         engagement_code, title, status, lead_consultant_id)
+       SELECT $1, tenant_id, framework_version_id, scoring_model_id, id, 'ENG-ALPHA-REAUDIT-TEST', 'Re-audit', 'DATA_GATHERING', lead_consultant_id
+       FROM assessments WHERE id = $2;`,
+      [childId, ALPHA_ASSESSMENT]
+    );
+    const parent = await getAssessmentGapAnalysis(LEAD, ALPHA_ASSESSMENT);
+    const child = await getAssessmentGapAnalysis(LEAD, childId);
+    const trend = child.trendComparison;
+    assert.equal(trend.hasPriorAssessment, true);
+    assert.equal(trend.completenessPctDelta, Math.round((child.summary.completenessPct - parent.summary.completenessPct) * 10) / 10);
+    assert.equal(trend.criticalGapsDelta, child.summary.criticalGapsCount - parent.summary.criticalGapsCount);
+    assert.equal(trend.totalGapsDelta, child.summary.totalGapsCount - parent.summary.totalGapsCount);
+  });
+});
+
+describe("Remediation progress path (CodeRabbit audit)", () => {
+  const newTask = async (assessmentId: string | null) =>
+    (
+      await pool.query(
+        `INSERT INTO remediation_tasks (tenant_id, assessment_id, title, description, priority, target_date, status)
+         VALUES ($1, $2, 'Encrypt backups', 'Turn on encryption', 'HIGH', '2027-01-31', 'SUBMITTED_FOR_CLOSURE') RETURNING id;`,
+        [ALPHA_TENANT, assessmentId]
+      )
+    ).rows[0].id as string;
+
+  it("never lets an assessor close or reject a task without the closure validation step", async () => {
+    const taskId = await newTask(ALPHA_ASSESSMENT);
+    await assert.rejects(
+      updateRemediationProgress(LEAD, taskId, { status: "VALIDATED_CLOSED" }),
+      /closure validation action/
+    );
+  });
+
+  it("refuses a task addressed through another assessment's URL", async () => {
+    const taskId = await newTask(ALPHA_ASSESSMENT);
+    await assert.rejects(
+      updateRemediationProgress(ALPHA_ADMIN, taskId, { title: "Renamed", assessmentId: BETA_ASSESSMENT }),
+      /not found or access denied/
+    );
+  });
+});
+
+describe("Request date validation (CodeRabbit audit)", () => {
+  it("accepts real calendar dates and rejects impossible or malformed ones", () => {
+    assert.equal(isCalendarDate("2028-02-29"), true);
+    assert.equal(isCalendarDate("2027-02-29"), false);
+    assert.equal(isCalendarDate("2027-13-01"), false);
+    assert.equal(isCalendarDate("2027-04-31"), false);
+    assert.equal(isCalendarDate("27-04-01"), false);
   });
 });

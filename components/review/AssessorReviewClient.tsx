@@ -160,7 +160,12 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Clarification active thread modal / slideout
-  const [activeClarificationQuestion, setActiveClarificationQuestion] = useState<CanonicalQuestion | null>(null);
+  // The open clarification panel is tracked by question code and read from `questions`, so a refresh
+  // after sending a message shows the new thread state immediately.
+  const [activeClarificationCode, setActiveClarificationCode] = useState<string | null>(null);
+  const activeClarificationQuestion = activeClarificationCode
+    ? questions.find((q) => q.code === activeClarificationCode) ?? null
+    : null;
   const [clarificationTitle, setClarificationTitle] = useState("");
   const [clarificationMessage, setClarificationMessage] = useState("");
   const [replyMessage, setReplyMessage] = useState("");
@@ -169,7 +174,11 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   // Local draft state for edits
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, ReviewDraft>>({});
 
-  const loadData = async () => {
+  /**
+   * Loads the workspace. Refreshes after clarification or lifecycle actions keep unsaved review drafts
+   * (resetDrafts: false); only the initial load replaces them with the saved server values.
+   */
+  const loadData = async ({ resetDrafts = true }: { resetDrafts?: boolean } = {}) => {
     try {
       setLoading(true);
       setError(null);
@@ -197,7 +206,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
           requiresFurtherValidation: Boolean(q.assessorReview.requiresFurtherValidation),
         };
       }
-      setReviewDrafts(drafts);
+      setReviewDrafts((prev) => (resetDrafts ? drafts : { ...drafts, ...prev }));
     } catch (err) {
       console.error(err);
       setError(errorMessage(err) || "Failed to load review workspace.");
@@ -291,7 +300,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
 
       setClarificationTitle("");
       setClarificationMessage("");
-      await loadData();
+      await loadData({ resetDrafts: false });
     } catch (err) {
       alert(errorMessage(err) || "Failed to create clarification thread.");
     } finally {
@@ -319,7 +328,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       }
 
       setReplyMessage("");
-      await loadData();
+      await loadData({ resetDrafts: false });
     } catch (err) {
       alert(errorMessage(err) || "Failed to post reply.");
     } finally {
@@ -342,7 +351,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to update thread status.");
       }
-      await loadData();
+      await loadData({ resetDrafts: false });
     } catch (err) {
       alert(errorMessage(err) || "Failed to update thread status.");
     }
@@ -502,7 +511,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         assessmentId={assessmentId}
         onStatusChanged={(newStatus) => {
           setAssessment((prev) => (prev ? { ...prev, status: newStatus } : null));
-          loadData();
+          loadData({ resetDrafts: false });
         }}
       />
 
@@ -599,7 +608,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
               <Filter className="w-3.5 h-3.5" />
               <span>Status:</span>
             </div>
-            <select
+            <select aria-label="Filter by review status"
               value={selectedStatusFilter}
               onChange={(e) => setSelectedStatusFilter(e.target.value)}
               className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-700 font-medium focus:outline-hidden focus:ring-1 focus:ring-blue-500"
@@ -639,7 +648,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
 
           <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-            <input
+            <input aria-label="Search questions by code, text or control"
               type="text"
               placeholder="Search code, text, control..."
               value={searchQuery}
@@ -850,7 +859,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                               </p>
                               <button
                                 type="button"
-                                onClick={() => setActiveClarificationQuestion(q)}
+                                onClick={() => setActiveClarificationCode(q.code)}
                                 className="text-[11px] font-semibold text-purple-700 hover:underline flex items-center gap-1"
                               >
                                 <MessageSquare className="w-3 h-3" />
@@ -862,7 +871,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setActiveClarificationQuestion(q)}
+                          onClick={() => setActiveClarificationCode(q.code)}
                           className="w-full text-xs text-slate-600 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg py-2 px-3 flex items-center justify-center space-x-1.5 font-semibold transition-colors"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
@@ -879,7 +888,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                         <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-700 block mb-1">
                           Assessor Review Status
                         </label>
-                        <select
+                        <select aria-label="Assessor Review Status"
                           disabled={!isAssessor}
                           value={draft.reviewStatus}
                           onChange={(e) => handleDraftChange(q.code, "reviewStatus", e.target.value)}
@@ -924,7 +933,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                       <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-700 block mb-1">
                         Compliance Audit Findings & Observations
                       </label>
-                      <textarea
+                      <textarea aria-label="Compliance Audit Findings &amp; Observations"
                         rows={3}
                         disabled={!isAssessor}
                         value={draft.reviewFindings}
@@ -939,7 +948,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                       <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-700 block mb-1">
                         Evidence Deficiency & Remediation Notes
                       </label>
-                      <textarea
+                      <textarea aria-label="Evidence Deficiency &amp; Remediation Notes"
                         rows={2}
                         disabled={!isAssessor}
                         value={draft.evidenceDeficiencyNotes}
@@ -1022,7 +1031,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
               </div>
               <button
                 type="button"
-                onClick={() => setActiveClarificationQuestion(null)}
+                onClick={() => setActiveClarificationCode(null)}
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <XCircle className="w-5 h-5" />
@@ -1078,7 +1087,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                       {/* Reply Box */}
                       {th.status === "OPEN" && (
                         <div className="flex items-center space-x-2 pt-1">
-                          <input
+                          <input aria-label="Reply message"
                             type="text"
                             placeholder="Write a reply message..."
                             value={replyMessage}
@@ -1109,7 +1118,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                 </h4>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-700 block mb-1">Subject / Question</label>
-                  <input
+                  <input aria-label="Subject / Question"
                     type="text"
                     required
                     placeholder="e.g. Missing schedule 8 translations in notice"
@@ -1120,7 +1129,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold text-slate-700 block mb-1">Inquiry Details</label>
-                  <textarea
+                  <textarea aria-label="Inquiry Details"
                     rows={3}
                     required
                     placeholder="Detail the specific clarification required from the client compliance coordinator..."
@@ -1132,7 +1141,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={() => setActiveClarificationQuestion(null)}
+                    onClick={() => setActiveClarificationCode(null)}
                     className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
                   >
                     Close

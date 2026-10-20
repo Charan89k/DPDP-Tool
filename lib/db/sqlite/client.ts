@@ -162,17 +162,21 @@ function runTransactionControl(db: SqliteDatabase, unit: UnitOfWork, command: st
     unit.transactionDepth += 1;
   } else if (verb === "COMMIT" || verb === "END") {
     if (unit.transactionDepth === 0) return { rows: [], rowCount: 0 };
-    unit.transactionDepth -= 1;
-    db.exec(unit.transactionDepth === 0 ? "COMMIT" : `RELEASE sp_${unit.transactionDepth}`);
+    // The depth only drops once the statement succeeded: a failed COMMIT (e.g. SQLITE_BUSY) leaves
+    // the transaction open, and the caller's ROLLBACK must still reach it.
+    const depth = unit.transactionDepth - 1;
+    db.exec(depth === 0 ? "COMMIT" : `RELEASE sp_${depth}`);
+    unit.transactionDepth = depth;
   } else {
     if (unit.transactionDepth === 0) return { rows: [], rowCount: 0 };
-    unit.transactionDepth -= 1;
-    if (unit.transactionDepth === 0) {
+    const depth = unit.transactionDepth - 1;
+    if (depth === 0) {
       db.exec("ROLLBACK");
     } else {
-      db.exec(`ROLLBACK TO sp_${unit.transactionDepth}`);
-      db.exec(`RELEASE sp_${unit.transactionDepth}`);
+      db.exec(`ROLLBACK TO sp_${depth}`);
+      db.exec(`RELEASE sp_${depth}`);
     }
+    unit.transactionDepth = depth;
   }
   return { rows: [], rowCount: 0 };
 }
@@ -267,8 +271,9 @@ export async function withConnection<T>(work: (db: SqliteDatabase, unit: UnitOfW
   try {
     return await currentUnit.run(unit, () => work(db, unit));
   } finally {
-    if (unit.transactionDepth > 0 && db.inTransaction) {
-      // A unit of work must never leave a transaction open on the shared connection.
+    if (db.inTransaction) {
+      // A unit of work must never leave a transaction open on the shared connection, whatever its
+      // bookkeeping says (a failed COMMIT or ROLLBACK can leave the two out of step).
       db.exec("ROLLBACK");
     }
     unit.finished = true;
@@ -322,7 +327,7 @@ export const pool = {
     const releaseLock = await mutex.acquire();
     const unit: UnitOfWork = { transactionDepth: 0, finished: false };
     return new SqlitePoolClient(db, unit, () => {
-      if (unit.transactionDepth > 0 && db.inTransaction) {
+      if (db.inTransaction) {
         db.exec("ROLLBACK");
       }
       unit.transactionDepth = 0;

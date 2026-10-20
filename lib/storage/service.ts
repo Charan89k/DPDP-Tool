@@ -13,6 +13,7 @@ import { getConfiguredScanner, MalwareDetectedError, type MalwareScanner } from 
 import { getLocalStorageAdapter, LocalStorageAdapter } from "./local_adapter.ts";
 import type { SaveResult } from "./local_adapter.ts";
 import { executeWithRls } from "../db/rls.ts";
+import { toCanonicalQuestionCode } from "../questionnaire/codes.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { canAccessAllTenants, isTliRole, canReviewAssessment } from "../auth/rbac.ts";
 
@@ -135,7 +136,9 @@ export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
           assessment.tenant_id,
           record.assessmentId,
           assessmentControlId,
-          record.questionCode || record.controlCode,
+          // Store questionnaire codes in canonical form ("gov-01" -> "GOV-001") so every screen that
+          // matches evidence to questions by code finds it; control codes are kept as given.
+          toCanonicalQuestionCode(record.questionCode || record.controlCode) ?? (record.questionCode || record.controlCode),
           record.evidenceCategory || null,
           record.description || null,
           sessionUser.userId,
@@ -322,7 +325,7 @@ export class EvidenceVaultService {
       tenantId: sessionUser.tenantId,
       assessmentId,
       controlCode: controlCode || questionCode || "GENERIC",
-      questionCode: questionCode || null,
+      questionCode: questionCode ? toCanonicalQuestionCode(questionCode) ?? questionCode : null,
       evidenceCategory: evidenceCategory || null,
       description: description || null,
       fileName: sanitizedFilename,

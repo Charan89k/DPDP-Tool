@@ -415,8 +415,9 @@ export function RemediationManagementClient({
                     <button
                       onClick={() => {
                         setSelectedTaskForUpdate(task);
+                        // The form offers only progress statuses; a rejected or open task resumes as active.
                         setUpdateStatus(
-                          task.status === "OPEN" ? "IN_REMEDIATION" : task.status
+                          task.status === "SUBMITTED_FOR_CLOSURE" ? "SUBMITTED_FOR_CLOSURE" : "IN_REMEDIATION"
                         );
                         setClosureNotes(task.closureSubmissionNotes || "");
                       }}
@@ -469,7 +470,7 @@ export function RemediationManagementClient({
             <form onSubmit={handleCreateTask} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-stone-700 font-semibold mb-1">Associated Finding / Question</label>
-                <select
+                <select aria-label="Associated Finding / Question"
                   value={newQuestionCode}
                   onChange={(e) => setNewQuestionCode(e.target.value)}
                   className="w-full border border-stone-300 rounded px-2.5 py-1.5 text-xs font-mono bg-white"
@@ -485,7 +486,7 @@ export function RemediationManagementClient({
 
               <div>
                 <label className="block text-stone-700 font-semibold mb-1">Action Title *</label>
-                <input
+                <input aria-label="Action Title"
                   type="text"
                   required
                   value={newTitle}
@@ -497,7 +498,7 @@ export function RemediationManagementClient({
 
               <div>
                 <label className="block text-stone-700 font-semibold mb-1">Detailed Description & CAPA Plan *</label>
-                <textarea
+                <textarea aria-label="Detailed Description &amp; CAPA Plan"
                   required
                   rows={3}
                   value={newDesc}
@@ -510,7 +511,7 @@ export function RemediationManagementClient({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-stone-700 font-semibold mb-1">Priority Level *</label>
-                  <select
+                  <select aria-label="Priority Level"
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value as RemediationPriority)}
                     className="w-full border border-stone-300 rounded px-2.5 py-1.5 text-xs font-mono bg-white"
@@ -525,7 +526,7 @@ export function RemediationManagementClient({
 
                 <div>
                   <label className="block text-stone-700 font-semibold mb-1">Target Completion Date *</label>
-                  <input
+                  <input aria-label="Target Completion Date"
                     type="date"
                     required
                     value={newTargetDate}
@@ -588,7 +589,7 @@ export function RemediationManagementClient({
             <form onSubmit={handleUpdateProgress} className="space-y-3.5 text-xs">
               <div>
                 <label className="block text-stone-700 font-semibold mb-1">Status Workflow *</label>
-                <select
+                <select aria-label="Status Workflow"
                   value={updateStatus}
                   onChange={(e) => setUpdateStatus(e.target.value as RemediationStatus)}
                   className="w-full border border-stone-300 rounded px-2.5 py-1.5 text-xs font-mono bg-white"
@@ -605,7 +606,7 @@ export function RemediationManagementClient({
                 <label className="block text-stone-700 font-semibold mb-1">
                   Closure Submission Notes & Evidentiary Proof
                 </label>
-                <textarea
+                <textarea aria-label="Closure Submission Notes &amp; Evidentiary Proof"
                   rows={3}
                   value={closureNotes}
                   onChange={(e) => setClosureNotes(e.target.value)}
@@ -716,7 +717,7 @@ export function RemediationManagementClient({
                 <label className="block text-stone-700 font-semibold mb-1">
                   Mandatory Assessor Validation Finding Notes *
                 </label>
-                <textarea
+                <textarea aria-label="Mandatory Assessor Validation Finding Notes"
                   required
                   rows={3}
                   value={validationNotes}

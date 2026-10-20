@@ -217,7 +217,24 @@ export function AssessmentLifecycleControls({
     );
   }
 
-  if (!lifecycle) return null;
+  if (!lifecycle) {
+    if (!error) return null;
+    return (
+      <div role="alert" className={`p-4 bg-rose-50 rounded-xl border border-rose-200 flex items-center justify-between gap-3 ${className}`}>
+        <div className="flex items-center space-x-2 text-xs text-rose-800">
+          <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => fetchLifecycleState()}
+          className="px-3 py-1 text-xs font-semibold text-rose-800 bg-white border border-rose-300 hover:bg-rose-100 rounded-lg"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   const currentBadge = getStatusBadge(lifecycle.currentStatus);
   const canReaudit = ["LEAD_APPROVED", "FINAL_ISSUED", "REMEDIATION_ACTIVE", "ARCHIVED"].includes(lifecycle.currentStatus);
@@ -360,7 +377,7 @@ export function AssessmentLifecycleControls({
                     "Optional Transition Notes / Comments:"
                   )}
                 </label>
-                <textarea
+                <textarea aria-label="Transition notes"
                   value={transitionReason}
                   onChange={(e) => setTransitionReason(e.target.value)}
                   placeholder={activeTransition.reasonPrompt || "Enter transition justification for the forensic audit log..."}
@@ -417,7 +434,7 @@ export function AssessmentLifecycleControls({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   New Engagement Code:
                 </label>
-                <input
+                <input aria-label="New Engagement Code"
                   type="text"
                   value={reauditCode}
                   onChange={(e) => setReauditCode(e.target.value)}
@@ -430,7 +447,7 @@ export function AssessmentLifecycleControls({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   New Engagement Title:
                 </label>
-                <input
+                <input aria-label="New Engagement Title"
                   type="text"
                   value={reauditTitle}
                   onChange={(e) => setReauditTitle(e.target.value)}

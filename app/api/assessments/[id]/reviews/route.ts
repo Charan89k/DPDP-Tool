@@ -161,7 +161,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
       const clientResponsesMap = new Map<string, ClientResponseView>();
       for (const row of clientResponsesRes.rows) {
-        clientResponsesMap.set(row.question_code, {
+        clientResponsesMap.set(toCanonicalQuestionCode(row.question_code) ?? row.question_code, {
           selectedOption: row.selected_option || null,
           commentsAndJustification: row.comments_and_justification || null,
           questionnaireVersion: row.questionnaire_version,
@@ -189,7 +189,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
       const reviewsMap = new Map<string, AssessorReviewView>();
       for (const row of reviewsRes.rows) {
-        reviewsMap.set(row.question_code, {
+        reviewsMap.set(toCanonicalQuestionCode(row.question_code) ?? row.question_code, {
           id: row.id,
           reviewStatus: row.review_status,
           reviewFindings: row.review_findings || "",
@@ -320,14 +320,14 @@ export async function GET(request: Request, { params }: RouteParams) {
       // Find matching evidence items: direct question code or mapped canonical control
       const matchingEvidence = data.evidenceList.filter(
         (e) =>
-          e.questionCode === q.code ||
+          (e.questionCode !== null && toCanonicalQuestionCode(e.questionCode) === q.code) ||
           (q.canonical_control_id && e.controlCode === q.canonical_control_id)
       );
 
       // Find matching clarification threads
       const matchingThreads = data.clarificationThreads.filter(
         (t) =>
-          t.questionCode === q.code ||
+          (t.questionCode !== null && toCanonicalQuestionCode(t.questionCode) === q.code) ||
           (q.canonical_control_id && t.controlCode === q.canonical_control_id)
       );
 
@@ -465,11 +465,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
       let updatedCount = 0;
 
       for (const item of items) {
-        const status = item.reviewStatus || "UNDER_REVIEW";
-        const findings = item.reviewFindings !== undefined ? item.reviewFindings : null;
-        const deficiencyNotes =
-          item.evidenceDeficiencyNotes !== undefined ? item.evidenceDeficiencyNotes : null;
-        const reqValidation = Boolean(item.requiresFurtherValidation);
+        // Omitted fields keep their stored values (null here means "unchanged"); a new review starts
+        // as UNDER_REVIEW with no findings or notes recorded (NULL).
+        const status = item.reviewStatus ?? null;
+        const findings = item.reviewFindings ?? null;
+        const deficiencyNotes = item.evidenceDeficiencyNotes ?? null;
+        const reqValidation = item.requiresFurtherValidation ?? null;
+        const questionCode = toCanonicalQuestionCode(item.questionCode) ?? item.questionCode;
 
         // Upsert into questionnaire_assessor_reviews
         const upsertRes = await client.query(
@@ -483,20 +485,20 @@ export async function PUT(request: Request, { params }: RouteParams) {
             reviewed_by_user_id,
             reviewed_at,
             updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          ) VALUES ($1, $2, COALESCE($3, 'UNDER_REVIEW'), $4, $5, COALESCE($6, FALSE), $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
           ON CONFLICT (assessment_id, question_code)
           DO UPDATE SET
-            review_status = EXCLUDED.review_status,
-            review_findings = EXCLUDED.review_findings,
-            evidence_deficiency_notes = EXCLUDED.evidence_deficiency_notes,
-            requires_further_validation = EXCLUDED.requires_further_validation,
+            review_status = COALESCE($3, questionnaire_assessor_reviews.review_status),
+            review_findings = COALESCE($4, questionnaire_assessor_reviews.review_findings),
+            evidence_deficiency_notes = COALESCE($5, questionnaire_assessor_reviews.evidence_deficiency_notes),
+            requires_further_validation = COALESCE($6, questionnaire_assessor_reviews.requires_further_validation),
             reviewed_by_user_id = EXCLUDED.reviewed_by_user_id,
             reviewed_at = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
-          RETURNING id;`,
+          RETURNING id, review_status, review_findings, evidence_deficiency_notes, requires_further_validation;`,
           [
             assessmentId,
-            item.questionCode,
+            questionCode,
             status,
             findings,
             deficiencyNotes,
@@ -507,17 +509,18 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
         if (upsertRes.rowCount && upsertRes.rowCount > 0) {
           updatedCount++;
+          const stored = upsertRes.rows[0];
 
           // Query next version number for history
           const histVerRes = await client.query(
             `SELECT COALESCE(MAX(version_number), 0) + 1 AS next_ver
              FROM questionnaire_assessor_review_history
              WHERE assessment_id = $1 AND question_code = $2;`,
-            [assessmentId, item.questionCode]
+            [assessmentId, questionCode]
           );
           const nextVersion = histVerRes.rows[0].next_ver;
 
-          // Insert immutable version history record
+          // Insert immutable version history record of the review as stored after this change
           await client.query(
             `INSERT INTO questionnaire_assessor_review_history (
               assessment_id,
@@ -531,12 +534,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
             [
               assessmentId,
-              item.questionCode,
+              questionCode,
               nextVersion,
-              status,
-              findings,
-              deficiencyNotes,
-              reqValidation,
+              stored.review_status,
+              stored.review_findings,
+              stored.evidence_deficiency_notes,
+              Boolean(stored.requires_further_validation),
               sessionUser.userId,
             ]
           );

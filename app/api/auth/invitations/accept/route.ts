@@ -14,9 +14,9 @@ import { describePasswordProblem, hashPassword } from "@/lib/auth/passwords";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
 
 const acceptInvitationSchema = z.object({
-  token: z.string().min(16, "Invalid token format."),
+  token: z.string().min(16, "Invalid token format.").max(200, "Invalid token format."),
   password: z.string().min(1, "Choose a password.").max(200),
-  fullName: z.string().min(2).optional(),
+  fullName: z.string().trim().min(2).max(120).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -107,6 +107,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(
           { error: "An account with this email address already exists." },
           { status: 409 }
+        );
+      }
+
+      // The password must not contain the invited email address (same policy as registration)
+      const emailProblem = describePasswordProblem(password, { email: invite.email });
+      if (emailProblem) {
+        await client.query("ROLLBACK;");
+        return NextResponse.json(
+          { error: `Password does not meet requirements: ${emailProblem}`, details: { password: [emailProblem] } },
+          { status: 400 }
         );
       }
 

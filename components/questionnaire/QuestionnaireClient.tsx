@@ -217,8 +217,21 @@ export function QuestionnaireClient({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to submit assessment.");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to save responses before submitting.");
+      }
+
+      // Saving alone does not submit: move the assessment to review so it is locked and routed to
+      // the assessors, and surface the lifecycle guard's reasons if it refuses.
+      const transition = await fetch(`/api/assessments/${assessmentId}/transition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetStatus: "SUBMITTED_FOR_REVIEW" }),
+      });
+      const result = await transition.json().catch(() => ({}));
+      if (!transition.ok || !result.success) {
+        const reasons: string[] = Array.isArray(result.validationErrors) ? result.validationErrors : [];
+        throw new Error(reasons.length > 0 ? reasons.join(" ") : result.error || "Failed to submit assessment.");
       }
     } finally {
       setIsSubmitting(false);

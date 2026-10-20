@@ -94,10 +94,12 @@ export async function compileReportDocumentData(
         u.full_name AS owner_name
       FROM remediation_tasks rt
       LEFT JOIN users u ON u.id = rt.owner_user_id
-      WHERE (rt.assessment_id = $1 OR rt.tenant_id = $2)
+      WHERE rt.assessment_id = $1
+         OR rt.assessment_control_id IN (SELECT ac.id FROM assessment_controls ac WHERE ac.assessment_id = $1)
       ORDER BY rt.created_at ASC;
     `;
-    const remRes = await client.query(remSql, [assessmentId, assessment.tenant_id]);
+    // Only this assessment's tasks: other assessments of the same customer never appear in its report.
+    const remRes = await client.query(remSql, [assessmentId]);
 
     // Fetch lead approver name if approved
     let approverName: string | null = null;

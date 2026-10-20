@@ -22,6 +22,7 @@ import {
   PageNumber,
   ShadingType,
 } from "docx";
+import type { IRunOptions } from "docx";
 import type { ReportDocumentData } from "./types.ts";
 
 const BRAND_NAVY = "16191F";
@@ -33,6 +34,14 @@ const BRAND_ROSE_BG = "FFE4E6";
 const BG_HEADER_GRAY = "F5F5F4";
 
 type AlignmentValue = (typeof AlignmentType)[keyof typeof AlignmentType];
+
+/**
+ * Word ignores "\n" inside a text run, so multi-line text becomes one run per line with a line
+ * break before every line after the first.
+ */
+function lineRuns(text: string, style: Omit<IRunOptions, "text" | "break">): TextRun[] {
+  return text.split("\n").map((line, index) => new TextRun({ ...style, text: line, break: index > 0 ? 1 : undefined }));
+}
 
 function createTableCell(
   text: string,
@@ -55,15 +64,12 @@ function createTableCell(
     children: [
       new Paragraph({
         alignment: options?.align || AlignmentType.LEFT,
-        children: [
-          new TextRun({
-            text: text || "—",
-            bold: options?.bold || options?.isHeader || false,
-            size: options?.isHeader ? 18 : 17, // 9pt / 8.5pt
-            font: "Arial",
-            color: options?.isHeader ? BRAND_NAVY : BRAND_STONE_DARK,
-          }),
-        ],
+        children: lineRuns(text || "—", {
+          bold: options?.bold || options?.isHeader || false,
+          size: options?.isHeader ? 18 : 17, // 9pt / 8.5pt
+          font: "Arial",
+          color: options?.isHeader ? BRAND_NAVY : BRAND_STONE_DARK,
+        }),
       }),
     ],
   });
@@ -636,14 +642,10 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
     }),
     new Paragraph({
       spacing: { after: 120 },
-      children: [
-        new TextRun({
-          text: `Methodology Model: ${data.methodologyDisclosures.provisionalModel} (${data.methodologyDisclosures.scoringStatus})\nGovernance Reference: ${data.methodologyDisclosures.governanceReference}\nTemplate Version: ${data.auditTrail.reportTemplateVersion}\nDataset SHA-256 Hash: ${data.auditTrail.datasetSha256}`,
-          size: 16,
-          font: "Arial",
-          color: BRAND_STONE_DARK,
-        }),
-      ],
+      children: lineRuns(
+        `Methodology Model: ${data.methodologyDisclosures.provisionalModel} (${data.methodologyDisclosures.scoringStatus})\nGovernance Reference: ${data.methodologyDisclosures.governanceReference}\nTemplate Version: ${data.auditTrail.reportTemplateVersion}\nDataset SHA-256 Hash: ${data.auditTrail.datasetSha256}`,
+        { size: 16, font: "Arial", color: BRAND_STONE_DARK }
+      ),
     }),
     new Paragraph({
       spacing: { after: 200 },
