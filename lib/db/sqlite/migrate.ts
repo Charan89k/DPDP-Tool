@@ -102,6 +102,16 @@ export function getMigrationStatus(db: SqliteDatabase, files = loadMigrationFile
  */
 export async function backupDatabase(db: SqliteDatabase, destination: string): Promise<void> {
   fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o750 });
+  // Create the file owner-only before any data is written, so no other local user can open it while
+  // the copy is in progress. "wx" refuses an existing file or symlink rather than writing through it.
+  try {
+    fs.closeSync(fs.openSync(destination, "wx", 0o600));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new MigrationError(`Backup destination already exists, choose a new file: ${destination}`);
+    }
+    throw err;
+  }
   await db.backup(destination);
   const Database = db.constructor as typeof import("better-sqlite3");
   const copy = new Database(destination, { fileMustExist: true });

@@ -160,6 +160,17 @@ export class PersistentRateLimiter {
     await this.pruneIfDue();
   }
 
+  /**
+   * Un-counts the attempt just recorded by hit() once it proved legitimate, leaving every earlier
+   * attempt in the window counted (unlike resetAttempts, which clears them all).
+   */
+  public async refundAttempt(key: string): Promise<void> {
+    await pool.query(
+      "UPDATE rate_limit_buckets SET attempts = CASE WHEN attempts > 0 THEN attempts - 1 ELSE 0 END WHERE key_hash = $1;",
+      [this.hash(key)]
+    );
+  }
+
   public async resetAttempts(key: string): Promise<void> {
     await pool.query("DELETE FROM rate_limit_buckets WHERE key_hash = $1;", [this.hash(key)]);
   }

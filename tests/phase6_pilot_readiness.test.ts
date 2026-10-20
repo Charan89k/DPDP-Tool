@@ -27,7 +27,7 @@ import type { SessionUser } from "../lib/auth/types.ts";
 import { ValidationError } from "../lib/storage/validation.ts";
 import { EvidenceVaultService } from "../lib/storage/service.ts";
 import { evaluateAssessmentGaps } from "../lib/gaps/engine.ts";
-import { generateReportDocument, issueOfficialFinalReport } from "../lib/reports/service.ts";
+import { generateReportDocument, getIssuedReportDocument, issueOfficialFinalReport } from "../lib/reports/service.ts";
 import { generateWordReport } from "../lib/reports/docx.ts";
 import {
   createRemediationTask,
@@ -42,6 +42,7 @@ const BETA_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000003";
 
 // Dedicated pilot test tenant (Gamma) to preserve Alpha and Beta fixture counts
 const PILOT_TENANT_ID = "018f3a5b-7c8d-7e90-8000-000000000088";
+let issuedClientSha256 = "";
 const PILOT_CLIENT_ADMIN_ID = "018f3a5b-7c8d-7e90-8000-000000000188";
 const PILOT_LEAD_CONSULTANT_ID = "018f3a5b-7c8d-7e90-8000-000000000189";
 const PILOT_REVIEWER_ID = "018f3a5b-7c8d-7e90-8000-000000000187";
@@ -440,6 +441,16 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
       assert.equal(assessRes.rows[0].status, "FINAL_ISSUED");
       assert.ok(assessRes.rows[0].issued_at);
     });
+
+    // The official report is archived under the assessment's own ID, with a separate customer copy
+    assert.ok(issued.s3Key.includes(testAssessmentId));
+    const leadCopy = await getIssuedReportDocument(PILOT_LEAD_USER, testAssessmentId);
+    const clientCopy = await getIssuedReportDocument(PILOT_CLIENT_USER, testAssessmentId);
+    assert.ok(leadCopy && clientCopy);
+    assert.equal(leadCopy.sha256, issued.fileSha256Hash);
+    assert.equal(clientCopy.sha256, issued.summaryMetadata.clientFileSha256);
+    assert.notEqual(clientCopy.sha256, leadCopy.sha256);
+    issuedClientSha256 = clientCopy.sha256;
   });
 
   it("10. CAPA Remediation Lifecycle: task creation, progress logging, client validation block, assessor closure", async () => {
@@ -481,6 +492,16 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
     assert.equal(validated.status, "VALIDATED_CLOSED");
     assert.ok(validated.validatedAt);
     assert.equal(validated.closureValidatedById, PILOT_LEAD_USER.userId);
+
+    // 5. The customer cannot change a task after the assessor validated it
+    await assert.rejects(
+      updateRemediationProgress(PILOT_CLIENT_USER, task.id, { title: "Changed after validation" }),
+      (err: Error) => err.message.includes("validated and closed by an assessor")
+    );
+
+    // 6. Remediation work after issuance never changes the official report customers download
+    const clientCopy = await getIssuedReportDocument(PILOT_CLIENT_USER, testAssessmentId);
+    assert.equal(clientCopy?.sha256, issuedClientSha256);
   });
 
   it("11. Forensic Immutability & Non-Compensatory Independence: snapshot updates blocked, responses unmodified", async () => {

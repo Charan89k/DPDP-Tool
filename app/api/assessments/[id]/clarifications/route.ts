@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { canParticipateInClarifications } from "@/lib/auth/rbac";
 import { errorMessage } from "@/lib/http/errors";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
 
@@ -172,6 +173,14 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json(
       { error: "Authentication required to participate in clarification threads." },
       { status: 401 }
+    );
+  }
+
+  // Executive viewers have read-only access to clarification threads (roles matrix, document 02).
+  if (!canParticipateInClarifications(sessionUser.role)) {
+    return NextResponse.json(
+      { error: "Access denied. Your role can read clarification threads but not change them." },
+      { status: 403 }
     );
   }
 

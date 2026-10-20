@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { isTliRole } from "../auth/rbac.ts";
-import { getAssessmentGapAnalysis } from "../gaps/index.ts";
+import { getAssessmentGapAnalysis, redactInternalAssessorNotes } from "../gaps/index.ts";
 import questionnaireData from "../../data/questionnaire_v1.json" with { type: "json" };
 import controlsData from "../../data/dpdp_controls.json" with { type: "json" };
 
@@ -33,12 +33,16 @@ import type {
   RemediationReportItem,
 } from "./types.ts";
 
+/** Who a report is written for: customer copies never contain internal assessor notes. */
+export type ReportAudience = "consultant" | "client";
+
 export async function compileReportDocumentData(
   sessionUser: SessionUser,
   assessmentId: string,
-  _requestedDraft: boolean = true
+  _requestedDraft: boolean = true,
+  audience: ReportAudience = isTliRole(sessionUser.role) ? "consultant" : "client"
 ): Promise<ReportDocumentData> {
-  const isConsultant = isTliRole(sessionUser.role);
+  const isConsultant = isTliRole(sessionUser.role) && audience === "consultant";
 
   // 1. Fetch Assessment & Metadata under RLS
   const dbData = await executeWithRls(sessionUser, async (client) => {
@@ -112,7 +116,8 @@ export async function compileReportDocumentData(
   });
 
   // 2. Fetch Deterministic Gap Analysis under RLS
-  const gapAnalysis = await getAssessmentGapAnalysis(sessionUser, assessmentId);
+  const fullGapAnalysis = await getAssessmentGapAnalysis(sessionUser, assessmentId);
+  const gapAnalysis = isConsultant ? fullGapAnalysis : redactInternalAssessorNotes(fullGapAnalysis);
 
   // Map controls for quick lookup
   const controlMap = new Map<string, (typeof controlsData)[number]>();

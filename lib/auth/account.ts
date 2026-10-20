@@ -14,6 +14,7 @@
 
 import crypto from "node:crypto";
 import { pool } from "../db/pool.ts";
+import { assertSessionMatchesDatabase } from "../db/rls.ts";
 import type { PoolClient } from "../db/pool.ts";
 import {
   consumePasswordVerificationTime,
@@ -405,8 +406,14 @@ export async function revokeSession(sessionUser: SessionUser): Promise<void> {
   });
 }
 
-export async function revokeAllSessions(userId: string, tenantId: string, meta: RequestMeta = {}): Promise<void> {
+/**
+ * Signs the user out everywhere. The calling session is re-verified in the same transaction, so a
+ * token that was already signed out cannot end the user's newer sessions.
+ */
+export async function revokeAllSessions(sessionUser: SessionUser, meta: RequestMeta = {}): Promise<void> {
+  const { userId, tenantId } = sessionUser;
   await inTransaction(async (client) => {
+    await assertSessionMatchesDatabase(client, sessionUser, { allowPendingMfaSetup: true });
     await client.query("UPDATE users SET session_version = session_version + 1 WHERE id = $1;", [userId]);
     await audit(
       client,

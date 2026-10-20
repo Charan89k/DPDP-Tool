@@ -57,6 +57,29 @@ export interface EvidenceMetadataStore {
   findForDownload(sessionUser: SessionUser, evidenceId: string): Promise<EvidenceRecord | null>;
 }
 
+/**
+ * Assessment states in which customers may add or delete evidence: while gathering data, while
+ * answering clarification requests, and while remediating after issuance. From submission until
+ * issuance the evidence base is frozen for the assessor's review.
+ */
+const CLIENT_EVIDENCE_EDITABLE_STATUSES: ReadonlySet<string> = new Set([
+  "DRAFT",
+  "SCOPING",
+  "SCOPE_LOCKED",
+  "DATA_GATHERING",
+  "CLARIFICATION_PENDING",
+  "REMEDIATION_ACTIVE",
+]);
+
+function assertClientMayChangeEvidence(sessionUser: SessionUser, assessmentStatus: string): void {
+  if (isTliRole(sessionUser.role)) return;
+  if (!CLIENT_EVIDENCE_EDITABLE_STATUSES.has(assessmentStatus)) {
+    throw new ValidationError(
+      `Access denied: Evidence cannot be changed while the assessment is ${assessmentStatus}.`
+    );
+  }
+}
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
@@ -72,7 +95,7 @@ export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
     return executeWithRls(sessionUser, async (client) => {
       // Authorize before any bytes are written: the assessment must be visible under RLS.
       const assessRes = await client.query(
-        "SELECT id, tenant_id FROM assessments WHERE id = $1 LIMIT 1;",
+        "SELECT id, tenant_id, status FROM assessments WHERE id = $1 LIMIT 1;",
         [record.assessmentId]
       );
       if (assessRes.rowCount === 0) {
@@ -81,6 +104,7 @@ export class PostgresEvidenceMetadataStore implements EvidenceMetadataStore {
         );
       }
       const assessment = assessRes.rows[0];
+      assertClientMayChangeEvidence(sessionUser, assessment.status);
 
       const ctrlRes = await client.query(
         `SELECT ac.id
@@ -451,7 +475,7 @@ export class EvidenceVaultService {
 
     return await executeWithRls(sessionUser, async (client) => {
       const res = await client.query(
-        "SELECT id, tenant_id, uploaded_by_user_id, status FROM evidence_items WHERE id = $1 LIMIT 1;",
+        "SELECT id, tenant_id, assessment_id, uploaded_by_user_id, status FROM evidence_items WHERE id = $1 LIMIT 1;",
         [evidenceId]
       );
       if (res.rowCount === 0) {
@@ -465,6 +489,13 @@ export class EvidenceVaultService {
 
       if (!isOwner && !isAdminOfTenant && !isSuperAdmin) {
         throw new ValidationError("Access denied: You do not have permission to delete this evidence item.");
+      }
+
+      if (item.assessment_id) {
+        const assessmentRes = await client.query("SELECT status FROM assessments WHERE id = $1 LIMIT 1;", [
+          item.assessment_id,
+        ]);
+        assertClientMayChangeEvidence(sessionUser, String(assessmentRes.rows[0]?.status ?? ""));
       }
 
       await client.query(

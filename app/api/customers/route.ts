@@ -53,13 +53,10 @@ export async function GET(req: NextRequest) {
           t.dpo_email, 
           t.status,
           t.created_at,
-          COUNT(DISTINCT a.id)::int AS assessment_count,
-          COUNT(DISTINCT u.id)::int AS user_count
+          (SELECT COUNT(*) FROM assessments a WHERE a.tenant_id = t.id)::int AS assessment_count,
+          (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id)::int AS user_count
         FROM tenants t
-        LEFT JOIN assessments a ON a.tenant_id = t.id
-        LEFT JOIN users u ON u.tenant_id = t.id
         WHERE t.type = 'CLIENT'
-        GROUP BY t.id, t.name, t.slug, t.industry, t.is_sdf, t.dpo_name, t.dpo_email, t.status, t.created_at
         ORDER BY t.name ASC;
       `;
       const res = await client.query(sql);

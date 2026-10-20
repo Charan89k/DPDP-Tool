@@ -25,6 +25,7 @@ import { z } from "zod";
 import { errorMessage } from "@/lib/http/errors";
 import manifestData from "../../../../../data/questionnaire_v1.json" with { type: "json" };
 import { sessionErrorResponse } from "@/lib/http/session_errors";
+import { toCanonicalQuestionCode } from "@/lib/questionnaire/codes";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -43,7 +44,12 @@ const VALID_REVIEW_STATUSES = [
 type ReviewStatus = (typeof VALID_REVIEW_STATUSES)[number];
 
 const reviewItemSchema = z.object({
-  questionCode: z.string().trim().min(1).max(64),
+  questionCode: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine((code) => toCanonicalQuestionCode(code) !== null, "Unknown question code."),
   reviewStatus: z.enum(VALID_REVIEW_STATUSES).optional(),
   reviewFindings: z.string().max(10_000).optional(),
   evidenceDeficiencyNotes: z.string().max(10_000).optional(),

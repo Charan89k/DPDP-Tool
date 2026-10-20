@@ -34,6 +34,8 @@ const SUPER_ADMIN = `${ROLE} = 'TLI_SUPER_ADMIN'`;
 const CONSULTANT = `${ROLE} IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')`;
 const CLIENT_WRITER = `${ROLE} IN ('CLIENT_ADMIN', 'CLIENT_BU_LEAD', 'CLIENT_CONTRIBUTOR')`;
 const OPEN_STATUSES = "('DRAFT', 'SCOPING', 'SCOPE_LOCKED', 'DATA_GATHERING')";
+/** Read-only executive viewers may see but never write rows guarded by this. */
+const NOT_VIEWER = `${ROLE} <> 'CLIENT_VIEWER'`;
 
 /** Equivalent of is_user_assigned_to_assessment(): direct lookup, no policy recursion. */
 const assigned = (assessmentExpr: string) =>
@@ -140,8 +142,12 @@ export const TABLE_POLICIES: TablePolicy[] = [
   forAll("assessment_control_activities", inScopedControls("$.assessment_control_id")),
   appendOnly("control_response_history", inScopedControls("$.assessment_control_id"), inScopedControls("$.assessment_control_id")),
   forAll("evidence_items", evidencePolicy),
-  forAll("clarification_threads", clarificationPolicy),
-  forAll("clarification_messages", `$.thread_id IN (SELECT ct.id FROM temp.clarification_threads ct)`),
+  forAll("clarification_threads", clarificationPolicy, `(${clarificationPolicy} AND ${NOT_VIEWER})`),
+  forAll(
+    "clarification_messages",
+    `$.thread_id IN (SELECT ct.id FROM temp.clarification_threads ct)`,
+    `($.thread_id IN (SELECT ct.id FROM temp.clarification_threads ct) AND ${NOT_VIEWER})`
+  ),
   forAll("assessment_scores", `$.assessment_id IN (SELECT a.id FROM temp.assessments a)`),
   appendOnly(
     "report_snapshots",

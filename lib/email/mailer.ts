@@ -35,13 +35,28 @@ export function isSmtpConfigured(env: Env = process.env): boolean {
 
 let transporter: Transporter | null = null;
 
+/** Hosts of a local mail catcher (the bundled Mailpit or one on this machine), reached without TLS. */
+const LOCAL_MAIL_CATCHER_HOSTS = new Set(["mailpit", "localhost", "127.0.0.1", "::1"]);
+
+/**
+ * Plaintext SMTP is allowed only for a local mail catcher or when explicitly enabled with
+ * SMTP_ALLOW_PLAINTEXT=true. Everywhere else STARTTLS is required, so a network attacker cannot
+ * strip encryption and read the SMTP password or sign-in links.
+ */
+export function smtpAllowsPlaintext(env: Env = process.env): boolean {
+  if (env.SMTP_ALLOW_PLAINTEXT === "true") return true;
+  return LOCAL_MAIL_CATCHER_HOSTS.has(String(env.SMTP_HOST || "").trim().toLowerCase());
+}
+
 function getTransporter(env: Env): Transporter {
   if (!transporter) {
     const port = Number(env.SMTP_PORT || 587);
+    const secure = env.SMTP_SECURE ? env.SMTP_SECURE === "true" : port === 465;
     transporter = nodemailer.createTransport({
       host: env.SMTP_HOST,
       port,
-      secure: env.SMTP_SECURE ? env.SMTP_SECURE === "true" : port === 465,
+      secure,
+      requireTLS: !secure && !smtpAllowsPlaintext(env),
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASSWORD } : undefined,
     });
   }

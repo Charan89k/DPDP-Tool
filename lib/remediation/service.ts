@@ -236,6 +236,14 @@ export async function updateRemediationProgress(
     }
 
     const current = existingRes.rows[0];
+    // An assessor's closure validation covers the content it reviewed; customers cannot change a
+    // validated task underneath it.
+    if (!isConsultant && current.status === "VALIDATED_CLOSED") {
+      throw new RemediationError(
+        "This remediation task has been validated and closed by an assessor and can no longer be edited. Ask your assessor to reopen it.",
+        409
+      );
+    }
     await assertValidOwner(client, input.ownerUserId, current.tenant_id);
     const newStatus = input.status || current.status;
     let submittedAt = current.closure_submitted_at;

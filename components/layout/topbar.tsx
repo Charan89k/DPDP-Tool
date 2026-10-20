@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
 import { getRoleBadgeLabel } from "@/lib/auth/rbac";
+import { clearLegacyResponseCaches } from "@/lib/questionnaire/legacy_cache";
 
 interface TopbarProps {
   user: SessionUser;
@@ -61,6 +62,7 @@ export function Topbar({ user, onOpenNavigation, navigationOpen = false }: Topba
     setIsLoggingOut(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      clearLegacyResponseCaches();
       router.push("/login");
       router.refresh();
     } catch (err) {

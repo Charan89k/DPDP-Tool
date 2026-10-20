@@ -106,6 +106,7 @@ serverless hosts) cannot run CloudE5, because the SQLite database and evidence f
 | `SESSION_SECRET` | yes | ≥ 32 random characters; changing it signs everyone out |
 | `CLOUDE5_ENCRYPTION_KEY` | recommended | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts MFA secrets; if unset a key is derived from `SESSION_SECRET`. Set it before users enrol and never change it afterwards (enrolments become unreadable). Checked by `/api/ready`. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | yes | Email delivery |
+| `SMTP_ALLOW_PLAINTEXT` | no | Mail is sent over TLS (implicit or STARTTLS) and never falls back to plaintext, except to a local mail catcher (`SMTP_HOST` of `mailpit` or `localhost`). Set `true` only for another trusted relay without TLS. |
 | `CLOUDE5_DATABASE_PATH` | set by image | SQLite file (`/data/db/cloude5.db`) |
 | `CLOUDE5_EVIDENCE_DIR` | set by image | Evidence directory (`/data/evidence`) |
 | `CLOUDE5_CLAMAV_HOST`, `CLOUDE5_CLAMAV_PORT` | no | Virus-scan uploads with ClamAV (`clamav` and `3310` with `docker compose --profile antivirus up -d`). While set, uploads are refused if the scanner is down; `/api/ready` checks it. |

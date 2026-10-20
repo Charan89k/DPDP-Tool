@@ -47,6 +47,11 @@ export function canUploadEvidence(role: UserRole): boolean {
   return role !== "CLIENT_VIEWER";
 }
 
+/** Raising, answering and resolving clarification threads; CLIENT_VIEWER may only read them. */
+export function canParticipateInClarifications(role: UserRole): boolean {
+  return role !== "CLIENT_VIEWER";
+}
+
 export function canReviewAssessment(role: UserRole): boolean {
   return TLI_ROLES.includes(role);
 }

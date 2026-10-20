@@ -19,6 +19,7 @@ import { SectionNavigator } from "./SectionNavigator";
 import { ReviewStep } from "./ReviewStep";
 import { errorMessage } from "@/lib/http/errors";
 import { formatDate } from "@/lib/format/dates";
+import { LEGACY_RESPONSE_CACHE_PREFIX } from "@/lib/questionnaire/legacy_cache";
 
 interface QuestionnaireClientProps {
   assessmentId: string;
@@ -71,42 +72,26 @@ export function QuestionnaireClient({
 
   const progress = calculateQuestionnaireProgress(sections, responses);
 
-  // Storage key for client-side persistence fallback
-  const storageKey = `tli_dpdp_responses_${assessmentId}`;
-
-  // 1. Initial Load: Restore from server DB with localStorage fallback
+  // 1. Initial Load: answers live only in memory and on the server. Earlier versions cached them in
+  // localStorage, which outlives sign-out, so any copy left from those versions is removed.
   useEffect(() => {
     let isMounted = true;
 
     async function loadResponses() {
-      // First try localStorage for instant responsive paint
       try {
-        const localCached = localStorage.getItem(storageKey);
-        if (localCached) {
-          const parsed = JSON.parse(localCached);
-          if (parsed && typeof parsed === "object") {
-            setResponses(parsed);
-          }
-        }
+        localStorage.removeItem(`${LEGACY_RESPONSE_CACHE_PREFIX}${assessmentId}`);
       } catch {}
 
-      // Then fetch authoritative state from server API
       try {
         const res = await fetch(`/api/assessments/${assessmentId}/responses`);
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.responses && isMounted) {
-            setResponses((prev) => {
-              const merged = { ...prev, ...data.responses };
-              try {
-                localStorage.setItem(storageKey, JSON.stringify(merged));
-              } catch {}
-              return merged;
-            });
+            setResponses((prev) => ({ ...prev, ...data.responses }));
           }
         }
       } catch (err) {
-        console.warn("Could not sync with assessment responses API, using local state.", err);
+        console.warn("Could not load saved responses from the assessment responses API.", err);
       }
     }
 
@@ -114,7 +99,7 @@ export function QuestionnaireClient({
     return () => {
       isMounted = false;
     };
-  }, [assessmentId, storageKey]);
+  }, [assessmentId]);
 
   // Debounce server persistence
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -122,8 +107,8 @@ export function QuestionnaireClient({
   const persistToServer = useCallback(
     async (latestResponses: Record<string, RespondentQuestionResponse>) => {
       // "Not applicable" requires a justification before it can be saved. Incomplete N/A answers
-      // stay in this browser (and are flagged in the question list) so they never block saving
-      // every other answer.
+      // stay in this page (and are flagged in the question list) so they never block saving every
+      // other answer.
       const persistable = Object.fromEntries(
         Object.entries(latestResponses).filter(([, r]) => !needsJustification(r))
       );
@@ -160,10 +145,6 @@ export function QuestionnaireClient({
         ...prev,
         [updated.questionCode]: updated,
       };
-
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(next));
-      } catch {}
 
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);

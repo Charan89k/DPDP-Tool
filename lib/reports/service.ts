@@ -10,10 +10,22 @@ import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { isTliRole, canFinalizeAssessment } from "../auth/rbac.ts";
 import { compileReportDocumentData } from "./generator.ts";
+import type { ReportAudience } from "./generator.ts";
 import { generateWordReport } from "./docx.ts";
 import { executeAssessmentTransition } from "../lifecycle/service.ts";
 import { getLocalStorageAdapter } from "../storage/local_adapter.ts";
 import type { ReportSnapshotRecord, ReportDocumentData } from "./types.ts";
+
+const DOCX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+/** A report file ready to download, whether generated now or read from the issued archive. */
+export interface DownloadableReport {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+  sha256: string;
+  datasetSha256: string;
+}
 
 export interface GeneratedDocumentResult {
   buffer: Buffer;
@@ -83,10 +95,11 @@ export async function getAssessmentReportSnapshots(
 export async function generateReportDocument(
   sessionUser: SessionUser,
   assessmentId: string,
-  isDraft: boolean = true
+  isDraft: boolean = true,
+  audience?: ReportAudience
 ): Promise<GeneratedDocumentResult> {
   // Compile live data under RLS
-  const data = await compileReportDocumentData(sessionUser, assessmentId, isDraft);
+  const data = await compileReportDocumentData(sessionUser, assessmentId, isDraft, audience);
 
   // Generate binary Word document
   const buffer = await generateWordReport(data);
@@ -104,7 +117,7 @@ export async function generateReportDocument(
   return {
     buffer,
     filename,
-    contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    contentType: DOCX_CONTENT_TYPE,
     data,
     sha256,
   };
@@ -154,16 +167,20 @@ export async function issueOfficialFinalReport(
     });
   }
 
-  // 4. Generate official non-draft report
-  const reportDoc = await generateReportDocument(sessionUser, assessmentId, false);
+  // 4. Generate the official report: the full consultant copy and a customer copy without internal
+  //    assessor notes. Both are archived now and later downloads serve these files, so content
+  //    changed after issuance can never appear in an official report without a new issuance.
+  const reportDoc = await generateReportDocument(sessionUser, assessmentId, false, "consultant");
+  const clientDoc = await generateReportDocument(sessionUser, assessmentId, false, "client");
 
-  // 5. Store report file in storage vault
-  const safeCode = String(currentAssessment.engagement_code).replace(/[^A-Za-z0-9._-]/g, "_").replace(/\.\.+/g, "_");
-  const s3Key = `reports/${currentAssessment.tenant_id}/${safeCode}-FINAL-V1.0.docx`;
+  // 5. Store the files under the assessment's own identifier (engagement codes are display data)
+  const s3Key = issuedReportKey(currentAssessment.tenant_id, assessmentId, "consultant");
+  const clientS3Key = issuedReportKey(currentAssessment.tenant_id, assessmentId, "client");
   // A failed write must not record an issued snapshot that points at a missing file. The assessment
   // is already FINAL_ISSUED at this point, so retrying issuance skips the transitions and retries this.
   try {
     await getLocalStorageAdapter().saveFile(s3Key, reportDoc.buffer);
+    await getLocalStorageAdapter().saveFile(clientS3Key, clientDoc.buffer);
   } catch (err) {
     console.error("Failed to store final report file:", err);
     throw new Error("The final report could not be stored. Please retry issuing the report.");
@@ -197,6 +214,9 @@ export async function issueOfficialFinalReport(
       criticalGapsCount: reportDoc.data.executiveSummary.criticalGapsCount,
       templateVersion: reportDoc.data.auditTrail.reportTemplateVersion,
       issuedAt: new Date().toISOString(),
+      fileName: reportDoc.filename,
+      clientS3Key,
+      clientFileSha256: clientDoc.sha256,
     };
 
     const res = await client.query(insertSql, [
@@ -229,4 +249,65 @@ export async function issueOfficialFinalReport(
     isDraft: Boolean(snapshot.is_draft),
     summaryMetadata: snapshot.summary_metadata || {},
   };
+}
+
+function issuedReportKey(tenantId: string, assessmentId: string, audience: ReportAudience): string {
+  const suffix = audience === "client" ? "-client" : "";
+  return `reports/${tenantId}/${assessmentId}/FINAL-V1.0${suffix}.docx`;
+}
+
+/**
+ * Returns the archived official report for an issued assessment, or null when none was archived.
+ * Customer users receive the customer copy; consultants the full copy. Read under RLS, so only
+ * users who can see the assessment's snapshots can download them.
+ */
+export async function getIssuedReportDocument(
+  sessionUser: SessionUser,
+  assessmentId: string
+): Promise<DownloadableReport | null> {
+  const snapshot = await executeWithRls(sessionUser, async (client) => {
+    const res = await client.query(
+      `SELECT s3_key, file_sha256_hash, dataset_sha256_hash, summary_metadata
+       FROM report_snapshots
+       WHERE assessment_id = $1 AND is_draft = FALSE AND report_type = 'DOCX'
+       ORDER BY created_at DESC
+       LIMIT 1;`,
+      [assessmentId]
+    );
+    return res.rows[0] ?? null;
+  });
+  if (!snapshot) return null;
+
+  const meta = parseSummaryMetadata(snapshot.summary_metadata);
+  const forClient = !isTliRole(sessionUser.role);
+  const key = forClient ? meta.clientS3Key : snapshot.s3_key;
+  const expectedSha256 = forClient ? meta.clientFileSha256 : snapshot.file_sha256_hash;
+  // Snapshots archived before customer copies existed have no customer file: fall back to a
+  // freshly generated copy rather than serve the consultant file with its internal notes.
+  if (typeof key !== "string" || typeof expectedSha256 !== "string") return null;
+
+  const buffer = await getLocalStorageAdapter().readFile(key);
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+  if (sha256 !== expectedSha256) {
+    throw new Error(`Archived report for assessment ${assessmentId} failed its integrity check.`);
+  }
+  return {
+    buffer,
+    filename: typeof meta.fileName === "string" ? meta.fileName : `CloudE5_DPDP_Report_FINAL_${assessmentId}.docx`,
+    contentType: DOCX_CONTENT_TYPE,
+    sha256,
+    datasetSha256: snapshot.dataset_sha256_hash,
+  };
+}
+
+function parseSummaryMetadata(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }

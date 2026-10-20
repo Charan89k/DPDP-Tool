@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
     const clientIp = resolveClientIp(request);
 
     // 1. Count this attempt atomically before checking the password (max 5 per IP / email per
-    //    15 min). A successful sign-in resets both counters.
+    //    15 min). A successful sign-in resets the email counter
+    //    and takes its own attempt back off the IP counter.
     const ipRateLimit = await loginRateLimiter.hit(`ip:${clientIp}`);
     const emailRateLimit = await loginRateLimiter.hit(`email:${normalizedEmail}`);
 
@@ -108,8 +109,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Reset rate limiter counters on successful login
-    await loginRateLimiter.resetAttempts(`ip:${clientIp}`);
+    // A correct password clears this account's counter. The per-IP counter also holds failures
+    // against other accounts, so only this attempt is taken back off it; earlier failures stay counted.
+    await loginRateLimiter.refundAttempt(`ip:${clientIp}`);
     await loginRateLimiter.resetAttempts(`email:${normalizedEmail}`);
 
     const userAgent = request.headers.get("user-agent") || "CloudE5-App";
@@ -129,8 +131,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Issue the session
+    // The session must carry the credential state that was just verified: if a password reset or
+    // sign-out-everywhere happened in between, the version moved on and this login is refused.
     const sessionUser = await loadSessionUser(row.id);
-    if (!sessionUser) {
+    if (!sessionUser || sessionUser.sessionVersion !== Number(row.session_version ?? 0)) {
       return NextResponse.json({ error: AUTH_FAILED_MSG }, { status: 401 });
     }
     await startSession(sessionUser, { ip: clientIp, userAgent, method: "PASSWORD" });

@@ -15,6 +15,7 @@ import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { errorMessage } from "@/lib/http/errors";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
+import { toCanonicalQuestionCode } from "@/lib/questionnaire/codes";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -41,7 +42,11 @@ const responseItemSchema = z
 const responsesBodySchema = z.object({
   responses: z
     .record(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/, "Invalid question code."), responseItemSchema)
-    .refine((r) => Object.keys(r).length <= MAX_RESPONSES_PER_REQUEST, "Too many responses in one request."),
+    .refine((r) => Object.keys(r).length <= MAX_RESPONSES_PER_REQUEST, "Too many responses in one request.")
+    .superRefine((r, ctx) => {
+      const unknown = Object.keys(r).find((code) => toCanonicalQuestionCode(code) === null);
+      if (unknown) ctx.addIssue({ code: z.ZodIssueCode.custom, message: `Unknown question code ${unknown}.` });
+    }),
 });
 
 export async function GET(request: Request, { params }: RouteParams) {

@@ -10,6 +10,7 @@ import type { PoolClient } from "../db/pool.ts";
 import crypto from "crypto";
 import { executeWithRls, runWithDefinerRights } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
+import { CANONICAL_QUESTION_COUNT, countCanonicalQuestions } from "../questionnaire/codes.ts";
 import type {
   AssessmentStatus,
   AssessmentStateSummary,
@@ -160,9 +161,22 @@ export async function validateTransitionGuards(
     return { valid: false, errors, warnings };
   }
 
-  // 3. Consultant assignment verification (unless Super Admin)
+  // 3. Consultant assignment verification (unless Super Admin). Lead sign-off transitions need the
+  //    engagement lead itself; any assignment (e.g. as reviewer) is enough for reviewer transitions.
   if (sessionUser.role !== "TLI_SUPER_ADMIN") {
-    if (rule.requiresLeadAssignment || rule.requiresReviewerAssignment) {
+    if (rule.requiresLeadAssignment) {
+      const leadRes = await client.query(
+        `SELECT 1 FROM assessment_assignments 
+         WHERE assessment_id = $1 AND user_id = $2 AND assignment_role = 'ENGAGEMENT_LEAD';`,
+        [assessment.id, sessionUser.userId]
+      );
+      const isLead = (leadRes.rowCount ?? 0) > 0 || assessment.lead_consultant_id === sessionUser.userId;
+      if (!isLead) {
+        errors.push(
+          `Engagement lead required: Only the lead consultant of assessment ${assessment.engagement_code} may execute this transition.`
+        );
+      }
+    } else if (rule.requiresReviewerAssignment) {
       const assignRes = await client.query(
         `SELECT 1 FROM assessment_assignments 
          WHERE assessment_id = $1 AND user_id = $2;`,
@@ -197,7 +211,8 @@ export async function validateTransitionGuards(
     );
 
     const answered = responsesRes.rows.filter((r) => r.selected_option !== null);
-    const answeredCount = answered.length;
+    // Only canonical questions count: rows stored under any other code cannot complete a submission.
+    const answeredCount = countCanonicalQuestions(answered.map((r) => r.question_code));
 
     // Check N/A justifications
     for (const resp of answered) {
@@ -212,9 +227,9 @@ export async function validateTransitionGuards(
 
     // Completeness check
     if (!assessment.is_partial_assessment) {
-      if (answeredCount < 60) {
+      if (answeredCount < CANONICAL_QUESTION_COUNT) {
         errors.push(
-          `Submission blocked: Only ${answeredCount} of 60 canonical questions answered. Standard submission requires 100% completion. (To submit an incomplete assessment, an approved partial assessment exception must be enabled).`
+          `Submission blocked: Only ${answeredCount} of ${CANONICAL_QUESTION_COUNT} canonical questions answered. Standard submission requires 100% completion. (To submit an incomplete assessment, an approved partial assessment exception must be enabled).`
         );
       }
     } else {
@@ -309,14 +324,14 @@ export async function validateTransitionGuards(
     // 3. Evaluated questions check
     if (!assessment.is_partial_assessment) {
       const evaluatedRes = await client.query(
-        `SELECT COUNT(*) AS cnt FROM questionnaire_assessor_reviews 
+        `SELECT question_code FROM questionnaire_assessor_reviews 
          WHERE assessment_id = $1 AND review_status != 'PENDING_REVIEW';`,
         [assessment.id]
       );
-      const evaluatedCount = parseInt(evaluatedRes.rows[0]?.cnt || "0", 10);
-      if (evaluatedCount < 60) {
+      const evaluatedCount = countCanonicalQuestions(evaluatedRes.rows.map((r) => r.question_code));
+      if (evaluatedCount < CANONICAL_QUESTION_COUNT) {
         errors.push(
-          `Cannot complete review: Only ${evaluatedCount} of 60 canonical questions have been evaluated by assessor.`
+          `Cannot complete review: Only ${evaluatedCount} of ${CANONICAL_QUESTION_COUNT} canonical questions have been evaluated by assessor.`
         );
       }
     }
@@ -496,13 +511,14 @@ export async function executeAssessmentTransition(
     }
 
     // 6. Append Immutable Forensic Audit Log
+    // Caller metadata is spread first so it can never overwrite the server-recorded facts.
     const auditNewState = {
+      ...(metadata || {}),
       status: targetStatus,
       reason: reason || null,
       actorRole: sessionUser.role,
       actorUserId: sessionUser.userId,
       snapshotHash: snapshotHash || undefined,
-      ...(metadata || {}),
     };
 
     await client.query(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
-import { generateReportDocument } from "@/lib/reports";
+import { generateReportDocument, getIssuedReportDocument } from "@/lib/reports";
+import type { DownloadableReport } from "@/lib/reports";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const isDraftParam = url.searchParams.get("draft");
     const isDraft = isDraftParam === "false" ? false : true;
 
-    const report = await generateReportDocument(session, id, isDraft);
+    // Once issued, the official report is the archived file, never a fresh rendering of live data.
+    const report: DownloadableReport =
+      (await getIssuedReportDocument(session, id)) ??
+      (await generateReportDocument(session, id, isDraft).then((generated) => ({
+        ...generated,
+        datasetSha256: generated.data.auditTrail.datasetSha256,
+      })));
 
     return new NextResponse(new Uint8Array(report.buffer), {
       status: 200,
@@ -29,7 +36,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         "Content-Type": report.contentType,
         "Content-Disposition": `attachment; filename="${report.filename}"`,
         "Content-Length": report.buffer.length.toString(),
-        "X-Dataset-SHA256": report.data.auditTrail.datasetSha256,
+        "X-Dataset-SHA256": report.datasetSha256,
         "X-Document-SHA256": report.sha256,
       },
     });

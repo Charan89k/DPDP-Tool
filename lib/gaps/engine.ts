@@ -434,9 +434,9 @@ export function evaluateAssessmentGaps(
             gapSeverity = "HIGH_DEFICIT";
             highCount++;
             factualObservation = `Evidence submitted for 'Implemented' status was inspected and rejected by CloudE5 assessor.`;
-            explanation =
-              rev?.evidenceDeficiencyNotes ||
-              `Assessor rejected attached evidence due to deficiencies or insufficient proof.`;
+            // Assessor deficiency notes are internal working papers (redacted for customers), so
+            // the customer-visible explanation never copies them.
+            explanation = `Assessor rejected attached evidence due to deficiencies or insufficient proof.`;
             remediationGuidance =
               "Review assessor deficiency notes and upload corrected, unmasked, verifiable artifacts.";
           }

@@ -19,7 +19,7 @@ import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
 import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
 import { evaluateAssessmentGaps } from "../lib/gaps/engine.ts";
-import { getAssessmentGapAnalysis } from "../lib/gaps/service.ts";
+import { getAssessmentGapAnalysis, redactInternalAssessorNotes } from "../lib/gaps/service.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 import type { QuestionResponseInput } from "../lib/scoring/types.ts";
 
@@ -239,7 +239,13 @@ describe("Phase 4: Gap Analysis Engine & Risk Prioritization Verification", () =
     assert.equal(gapRej.gapType, "EVIDENCE_DEFICIENCY");
     assert.equal(gapRej.evidenceStatus, "EVIDENCE_REJECTED");
     assert.equal(gapRej.gapSeverity, "HIGH_DEFICIT");
-    assert.ok(gapRej.explanation.includes("Unsigned draft policy"));
+    // The assessor's deficiency notes are internal working papers: they stay on assessorReview (which
+    // the service redacts for customers) and are never copied into the customer-visible explanation.
+    assert.ok(!gapRej.explanation.includes("Unsigned draft policy"));
+    assert.ok(gapRej.explanation.includes("Assessor rejected attached evidence"));
+    assert.ok(gapRej.assessorReview?.evidenceDeficiencyNotes?.includes("Unsigned draft policy"));
+    const customerView = redactInternalAssessorNotes(resRejEv);
+    assert.ok(!JSON.stringify(customerView).includes("Unsigned draft policy"));
   });
 
   it("6. should isolate the 4 unresolved question mappings from canonical controls", () => {
