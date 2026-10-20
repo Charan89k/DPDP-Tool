@@ -1,6 +1,6 @@
 <div align="center">
 
-# CloudE5
+# DPDP
 
 **DPDP Act readiness assessments for Indian organisations: guided, evidence-backed and self-hosted.**
 
