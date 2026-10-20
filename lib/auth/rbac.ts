@@ -79,6 +79,10 @@ export function canEditQuestionnaire(role: UserRole): boolean {
   );
 }
 
+export function canWriteClarifications(role: UserRole): boolean {
+  return isTliRole(role) || canEditQuestionnaire(role);
+}
+
 export function getRoleBadgeLabel(role: UserRole): {
   label: string;
   variant: "indigo" | "blue" | "emerald" | "amber" | "slate";

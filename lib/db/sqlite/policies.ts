@@ -100,6 +100,11 @@ const clarificationPolicy: Predicate =
   `OR ($.assessment_id IS NOT NULL AND ((${TENANT} IS NOT NULL AND ${assessmentTenant("$.assessment_id")} = ${TENANT}) ` +
   `OR (${CONSULTANT} AND ${assigned("$.assessment_id")}))))`;
 
+const clarificationWriter: Predicate = `(${SUPER_ADMIN} OR ${CONSULTANT} OR ${CLIENT_WRITER})`;
+const clarificationWrite: Predicate = `(${clarificationWriter} AND ${clarificationPolicy})`;
+const clarificationMessageSelect: Predicate = `$.thread_id IN (SELECT ct.id FROM temp.clarification_threads ct)`;
+const clarificationMessageWrite: Predicate = `(${clarificationWriter} AND ${clarificationMessageSelect})`;
+
 const remediationPolicy: Predicate =
   `(${SUPER_ADMIN} OR (${CONSULTANT} AND (($.assessment_id IS NOT NULL AND ${assigned("$.assessment_id")}) ` +
   `OR ${inScopedControls("$.assessment_control_id")})) OR ${ownTenant("$.tenant_id")})`;
@@ -140,8 +145,20 @@ export const TABLE_POLICIES: TablePolicy[] = [
   forAll("assessment_control_activities", inScopedControls("$.assessment_control_id")),
   appendOnly("control_response_history", inScopedControls("$.assessment_control_id"), inScopedControls("$.assessment_control_id")),
   forAll("evidence_items", evidencePolicy),
-  forAll("clarification_threads", clarificationPolicy),
-  forAll("clarification_messages", `$.thread_id IN (SELECT ct.id FROM temp.clarification_threads ct)`),
+  {
+    table: "clarification_threads",
+    select: clarificationPolicy,
+    insert: clarificationWrite,
+    update: { using: clarificationWrite, check: clarificationWrite },
+    delete: clarificationWrite,
+  },
+  {
+    table: "clarification_messages",
+    select: clarificationMessageSelect,
+    insert: clarificationMessageWrite,
+    update: { using: clarificationMessageWrite, check: clarificationMessageWrite },
+    delete: clarificationMessageWrite,
+  },
   forAll("assessment_scores", `$.assessment_id IN (SELECT a.id FROM temp.assessments a)`),
   appendOnly(
     "report_snapshots",

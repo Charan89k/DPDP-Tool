@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentSession } from "@/lib/auth/session";
+import { canWriteClarifications } from "@/lib/auth/rbac";
 import { executeWithRls } from "@/lib/db/rls";
 import { errorMessage } from "@/lib/http/errors";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
@@ -172,6 +173,13 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json(
       { error: "Authentication required to participate in clarification threads." },
       { status: 401 }
+    );
+  }
+
+  if (!canWriteClarifications(sessionUser.role)) {
+    return NextResponse.json(
+      { error: "Access denied. Your role cannot modify clarification threads." },
+      { status: 403 }
     );
   }
 
