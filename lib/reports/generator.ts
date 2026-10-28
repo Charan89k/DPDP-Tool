@@ -214,8 +214,9 @@ export async function compileReportDocumentData(
 
   // A report is final only once the assessment has actually been issued; before that every
   // document is a draft regardless of what the caller asked for.
+  // ARCHIVED alone is not enough: a cancelled assessment can be archived without ever being issued.
   const ISSUED_STATUSES = ["FINAL_ISSUED", "REMEDIATION_ACTIVE", "ARCHIVED"];
-  const effectiveIsDraft = !ISSUED_STATUSES.includes(dbData.assessment.status);
+  const effectiveIsDraft = !(ISSUED_STATUSES.includes(dbData.assessment.status) && dbData.assessment.issued_at);
 
   return {
     assessment: {

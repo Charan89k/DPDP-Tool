@@ -155,6 +155,7 @@ export function QuestionCard({
   const [clarificationThreads, setClarificationThreads] = useState<QuestionClarificationThread[]>([]);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [isSendingReply, setIsSendingReply] = useState<Record<string, boolean>>({});
+  const [replyError, setReplyError] = useState<Record<string, string | null>>({});
 
   // Fetch real evidence and clarifications for this specific question
   useEffect(() => {
@@ -307,6 +308,7 @@ export function QuestionCard({
     if (!message) return;
 
     setIsSendingReply((prev) => ({ ...prev, [threadId]: true }));
+    setReplyError((prev) => ({ ...prev, [threadId]: null }));
     try {
       const res = await fetch(`/api/assessments/${assessmentId}/clarifications`, {
         method: "POST",
@@ -317,17 +319,25 @@ export function QuestionCard({
         }),
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        const { errorMessage } = await readJsonResponse(res);
+        setReplyError((prev) => ({ ...prev, [threadId]: errorMessage || "Your reply was not sent. Please try again." }));
+      } else {
         setReplyText((prev) => ({ ...prev, [threadId]: "" }));
-        // Refresh clarification threads
-        const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
-        if (clRes.ok) {
+        // The reply is saved; a failed refresh must not read as a failed send (the user would resend it).
+        try {
+          const clRes = await fetch(`/api/assessments/${assessmentId}/clarifications`);
+          if (!clRes.ok) throw new Error(`Refresh failed with status ${clRes.status}`);
           const clData: { threads?: ClarificationThreadResponse[] } = await clRes.json();
           if (clData.threads) {
             setClarificationThreads(toQuestionThreads(clData.threads, question.code, question.canonicalControlId));
           }
+        } catch {
+          setReplyError((prev) => ({ ...prev, [threadId]: "Your reply was sent, but the conversation could not be refreshed. Reload the page to see it." }));
         }
       }
+    } catch {
+      setReplyError((prev) => ({ ...prev, [threadId]: "Network error: we could not confirm your reply was sent. Reload the page to check before sending it again." }));
     } finally {
       setIsSendingReply((prev) => ({ ...prev, [threadId]: false }));
     }
@@ -627,6 +637,9 @@ export function QuestionCard({
                     <span>{isSendingReply[thread.id] ? "Sending..." : "Reply"}</span>
                   </button>
                 </div>
+                {replyError[thread.id] && (
+                  <p role="alert" className="text-xs text-rose-600 font-medium">{replyError[thread.id]}</p>
+                )}
               </div>
             ))}
           </div>

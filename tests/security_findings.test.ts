@@ -33,7 +33,7 @@ import { calculateAssessmentScores } from "../lib/scoring/engine.ts";
 import { getAssessmentGapAnalysis } from "../lib/gaps/service.ts";
 import JSZip from "jszip";
 import { isCalendarDate } from "../lib/http/dates.ts";
-import { updateRemediationProgress } from "../lib/remediation/service.ts";
+import { createRemediationTask, updateRemediationProgress, validateRemediationClosure } from "../lib/remediation/service.ts";
 import type { SessionUser } from "../lib/auth/types.ts";
 
 const TLI_TENANT = "018f3a5b-7c8d-7e90-8000-000000000001";
@@ -256,6 +256,22 @@ describe("CodeRabbit audit regressions (October 2026)", () => {
     assert.ok(!report.remediationTasks.some((task) => task.title === "Task from another engagement"));
   });
 
+  it("treats an archived assessment as issued only when it has an issue date", async () => {
+    // Archived rows are locked by trigger, so each case is a new assessment inserted already archived.
+    const archived = async (issuedAt: string | null) => {
+      const id = crypto.randomUUID();
+      await pool.query(
+        `INSERT INTO assessments (id, tenant_id, framework_version_id, scoring_model_id, engagement_code, title, status, lead_consultant_id, issued_at)
+         SELECT $1, tenant_id, framework_version_id, scoring_model_id, $2, title, 'ARCHIVED', lead_consultant_id, $3
+         FROM assessments WHERE id = $4;`,
+        [id, `ARCH-${id.slice(0, 8)}`, issuedAt, ALPHA_ASSESSMENT]
+      );
+      return (await compileReportDocumentData(LEAD, id)).auditTrail.isDraft;
+    };
+    assert.equal(await archived(null), true, "cancelled then archived stays a draft");
+    assert.equal(await archived("2026-10-01T00:00:00.000Z"), false, "issued then archived is official");
+  });
+
   it("counts evidence coverage only for canonical questions", () => {
     const scores = calculateAssessmentScores({
       responses: [],
@@ -306,6 +322,39 @@ describe("Remediation progress path (CodeRabbit audit)", () => {
     await assert.rejects(
       updateRemediationProgress(LEAD, taskId, { status: "VALIDATED_CLOSED" }),
       /closure validation action/
+    );
+  });
+
+  it("never lets a customer take the assessor's reopen decision", async () => {
+    const taskId = await newTask(ALPHA_ASSESSMENT);
+    await assert.rejects(
+      updateRemediationProgress(ALPHA_ADMIN, taskId, { status: "REJECTED_REOPENED" }),
+      /cannot validate or reject/
+    );
+  });
+
+  it("lets an assigned consultant create and validate tasks, audited in the customer's organisation", async () => {
+    const task = await createRemediationTask(LEAD, {
+      assessmentId: ALPHA_ASSESSMENT,
+      title: "Publish grievance officer",
+      description: "Add the officer's contact details to the website",
+      priority: "HIGH",
+      targetDate: "2027-02-28",
+    });
+    await pool.query("UPDATE remediation_tasks SET status = 'SUBMITTED_FOR_CLOSURE' WHERE id = $1;", [task.id]);
+    await validateRemediationClosure(LEAD, task.id, { action: "VALIDATE_CLOSE", validationNotes: "Contact page checked." });
+
+    const audit = await pool.query(
+      `SELECT action, tenant_id, entity_type, entity_id FROM audit_logs
+       WHERE action IN ('CREATE_REMEDIATION_TASK', 'VALIDATE_REMEDIATION_TASK') AND new_state LIKE $1 ORDER BY action;`,
+      [`%${task.id}%`]
+    );
+    assert.deepEqual(
+      audit.rows.map((r) => [r.action, r.tenant_id, r.entity_type, r.entity_id]),
+      [
+        ["CREATE_REMEDIATION_TASK", ALPHA_TENANT, "assessments", ALPHA_ASSESSMENT],
+        ["VALIDATE_REMEDIATION_TASK", ALPHA_TENANT, "assessments", ALPHA_ASSESSMENT],
+      ]
     );
   });
 

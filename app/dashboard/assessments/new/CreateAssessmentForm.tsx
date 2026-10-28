@@ -59,6 +59,8 @@ export function CreateAssessmentForm({
   initialTenantId,
   frameworkLabel,
 }: CreateAssessmentFormProps) {
+  // Matches POST /api/assessments: a customer administrator's self-assessment opens ready for answers.
+  const initialStatus = sessionUser.role === "CLIENT_ADMIN" ? "DATA_GATHERING" : "DRAFT";
   const router = useRouter();
 
   const defaultTenant =
@@ -385,7 +387,7 @@ export function CreateAssessmentForm({
 
                 <div>
                   <span className={labelClass}>Initial Status</span>
-                  <div className={`${readOnlyClass} font-mono`}>DRAFT</div>
+                  <div className={`${readOnlyClass} font-mono`}>{initialStatus}</div>
                 </div>
               </div>
 
@@ -507,7 +509,7 @@ export function CreateAssessmentForm({
               </div>
               <ol className="space-y-2 text-xs text-slate-700 list-none pl-0">
                 {[
-                  "The assessment is created in DRAFT and is visible only to its customer, assigned CloudE5 staff and super administrators.",
+                  `The assessment is created in ${initialStatus} and is visible only to its customer, assigned CloudE5 staff and super administrators.`,
                   "Assigned coordinators answer the 60 canonical questions and upload supporting evidence.",
                   "CloudE5 reviewers evaluate responses and evidence, raise clarifications, and prepare the report.",
                 ].map((step, index) => (

@@ -24,6 +24,10 @@ interface ReviewStepProps {
   onJumpToQuestion: (sectionIndex: number, questionCode?: string) => void;
   onSubmitAssessment: () => Promise<void>;
   isSubmitting?: boolean;
+  /** Set once the assessment was submitted in this visit, so the confirmation survives leaving this step. */
+  isSubmitted?: boolean;
+  /** The assessment no longer accepts changes (for example it was cancelled). */
+  isLocked?: boolean;
 }
 
 export function ReviewStep({
@@ -33,15 +37,18 @@ export function ReviewStep({
   onJumpToQuestion,
   onSubmitAssessment,
   isSubmitting = false,
+  isSubmitted = false,
+  isLocked = false,
 }: ReviewStepProps) {
-  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  const [submittedHere, setSubmittedHere] = useState(false);
+  const submissionSuccess = isSubmitted || submittedHere;
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setSubmitError(null);
     try {
       await onSubmitAssessment();
-      setSubmissionSuccess(true);
+      setSubmittedHere(true);
     } catch (err) {
       setSubmitError(errorMessage(err) || "Failed to submit assessment.");
     }
@@ -293,6 +300,10 @@ export function ReviewStep({
           <span className="px-4 py-2 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold flex items-center space-x-1.5">
             <CheckCircle2 className="w-4 h-4" />
             <span>Submitted for Validation ✓</span>
+          </span>
+        ) : isLocked ? (
+          <span className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">
+            Closed for changes
           </span>
         ) : (
           <button

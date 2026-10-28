@@ -169,15 +169,16 @@ export async function createRemediationTask(
 
     const row = res.rows[0];
 
-    // Audit log
+    // Audit log: recorded against the assessment in the customer's organisation, which the audit
+    // policy lets assigned consultants write and the customer read.
     await client.query(
       `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, new_state)
-       VALUES ($1, $2, 'CREATE_REMEDIATION_TASK', 'remediation_tasks', $3, $4);`,
+       VALUES ($1, $2, 'CREATE_REMEDIATION_TASK', 'assessments', $3, $4);`,
       [
         tenantId,
         sessionUser.userId,
-        row.id,
-        JSON.stringify({ title, priority, questionCode }),
+        assessmentId,
+        JSON.stringify({ remediationTaskId: row.id, title, priority, questionCode }),
       ]
     );
 
@@ -228,9 +229,9 @@ export async function updateRemediationProgress(
   }
 
   // Client cannot directly validate and close without assessor validation
-  if (!isConsultant && input.status === "VALIDATED_CLOSED") {
+  if (!isConsultant && (input.status === "VALIDATED_CLOSED" || input.status === "REJECTED_REOPENED")) {
     throw new RemediationError(
-      "Authority violation: Clients cannot mark remediation tasks as VALIDATED_CLOSED. Submission for closure requires independent CloudE5 assessor validation.",
+      "Authority violation: Clients cannot validate or reject remediation closures. Submission for closure requires independent CloudE5 assessor validation.",
       403
     );
   }
@@ -373,13 +374,13 @@ export async function validateRemediationClosure(
     // Audit log
     await client.query(
       `INSERT INTO audit_logs (tenant_id, user_id, action, entity_type, entity_id, previous_state, new_state)
-       VALUES ($1, $2, 'VALIDATE_REMEDIATION_TASK', 'remediation_tasks', $3, $4, $5);`,
+       VALUES ($1, $2, 'VALIDATE_REMEDIATION_TASK', 'assessments', $3, $4, $5);`,
       [
-        sessionUser.tenantId,
+        current.tenant_id,
         sessionUser.userId,
-        taskId,
-        JSON.stringify({ status: current.status }),
-        JSON.stringify({ status: targetStatus, notes: validationNotes }),
+        current.assessment_id,
+        JSON.stringify({ remediationTaskId: taskId, status: current.status }),
+        JSON.stringify({ remediationTaskId: taskId, status: targetStatus, notes: validationNotes }),
       ]
     );
 

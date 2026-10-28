@@ -481,7 +481,7 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
           closureSubmissionNotes: "Self-closing task",
         });
       },
-      (err: Error) => err.message.includes("Clients cannot mark remediation tasks as VALIDATED_CLOSED")
+      (err: Error) => err.message.includes("Clients cannot validate or reject remediation closures")
     );
 
     // 4. Authorized TLI Consultant validates closure

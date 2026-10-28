@@ -27,7 +27,7 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
   // Only assessments visible to this user under the tenant policy layer are rendered.
   const assessment = await executeWithRls(sessionUser, async (client) => {
     const res = await client.query(
-      `SELECT a.id, a.title, a.status, a.engagement_code, a.created_at, a.target_completion_date,
+      `SELECT a.id, a.title, a.status, a.engagement_code, a.created_at, a.target_completion_date, a.submitted_at,
               t.name AS tenant_name
        FROM assessments a
        LEFT JOIN tenants t ON t.id = a.tenant_id
@@ -57,6 +57,7 @@ export default async function QuestionnairePage({ params }: QuestionnairePagePro
         canEdit={canEditQuestionnaire(sessionUser.role)}
         userRole={sessionUser.role}
         assessmentStatus={assessment.status}
+        hasSubmission={Boolean(assessment.submitted_at)}
       />
     </div>
   );

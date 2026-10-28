@@ -68,7 +68,7 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
     <aside
       id="app-sidebar"
       className={`w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F] fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
+        mobileOpen ? "translate-x-0" : "-translate-x-full invisible lg:visible"
       }`}
       aria-label="Main navigation"
     >

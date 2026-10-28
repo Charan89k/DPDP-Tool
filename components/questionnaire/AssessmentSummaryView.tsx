@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
+import { belongsTo } from "./QuestionCard";
 import { isTliRole } from "@/lib/auth/rbac";
 import { errorMessage } from "@/lib/http/errors";
 import type { ScoringEngineOutput } from "@/lib/scoring/types";
@@ -219,15 +220,14 @@ export function AssessmentSummaryView({
   }, [allQuestions, selectedSection, searchQuery]);
 
   // Evidence Map per question
+  // Counted the same way as the questionnaire: evidence filed under a question's control code counts too.
   const evidenceCountMap = useMemo(() => {
     const map = new Map<string, number>();
-    for (const ev of evidenceList) {
-      if (ev.questionCode) {
-        map.set(ev.questionCode, (map.get(ev.questionCode) || 0) + 1);
-      }
+    for (const q of allQuestions) {
+      map.set(q.code, evidenceList.filter((ev) => belongsTo(q.code, q.canonicalControlId, ev.questionCode)).length);
     }
     return map;
-  }, [evidenceList]);
+  }, [allQuestions, evidenceList]);
 
   const getOptionBadge = (option: string | null | undefined) => {
     if (!option) {

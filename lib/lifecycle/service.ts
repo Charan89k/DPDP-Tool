@@ -45,6 +45,21 @@ export class LifecycleError extends Error {
   }
 }
 
+/** Super admins, the lead consultant and users with an assessment_assignments row act as assigned staff. */
+async function isAssignedToAssessment(
+  client: PoolClient,
+  sessionUser: SessionUser,
+  assessmentId: string,
+  leadConsultantId: string | null
+): Promise<boolean> {
+  if (sessionUser.role === "TLI_SUPER_ADMIN" || leadConsultantId === sessionUser.userId) return true;
+  const assignRes = await client.query(
+    `SELECT 1 FROM assessment_assignments WHERE assessment_id = $1 AND user_id = $2;`,
+    [assessmentId, sessionUser.userId]
+  );
+  return (assignRes.rowCount ?? 0) > 0;
+}
+
 /**
  * Retrieves lifecycle state summary and allowed transitions for current session user.
  */
@@ -83,17 +98,7 @@ export async function getAssessmentLifecycleState(
     const currentStatus = row.status as AssessmentStatus;
 
     // 2. Check user assignment
-    let isAssigned = false;
-    if (sessionUser.role === "TLI_SUPER_ADMIN") {
-      isAssigned = true;
-    } else {
-      const assignRes = await client.query(
-        `SELECT 1 FROM assessment_assignments 
-         WHERE assessment_id = $1 AND user_id = $2;`,
-        [assessmentId, sessionUser.userId]
-      );
-      isAssigned = (assignRes.rowCount ?? 0) > 0 || row.lead_consultant_id === sessionUser.userId;
-    }
+    const isAssigned = await isAssignedToAssessment(client, sessionUser, assessmentId, row.lead_consultant_id);
 
     // 3. Compute permitted transitions
     const allowedTransitions = getAllowedTransitionsForRole(
@@ -541,9 +546,7 @@ export async function executeAssessmentTransition(
     );
 
     // 7. Return refreshed summary
-    const isAssigned =
-      sessionUser.role === "TLI_SUPER_ADMIN" ||
-      assessment.lead_consultant_id === sessionUser.userId;
+    const isAssigned = await isAssignedToAssessment(client, sessionUser, assessmentId, assessment.lead_consultant_id);
 
     const allowedTransitions = getAllowedTransitionsForRole(
       targetStatus,

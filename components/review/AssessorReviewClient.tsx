@@ -168,7 +168,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
     : null;
   const [clarificationTitle, setClarificationTitle] = useState("");
   const [clarificationMessage, setClarificationMessage] = useState("");
-  const [replyMessage, setReplyMessage] = useState("");
+  // One reply draft per clarification thread, so text typed in one thread never posts to another.
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [sendingClarification, setSendingClarification] = useState(false);
 
   // Local draft state for edits
@@ -309,7 +310,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
   };
 
   const handleReplyClarification = async (threadId: string) => {
-    if (!replyMessage.trim()) return;
+    const message = (replyDrafts[threadId] ?? "").trim();
+    if (!message) return;
 
     setSendingClarification(true);
     try {
@@ -318,7 +320,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           threadId,
-          message: replyMessage.trim(),
+          message,
         }),
       });
 
@@ -327,7 +329,7 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
         throw new Error(data.error || "Failed to post message.");
       }
 
-      setReplyMessage("");
+      setReplyDrafts((prev) => ({ ...prev, [threadId]: "" }));
       await loadData({ resetDrafts: false });
     } catch (err) {
       alert(errorMessage(err) || "Failed to post reply.");
@@ -410,7 +412,8 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
     }
   };
 
-  if (loading) {
+  // Later refreshes keep the workspace (and any open dialog) on screen instead of the full-page spinner.
+  if (loading && !assessment) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-16 text-center shadow-xs">
         <RefreshCw className="w-8 h-8 text-[#0066FF] animate-spin mx-auto mb-3" />
@@ -439,6 +442,14 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
 
   return (
     <div className="space-y-6">
+      {/* A failed refresh or save keeps the workspace on screen, so say the data may be stale. */}
+      {error && (
+        <div role="alert" className="flex items-start gap-2 p-3 rounded-lg border border-rose-200 bg-rose-50 text-xs text-rose-700">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* 1. Header & Navigation Context Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-2 border-b border-slate-200">
         <div className="space-y-1">
@@ -1037,6 +1048,12 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
+            {/* The page-level alert sits behind this dialog, so repeat a refresh failure here. */}
+            {error && (
+              <p role="alert" className="px-5 py-2 text-xs text-rose-700 bg-rose-50 border-b border-rose-200">
+                {error}
+              </p>
+            )}
 
             {/* Modal Body: Active Threads or Form to Create */}
             <div className="p-5 overflow-y-auto space-y-4 flex-1">
@@ -1090,13 +1107,13 @@ export function AssessorReviewClient({ assessmentId }: ReviewWorkspaceProps) {
                           <input aria-label="Reply message"
                             type="text"
                             placeholder="Write a reply message..."
-                            value={replyMessage}
-                            onChange={(e) => setReplyMessage(e.target.value)}
+                            value={replyDrafts[th.id] ?? ""}
+                            onChange={(e) => setReplyDrafts((prev) => ({ ...prev, [th.id]: e.target.value }))}
                             className="flex-1 text-xs bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                           />
                           <button
                             type="button"
-                            disabled={sendingClarification || !replyMessage.trim()}
+                            disabled={sendingClarification || !(replyDrafts[th.id] ?? "").trim()}
                             onClick={() => handleReplyClarification(th.id)}
                             className="px-3 py-1.5 bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-semibold rounded-lg disabled:opacity-50 inline-flex items-center gap-1"
                           >

@@ -12,9 +12,6 @@ import {
   Eye,
   Download,
   Trash2,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   X,
   AlertCircle,
   Clock,
@@ -94,8 +91,6 @@ export function EvidenceManagementClient({
 
   // Selected Evidence for Right Preview Panel
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
-  const [selectedPage, setSelectedPage] = useState(1);
-  const totalPages = 12;
 
   // Upload Form State
   // Holds a canonical question code (e.g. "GOV-001"), the same value the select's options use.
@@ -305,6 +300,8 @@ export function EvidenceManagementClient({
       setIsReviewing(false);
     }
   };
+
+  const fileTypeLabel = (fileName: string) => fileName.split(".").pop()?.toUpperCase() || "File";
 
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split(".").pop()?.toLowerCase();
@@ -552,6 +549,13 @@ export function EvidenceManagementClient({
               tabIndex={0}
               aria-label="Choose an evidence file to upload"
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                // Without this the browser opens a dropped file in place of the page.
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file && !isUploading) handleFileUpload(file);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -810,76 +814,35 @@ export function EvidenceManagementClient({
                     {selectedEvidence.fileName}
                   </h4>
                   <p className="text-[10px] text-slate-500 font-mono">
-                    PDF • {(selectedEvidence.fileSizeBytes / 1024).toFixed(0)} KB
+                    {fileTypeLabel(selectedEvidence.fileName)} • {(selectedEvidence.fileSizeBytes / 1024).toFixed(0)} KB
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                onClick={() => setSelectedEvidence(null)}
+                aria-label="Close evidence details"
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* PDF Viewer Control Bar */}
-            <div className="flex items-center justify-between bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs select-none">
-              <div className="flex items-center space-x-2">
-                <button type="button" className="p-1 hover:text-slate-300">
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <button type="button" className="p-1 hover:text-slate-300">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="text-[11px] font-mono">
-                {selectedPage} / {totalPages}
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedPage(Math.max(1, selectedPage - 1))}
-                  className="px-1.5 py-0.5 hover:bg-slate-700 rounded"
-                >
-                  -
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedPage(Math.min(totalPages, selectedPage + 1))}
-                  className="px-1.5 py-0.5 hover:bg-slate-700 rounded"
-                >
-                  +
-                </button>
-                <button type="button" className="p-1 hover:text-slate-300">
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Document Rendered Content Preview */}
-            <div className="border border-slate-200 rounded-lg p-5 bg-[#FAF8F5] min-h-[220px] space-y-3 font-serif">
-              <div className="text-center pb-2 border-b border-slate-200">
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-sans font-bold">
-                  {tenantName}
-                </p>
-                <h5 className="font-bold text-sm text-slate-900 mt-1">
-                  Data Protection Policy
-                </h5>
-                <p className="text-[10px] text-slate-500 font-sans mt-0.5">
-                  Version 1.0 • Effective Date: 15 January 2024
-                </p>
-              </div>
-
-              <div className="space-y-1.5 text-xs text-slate-700 leading-relaxed font-sans">
-                <p className="font-bold text-slate-900 text-[11px]">
-                  1. Purpose
-                </p>
-                <p className="text-[11px] text-slate-600 leading-normal">
-                  This policy outlines the organisation’s approach to personal data protection in compliance with the Digital Personal Data Protection Act, 2023.
-                </p>
-              </div>
+            {/* The file itself is only shown by downloading it: CloudE5 never renders uploaded documents inline. */}
+            <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3 text-xs text-slate-600">
+              <p>
+                Open the file to check its contents before verifying it. Uploaded on{" "}
+                <span className="font-semibold text-slate-800">{selectedEvidence.uploadedOn}</span> by{" "}
+                <span className="font-semibold text-slate-800">{selectedEvidence.uploadedBy}</span>.
+              </p>
+              <a
+                href={`/api/evidence/${selectedEvidence.id}/download`}
+                download={selectedEvidence.fileName}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0066FF] hover:bg-[#0052CC] text-white font-semibold"
+              >
+                <Download className="w-3.5 h-3.5" aria-hidden="true" />
+                Download {selectedEvidence.fileName}
+              </a>
             </div>
           </div>
 
