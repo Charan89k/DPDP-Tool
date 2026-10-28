@@ -6,13 +6,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { workEmailSchema } from "@/lib/auth/work_email";
 import { registerOrganization } from "@/lib/auth/account";
 import { registrationRateLimiter } from "@/lib/auth/rate_limit";
 import { accountErrorResponse, limitAccountEmail, parseBody, requestMeta } from "@/lib/http/account_routes";
 
 const registerSchema = z.object({
   fullName: z.string().trim().min(2, "Enter your full name.").max(120),
-  email: z.string().trim().email("Enter a valid work email address.").max(254),
+  email: workEmailSchema,
   password: z.string().min(1, "Choose a password.").max(200),
   organizationName: z.string().trim().min(2, "Enter your organisation's name.").max(160),
   industry: z.string().trim().max(120).optional().nullable(),
