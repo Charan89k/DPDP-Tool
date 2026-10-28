@@ -1,7 +1,7 @@
 {
-  "name": "tli-dpdp-tool",
+  "name": "cloude5",
   "version": "1.0.0",
-  "description": "TLI DPDP Compliance Gap Analysis Tool \u2014 Truth Labs International",
+  "description": "CloudE5: DPDP Act (India) readiness assessments with evidence, gap analysis and remediation tracking",
   "private": true,
   "type": "module",
   "scripts": {
@@ -32,7 +32,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
