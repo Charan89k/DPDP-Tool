@@ -11,6 +11,7 @@
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](docs/SELF_HOSTING.md)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Live:** [cloude5.tech](https://cloude5.tech)
 
@@ -226,4 +227,4 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 
 ## License
 
-No licence has been published for this repository yet, so all rights are reserved by the authors.
+Released under the [MIT License](LICENSE).
