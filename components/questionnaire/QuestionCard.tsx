@@ -75,7 +75,7 @@ interface ClarificationThreadResponse {
  * Evidence and threads belong to a question by its code, or by its mapped control code
  * (the evidence API reports control-level evidence under the control code).
  */
-function belongsTo(
+export function belongsTo(
   questionCode: string,
   controlId: string | null | undefined,
   code: string | null | undefined
@@ -120,6 +120,8 @@ interface QuestionCardProps {
   onPrevQuestion?: () => void;
   questionNumber?: number;
   totalQuestions?: number;
+  /** Shown inside a questionnaire table row: the row already shows the question and the answer choices. */
+  embedded?: boolean;
 }
 
 export function QuestionCard({
@@ -133,6 +135,7 @@ export function QuestionCard({
   onAttachEvidence,
   questionNumber = 1,
   totalQuestions = 60,
+  embedded = false,
 }: QuestionCardProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -333,10 +336,10 @@ export function QuestionCard({
   return (
     <div
       id={`question-${question.code}`}
-      className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-5"
+      className={embedded ? "space-y-5" : "bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-5"}
     >
       {/* Read-Only Notice if editing is not permitted */}
-      {!canEdit && (
+      {!canEdit && !embedded && (
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Info className="w-4 h-4 text-slate-400" />
@@ -350,6 +353,7 @@ export function QuestionCard({
         </div>
       )}
 
+      {!embedded && (<>
       {/* 1. Top Bar: Question Code, Title & Domain Badge */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-slate-100">
         <div className="space-y-1.5 flex-1">
@@ -390,12 +394,13 @@ export function QuestionCard({
           (DPDP Act, 2023 Statutory Reference: Section 6, 7 & 8; Accountability & Governance Framework)
         </p>
       </div>
+      </>)}
 
       {/* 3. Grid: Left: Response Pills & Notes | Right: Assessor Guidance Sub-Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Column: Options & Notes */}
         <div className={isAssessor ? "lg:col-span-7 space-y-4" : "lg:col-span-12 space-y-4"}>
-          <div>
+          {!embedded && <div>
             <label className="block text-xs font-bold text-slate-900 mb-2">
               Response <span className="text-rose-500">*</span>
             </label>
@@ -475,7 +480,7 @@ export function QuestionCard({
                 Not Applicable
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* Response Comments & Mandatory Justification */}
           <div className="space-y-1.5">

@@ -109,6 +109,12 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   await page.getByRole("button", { name: "Start assessment" }).click();
   await expect(page).toHaveURL(/\/dashboard\/assessments\/[^/]+\/questionnaire/, { timeout: 30_000 });
 
+  // The questionnaire is a table per domain: one tick per answer, saved automatically.
+  await page.getByRole("radio", { name: "GOV-001: Partially implemented" }).check();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  await page.getByRole("button", { name: "Comments and evidence for GOV-001" }).click();
+  await expect(page.getByRole("textbox", { name: "Comments and justification" })).toBeVisible();
+
   // Evidence upload with the signed-in session (same-origin, as the evidence page sends it).
   const assessmentId = page.url().match(/assessments\/([^/]+)\/questionnaire/)![1];
   const upload = (name: string, mimeType: string, buffer: Buffer) =>
