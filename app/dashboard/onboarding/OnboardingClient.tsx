@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CheckCircle2, ClipboardList, Info } from "lucide-react";
 import type { OrganizationProfile } from "@/lib/organization/profile";
+import { ORGANIZATION_TYPES, TEAM_SIZES } from "@/lib/organization/options";
 import { readJsonResponse } from "@/lib/http/responses";
 
 const inputClass =
@@ -12,12 +13,21 @@ const labelClass = "block text-xs font-semibold text-slate-700 mb-1";
 
 type SdfAnswer = "yes" | "no" | "unsure";
 
+const OTHER = "Other";
+const isListedType = (value: string) => (ORGANIZATION_TYPES as readonly string[]).includes(value);
+
 export function OnboardingClient({ organization, adminName }: { organization: OrganizationProfile; adminName: string }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(organization.onboardingCompletedAt ? 2 : 1);
   const [profile, setProfile] = useState({
     name: organization.name,
-    industry: organization.industry ?? "",
+    orgType: organization.industry ? (isListedType(organization.industry) ? organization.industry : OTHER) : "",
+    otherType: organization.industry && !isListedType(organization.industry) ? organization.industry : "",
+    teamSize: organization.teamSize ?? "",
+    contactPhone: organization.contactPhone ?? "",
+    contactEmail: organization.contactEmail ?? "",
+    website: organization.website ?? "",
+    address: organization.address ?? "",
     dpoName: organization.dpoName ?? "",
     dpoEmail: organization.dpoEmail ?? "",
   });
@@ -36,7 +46,12 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: profile.name,
-        industry: profile.industry || null,
+        industry: (profile.orgType === OTHER ? profile.otherType.trim() : profile.orgType) || null,
+        teamSize: profile.teamSize || null,
+        contactPhone: profile.contactPhone || null,
+        contactEmail: profile.contactEmail || null,
+        website: profile.website || null,
+        address: profile.address || null,
         dpoName: profile.dpoName || null,
         dpoEmail: profile.dpoEmail || null,
         isSdf: sdf === "yes",
@@ -124,15 +139,58 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
               {fieldError("name")}
             </div>
             <div>
-              <label htmlFor="industry" className={labelClass}>Industry</label>
-              <input id="industry" value={profile.industry} onChange={(e) => setProfile({ ...profile, industry: e.target.value })} placeholder="e.g. Healthcare" className={inputClass} />
+              <label htmlFor="org-type" className={labelClass}>Organisation type</label>
+              <select id="org-type" required value={profile.orgType} onChange={(e) => setProfile({ ...profile, orgType: e.target.value })} className={inputClass}>
+                <option value="" disabled>Choose a type</option>
+                {ORGANIZATION_TYPES.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+                <option value={OTHER}>Other (type it in)</option>
+              </select>
+              {fieldError("industry")}
+            </div>
+            {profile.orgType === OTHER && (
+              <div>
+                <label htmlFor="org-type-other" className={labelClass}>Your organisation type</label>
+                <input id="org-type-other" required minLength={2} maxLength={120} value={profile.otherType} onChange={(e) => setProfile({ ...profile, otherType: e.target.value })} placeholder="e.g. Agritech" className={inputClass} />
+              </div>
+            )}
+            <div>
+              <label htmlFor="team-size" className={labelClass}>Team size (employees)</label>
+              <select id="team-size" required value={profile.teamSize} onChange={(e) => setProfile({ ...profile, teamSize: e.target.value })} className={inputClass}>
+                <option value="" disabled>Choose a size</option>
+                {TEAM_SIZES.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+              {fieldError("teamSize")}
+            </div>
+            <div>
+              <label htmlFor="contact-phone" className={labelClass}>Company phone</label>
+              <input id="contact-phone" type="tel" required autoComplete="tel" value={profile.contactPhone} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} placeholder="+91 98765 43210" className={inputClass} />
+              {fieldError("contactPhone")}
+            </div>
+            <div>
+              <label htmlFor="contact-email" className={labelClass}>Company email</label>
+              <input id="contact-email" type="email" required value={profile.contactEmail} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} placeholder="info@yourcompany.com" className={inputClass} />
+              {fieldError("contactEmail")}
+            </div>
+            <div>
+              <label htmlFor="website" className={labelClass}>Website</label>
+              <input id="website" value={profile.website} onChange={(e) => setProfile({ ...profile, website: e.target.value })} placeholder="yourcompany.com (optional)" className={inputClass} />
+              {fieldError("website")}
+            </div>
+            <div className="sm:col-span-2">
+              <label htmlFor="address" className={labelClass}>Office address</label>
+              <input id="address" autoComplete="street-address" value={profile.address} onChange={(e) => setProfile({ ...profile, address: e.target.value })} placeholder="Optional" className={inputClass} />
+              {fieldError("address")}
             </div>
             <div>
               <label htmlFor="dpo-name" className={labelClass}>Data protection / grievance contact</label>
               <input id="dpo-name" value={profile.dpoName} onChange={(e) => setProfile({ ...profile, dpoName: e.target.value })} placeholder="Name (optional)" className={inputClass} />
             </div>
             <div>
-              <label htmlFor="dpo-email" className={labelClass}>Contact email</label>
+              <label htmlFor="dpo-email" className={labelClass}>Data protection contact email</label>
               <input id="dpo-email" type="email" value={profile.dpoEmail} onChange={(e) => setProfile({ ...profile, dpoEmail: e.target.value })} placeholder="Optional" className={inputClass} />
               {fieldError("dpoEmail")}
             </div>

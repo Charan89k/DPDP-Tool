@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { workEmailSchema } from "@/lib/auth/work_email";
 import crypto from "crypto";
 import { getCurrentSession } from "@/lib/auth/session";
 import { CLIENT_ROLES } from "@/lib/auth/rbac";
@@ -19,7 +20,7 @@ import { invitationEmail } from "@/lib/email/templates";
 
 const inviteUserSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters.").max(255),
-  email: z.string().email("Valid corporate email address is required."),
+  email: workEmailSchema,
   role: z.enum(["CLIENT_ADMIN", "CLIENT_BU_LEAD", "CLIENT_CONTRIBUTOR", "CLIENT_VIEWER"]),
 });
 

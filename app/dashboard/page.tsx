@@ -44,6 +44,8 @@ export default async function DashboardPage() {
   }
 
   const isTli = isTliRole(sessionUser.role);
+  // The overview is for platform staff; customers start on their questionnaire.
+  if (!isTli) redirect("/dashboard/questionnaire");
   const sections = getCanonicalQuestionnaireSections();
 
   // Fetch real database metrics and assessments under RLS

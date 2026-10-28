@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { workEmailSchema } from "@/lib/auth/work_email";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { resolveClientIp } from "@/lib/auth/rate_limit";
@@ -24,7 +25,7 @@ const createCustomerSchema = z.object({
   initialUser: z
     .object({
       fullName: z.string().min(2, "User name must be at least 2 characters."),
-      email: z.string().email("Valid corporate email address is required."),
+      email: workEmailSchema,
       role: z.enum(["CLIENT_ADMIN", "CLIENT_BU_LEAD", "CLIENT_CONTRIBUTOR", "CLIENT_VIEWER"]).default("CLIENT_ADMIN"),
       password: z.string().max(200).optional().or(z.literal("").transform(() => undefined)),
     })

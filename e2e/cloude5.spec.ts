@@ -71,6 +71,16 @@ async function verificationLink(email: string): Promise<string> {
   throw new Error(`No verification email for ${email}`);
 }
 
+/** Completes the onboarding organisation profile (type, size and company contact are required). */
+async function fillOrganisationProfile(page: Page) {
+  await page.getByLabel("Organisation type").selectOption("Other");
+  await page.getByLabel("Your organisation type").fill("Agritech");
+  await page.getByLabel("Team size (employees)").selectOption("51-200");
+  await page.getByLabel("Company phone").fill("+91 98765 43210");
+  await page.getByLabel("Company email").fill("info@example.com");
+  await page.getByText("No", { exact: true }).click();
+}
+
 async function registerAndVerify(page: Page, account: ReturnType<typeof newAccount>) {
   await page.goto("/register");
   await page.getByLabel("Your full name").fill(account.name);
@@ -103,7 +113,14 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard\/onboarding/);
   await expect(page.getByRole("heading", { name: "Set up your CloudE5 workspace" })).toBeVisible();
 
-  await page.getByText("No", { exact: true }).click();
+  // Customer accounts must use a work email address.
+  const personal = await page.request.post("/api/auth/register", {
+    headers: { Origin: new URL(page.url()).origin },
+    data: { fullName: "Personal Mail", email: "someone@gmail.com", password: account.password, organizationName: "Personal Org", acceptTerms: true },
+  });
+  expect(personal.status()).toBe(400);
+
+  await fillOrganisationProfile(page);
   await page.getByRole("button", { name: "Save and continue" }).click();
   await expect(page.getByRole("heading", { name: "Start your first assessment" })).toBeVisible();
   await page.getByRole("button", { name: "Start assessment" }).click();
@@ -263,7 +280,7 @@ test("the assessment workspace fits phone and tablet screens @mobile", async ({ 
   await registerAndVerify(page, account);
   await signIn(page, account.email, account.password);
   await expect(page).toHaveURL(/\/dashboard\/onboarding/);
-  await page.getByText("No", { exact: true }).click();
+  await fillOrganisationProfile(page);
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Start assessment" }).click();
   await expect(page).toHaveURL(/\/dashboard\/assessments\/[^/]+\/questionnaire/, { timeout: 30_000 });
@@ -271,7 +288,7 @@ test("the assessment workspace fits phone and tablet screens @mobile", async ({ 
 
   // The navigation is a drawer on small screens.
   await page.getByRole("button", { name: "Open navigation" }).click();
-  await expect(page.locator("#app-sidebar").getByRole("link", { name: "Reports" })).toBeInViewport();
+  await expect(page.locator("#app-sidebar").getByRole("link", { name: "Results" })).toBeInViewport();
   await page.keyboard.press("Escape");
 
   const pages = [
