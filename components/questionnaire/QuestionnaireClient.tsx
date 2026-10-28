@@ -14,6 +14,9 @@ import { errorMessage } from "@/lib/http/errors";
 import { formatDate } from "@/lib/format/dates";
 import { LEGACY_RESPONSE_CACHE_PREFIX } from "@/lib/questionnaire/legacy_cache";
 
+// Mirrors OPEN_STATUSES in lib/db/sqlite/policies.ts, which decides whether response writes are allowed.
+const OPEN_STATUSES = ["DRAFT", "SCOPING", "SCOPE_LOCKED", "DATA_GATHERING"];
+
 interface QuestionnaireClientProps {
   assessmentId: string;
   assessmentTitle: string;
@@ -25,6 +28,8 @@ interface QuestionnaireClientProps {
   canEdit?: boolean;
   userRole?: string;
   assessmentStatus?: string;
+  /** The assessment has a recorded submission (`submitted_at`). */
+  hasSubmission?: boolean;
 }
 
 const NOT_APPLICABLE = "Not applicable — justification required";
@@ -49,6 +54,7 @@ export function QuestionnaireClient({
   canEdit = true,
   userRole,
   assessmentStatus,
+  hasSubmission = false,
 }: QuestionnaireClientProps) {
   const sections = getCanonicalQuestionnaireSections();
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
@@ -56,6 +62,7 @@ export function QuestionnaireClient({
   const [isReviewStep, setIsReviewStep] = useState(false);
   const [responses, setResponses] = useState<Record<string, RespondentQuestionResponse>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -174,7 +181,13 @@ export function QuestionnaireClient({
   };
 
   const handleSubmitAssessment = async () => {
+    // A pending autosave would otherwise reach the server after the assessment is locked for review.
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
     setIsSubmitting(true);
+    let saved = false;
     try {
       const res = await fetch(`/api/assessments/${assessmentId}/responses`, {
         method: "PUT",
@@ -186,6 +199,7 @@ export function QuestionnaireClient({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to save responses before submitting.");
       }
+      saved = true;
 
       // Saving alone does not submit: move the assessment to review so it is locked and routed to
       // the assessors, and surface the lifecycle guard's reasons if it refuses.
@@ -199,13 +213,19 @@ export function QuestionnaireClient({
         const reasons: string[] = Array.isArray(result.validationErrors) ? result.validationErrors : [];
         throw new Error(reasons.length > 0 ? reasons.join(" ") : result.error || "Failed to submit assessment.");
       }
+      setIsSubmitted(true);
     } finally {
+      // Nothing was saved (error response or network failure): retry the autosave so recent edits are not left only in this page.
+      if (!saved) saveTimeoutRef.current = setTimeout(() => persistToServer(responses), 800);
       setIsSubmitting(false);
     }
   };
 
-  const canEditAnswers =
-    canEdit && !["FINAL_ISSUED", "ARCHIVED", "REMEDIATION_ACTIVE"].includes(assessmentStatus || "");
+  // Customers can only change answers while the assessment is open; a reload after submitting must stay locked too.
+  const isLocked = isSubmitted || (assessmentStatus ? !OPEN_STATUSES.includes(assessmentStatus) : false);
+  const canEditAnswers = canEdit && !isLocked;
+  // Cancelled or archived assessments may never have been submitted, so rely on the recorded submission.
+  const wasSubmitted = isSubmitted || (isLocked && hasSubmission);
 
   return (
     <div className="space-y-6">
@@ -370,6 +390,8 @@ export function QuestionnaireClient({
           onJumpToQuestion={handleJumpToQuestion}
           onSubmitAssessment={handleSubmitAssessment}
           isSubmitting={isSubmitting}
+          isSubmitted={wasSubmitted}
+          isLocked={isLocked}
         />
       ) : (
         <div className="space-y-4">

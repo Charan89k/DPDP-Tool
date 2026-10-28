@@ -29,6 +29,7 @@ interface ReportAssessmentRow {
   tenant_id: string;
   title: string;
   status: string;
+  issued_at: Date | string | null;
   target_framework: string;
   start_date: Date | null;
   target_completion_date: Date | null;
@@ -61,6 +62,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           a.tenant_id,
           a.title,
           a.status,
+          a.issued_at,
           fv.name AS target_framework,
           a.created_at AS start_date,
           a.target_completion_date,
@@ -126,7 +128,10 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     );
   }
 
-  const isFinalIssued = assessment.status === "FINAL_ISSUED";
+  // Remediation and archiving can follow issuance, but a cancelled assessment can also be archived:
+  // only an issue date proves the official report exists.
+  const isFinalIssued =
+    ["FINAL_ISSUED", "REMEDIATION_ACTIVE", "ARCHIVED"].includes(assessment.status) && Boolean(assessment.issued_at);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">

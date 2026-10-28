@@ -23,6 +23,7 @@ interface TopbarProps {
 export function Topbar({ user, onOpenNavigation, navigationOpen = false }: TopbarProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -60,13 +61,17 @@ export function Topbar({ user, onOpenNavigation, navigationOpen = false }: Topba
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    setLogoutError(null);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      // Leaving while the session is still valid would let the user believe they signed out.
+      if (!res.ok) throw new Error(`Logout failed with status ${res.status}`);
       clearLegacyResponseCaches();
       router.push("/login");
       router.refresh();
     } catch (err) {
       console.error("Logout failed:", err);
+      setLogoutError("Sign-out failed. Please try again.");
       setIsLoggingOut(false);
     }
   };
@@ -157,6 +162,11 @@ export function Topbar({ user, onOpenNavigation, navigationOpen = false }: Topba
                   <LogOut className="w-3.5 h-3.5" />
                   <span>{isLoggingOut ? "Signing Out..." : "Sign Out"}</span>
                 </button>
+                {logoutError && (
+                  <p role="alert" className="px-4 pb-2 text-[11px] text-rose-700">
+                    {logoutError}
+                  </p>
+                )}
               </div>
             </div>
           )}
