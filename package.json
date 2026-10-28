@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "CloudE5: DPDP Act (India) readiness assessments with evidence, gap analysis and remediation tracking",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev",
