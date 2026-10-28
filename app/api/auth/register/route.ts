@@ -17,7 +17,7 @@ const registerSchema = z.object({
   password: z.string().min(1, "Choose a password.").max(200),
   organizationName: z.string().trim().min(2, "Enter your organisation's name.").max(160),
   industry: z.string().trim().max(120).optional().nullable(),
-  acceptTerms: z.literal(true, { errorMap: () => ({ message: "Please confirm you have read the terms of use." }) }),
+  acceptTerms: z.literal(true, { message: "Please confirm you have read the terms of use." }),
 });
 
 export async function POST(req: NextRequest) {
