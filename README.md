@@ -4,6 +4,8 @@
 
 **DPDP Act readiness assessments for Indian organisations: guided, evidence-backed and self-hosted.**
 
+[![CI](https://github.com/Charan89k/DPDP-Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/Charan89k/DPDP-Tool/actions/workflows/ci.yml)
+[![Live](https://img.shields.io/badge/live-cloude5.tech-0066FF)](https://cloude5.tech)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![SQLite](https://img.shields.io/badge/SQLite-WAL-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org)
@@ -202,6 +204,8 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 | [Self-hosting](docs/SELF_HOSTING.md) | Installation, configuration, backups, upgrades, troubleshooting |
 | [Production checklist](docs/PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
 | [Security model](docs/SECURITY_MODEL.md) | Tenant isolation, account security, security headers |
+| [Changelog](CHANGELOG.md) | What changed, with links to each pull request |
+| [Security policy](SECURITY.md) | How to report a vulnerability privately |
 | [Methodology and reference](docs/README.md) | Control library, evidence catalogue, scoring, legal sources, design history |
 
 ## Project structure
