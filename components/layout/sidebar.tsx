@@ -26,61 +26,43 @@ interface SidebarProps {
 export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) {
   const pathname = usePathname();
 
-  const navItems = [
-    {
-      label: "Home",
-      href: "/dashboard",
-      icon: Home,
-      exact: true,
-    },
-    {
-      label: "Assessments",
-      href: "/dashboard/assessments",
-      icon: CheckSquare,
-      exact: false,
-    },
-    ...(isTliRole(user.role)
+  // Customers see only their own work: answer, attach evidence, read results; platform staff see everything.
+  const navItems: Array<{ label: string; href: string; icon: typeof Home; exact: boolean; alsoActive?: RegExp }> =
+    isTliRole(user.role)
       ? [
-          {
-            label: "Customers",
-            href: "/dashboard/customers",
-            icon: Users,
-            exact: false,
-          },
+          { label: "Home", href: "/dashboard", icon: Home, exact: true },
+          { label: "Assessments", href: "/dashboard/assessments", icon: CheckSquare, exact: false },
+          { label: "Customers", href: "/dashboard/customers", icon: Users, exact: false },
+          { label: "Questionnaire", href: "/dashboard/questionnaire", icon: CheckSquare, exact: false },
+          { label: "Evidence", href: "/dashboard/evidence", icon: FileText, exact: false },
+          { label: "Reports", href: "/dashboard/reports", icon: BarChart3, exact: false },
+          { label: "Settings", href: "/dashboard/settings", icon: Settings, exact: false },
         ]
       : [
           {
-            label: "Team",
-            href: `/dashboard/customers/${user.tenantId}`,
-            icon: Users,
+            label: "Questionnaire",
+            href: "/dashboard/questionnaire",
+            icon: CheckSquare,
             exact: false,
+            alsoActive: /^\/dashboard\/assessments(\/[^/]+\/questionnaire)?$/,
           },
-        ]),
-    {
-      label: "Questionnaire",
-      href: "/dashboard/questionnaire",
-      icon: CheckSquare,
-      exact: false,
-    },
-    {
-      label: "Evidence",
-      href: "/dashboard/evidence",
-      icon: FileText,
-      exact: false,
-    },
-    {
-      label: "Reports",
-      href: "/dashboard/reports",
-      icon: BarChart3,
-      exact: false,
-    },
-    {
-      label: "Settings",
-      href: "/dashboard/settings",
-      icon: Settings,
-      exact: false,
-    },
-  ];
+          {
+            label: "Evidence",
+            href: "/dashboard/evidence",
+            icon: FileText,
+            exact: false,
+            alsoActive: /^\/dashboard\/assessments\/[^/]+\/evidence$/,
+          },
+          {
+            label: "Results",
+            href: "/dashboard/reports",
+            icon: BarChart3,
+            exact: false,
+            alsoActive: /^\/dashboard\/assessments\/[^/]+\/(summary|gaps|remediation)$/,
+          },
+          { label: "Team", href: `/dashboard/customers/${user.tenantId}`, icon: Users, exact: false },
+          { label: "Settings", href: "/dashboard/settings", icon: Settings, exact: false },
+        ];
 
   return (
     <aside
@@ -107,7 +89,7 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
           const Icon = item.icon;
           const isActive = item.exact
             ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+            : pathname === item.href || pathname.startsWith(item.href + "/") || Boolean(item.alsoActive?.test(pathname));
 
           return (
             <Link

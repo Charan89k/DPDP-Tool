@@ -271,7 +271,7 @@ test("the assessment workspace fits phone and tablet screens @mobile", async ({ 
 
   // The navigation is a drawer on small screens.
   await page.getByRole("button", { name: "Open navigation" }).click();
-  await expect(page.locator("#app-sidebar").getByRole("link", { name: "Reports" })).toBeInViewport();
+  await expect(page.locator("#app-sidebar").getByRole("link", { name: "Results" })).toBeInViewport();
   await page.keyboard.press("Escape");
 
   const pages = [
