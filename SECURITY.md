@@ -1,6 +1,6 @@
 # Security policy
 
-CloudE5 holds personal-data compliance information for its customers, so security reports are handled
+TLI holds personal-data compliance information for its customers, so security reports are handled
 with priority.
 
 ## Reporting a vulnerability
@@ -22,7 +22,7 @@ In scope: this repository and the hosted service at [cloude5.tech](https://cloud
 Out of scope: denial-of-service and volume testing, social engineering, and findings that need a
 compromised device or account.
 
-## How CloudE5 is protected
+## How TLI is protected
 
 Tenant isolation in the database layer, two-factor sign-in, rate limits, same-origin checks,
 nonce-based Content Security Policy, virus scanning of uploads and encrypted transport throughout.

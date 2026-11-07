@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Logout Endpoint
+ * TLI — Logout Endpoint
  *
  * POST /api/auth/logout
  * Revokes the current session (so a copied cookie cannot be replayed) and clears the cookie.

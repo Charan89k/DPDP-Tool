@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Evidence Vault Service
+ * TLI — Evidence Vault Service
  *
  * Coordinates file validation, local disk vault persistence, database metadata
  * registration under PostgreSQL Row-Level Security, and fail-closed download gating.
@@ -409,7 +409,7 @@ export class EvidenceVaultService {
     const { sessionUser, evidenceId, status, verificationNotes } = params;
 
     if (!canReviewAssessment(sessionUser.role)) {
-      throw new ValidationError("Access denied: Only authorized CloudE5 assessors can record evidence review decisions.");
+      throw new ValidationError("Access denied: Only authorized TLI assessors can record evidence review decisions.");
     }
 
     return await executeWithRls(sessionUser, async (client) => {

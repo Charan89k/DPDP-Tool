@@ -5,7 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   // Native SQLite driver and SMTP client run only on the Node.js server runtime.
-  serverExternalPackages: ["better-sqlite3", "nodemailer"],
+  serverExternalPackages: ["better-sqlite3", "nodemailer", "razorpay"],
   // Self-contained server bundle for the Docker image (node .next/standalone/server.js).
   output: "standalone",
   // Never trace local development state (dev database, dev email outbox) into the server bundle.
@@ -26,7 +26,8 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           // Content-Security-Policy is set per request by proxy.ts (script nonces).
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+          // allow-popups: Razorpay opens bank 3-D Secure / net-banking pages in a popup it must keep a handle to.
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           ...(isProduction
             ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]
             : []),

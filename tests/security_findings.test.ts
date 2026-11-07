@@ -6,7 +6,8 @@
  * session, the shared login rate-limit counter, SMTP encryption and owner-only backups.
  */
 
-import { describe, it, after } from "node:test";
+import { describe, it, before, after } from "node:test";
+import { markReportPaidForTests } from "./helpers/paid_report.ts";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -308,6 +309,9 @@ describe("CodeRabbit audit regressions (October 2026)", () => {
 });
 
 describe("Remediation progress path (CodeRabbit audit)", () => {
+  // Remediation is available to customers once the report is paid for.
+  before(() => markReportPaidForTests(ALPHA_ASSESSMENT));
+
   const newTask = async (assessmentId: string | null) =>
     (
       await pool.query(

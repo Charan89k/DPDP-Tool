@@ -14,6 +14,7 @@ import {
   Paperclip,
   AlertCircle,
   ExternalLink,
+  Lock,
 } from "lucide-react";
 import { AssessmentLifecycleControls } from "@/components/lifecycle/AssessmentLifecycleControls";
 import { getCanonicalQuestionnaireSections } from "@/lib/questionnaire/data";
@@ -59,6 +60,8 @@ export function AssessmentSummaryView({
   const [error, setError] = useState<string | null>(null);
 
   const [scoringData, setScoringData] = useState<ScoringEngineOutput | null>(null);
+  // Customers see scores and deficits only after the final report has been paid for (HTTP 402).
+  const [scoresLocked, setScoresLocked] = useState(false);
   const [responses, setResponses] = useState<Record<string, SavedResponse>>({});
   // The evidence API reports control-level evidence under its control code in questionCode.
   const [evidenceList, setEvidenceList] = useState<{ id: string; questionCode: string }[]>([]);
@@ -94,6 +97,7 @@ export function AssessmentSummaryView({
 
       // 1. Scoring calculation
       const scoringRes = await fetch(`/api/assessments/${assessmentId}/scoring`);
+      setScoresLocked(scoringRes.status === 402);
       if (scoringRes.ok) {
         const scData: { success?: boolean; data?: ScoringEngineOutput } = await scoringRes.json();
         if (scData.success && scData.data) {
@@ -368,7 +372,7 @@ export function AssessmentSummaryView({
               disabled={isSubmitting}
               className="px-4 py-1.5 text-xs font-semibold text-white bg-[#0066FF] hover:bg-[#0052CC] disabled:opacity-50 rounded-lg shadow-sm transition-colors flex items-center space-x-1"
             >
-              <span>{isSubmitting ? "Submitting..." : "Submit for CloudE5 Review"}</span>
+              <span>{isSubmitting ? "Submitting..." : "Submit for TLI Review"}</span>
             </button>
           )}
 
@@ -583,6 +587,17 @@ export function AssessmentSummaryView({
                 </p>
               </div>
 
+              {scoresLocked ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-4">
+                  <Lock className="w-6 h-6 text-slate-400" aria-hidden="true" />
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Scores are released with your final report once payment is confirmed.
+                  </p>
+                  <Link href={`/dashboard/reports/${assessmentId}`} className="text-[11px] font-semibold text-blue-700 hover:underline">
+                    View report status
+                  </Link>
+                </div>
+              ) : (
               <div className="flex flex-col items-center justify-center py-1">
                 <div className="relative w-28 h-28 flex items-center justify-center">
                   <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
@@ -631,6 +646,8 @@ export function AssessmentSummaryView({
                   </div>
                 </div>
               </div>
+
+              )}
 
               <div className="text-[9px] text-slate-400 italic text-center border-t border-slate-100 pt-1">
                 Diagnostic baseline pending formal methodology ratification (DEC-01).
@@ -892,7 +909,14 @@ export function AssessmentSummaryView({
               </span>
             </div>
 
-            {scoringData?.statutoryDeficits && scoringData.statutoryDeficits.length > 0 ? (
+            {scoresLocked ? (
+              <p className="text-xs text-slate-600 leading-normal">
+                Statutory deficits and recommendations are part of your final report.{" "}
+                <Link href={`/dashboard/reports/${assessmentId}`} className="font-semibold text-blue-700 hover:underline">
+                  View report status
+                </Link>
+              </p>
+            ) : scoringData?.statutoryDeficits && scoringData.statutoryDeficits.length > 0 ? (
               <div className="space-y-2">
                 {scoringData.statutoryDeficits.slice(0, 3).map((def, i: number) => (
                   <div key={i} className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs space-y-1">
@@ -935,7 +959,7 @@ export function AssessmentSummaryView({
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">
                   2
                 </span>
-                <span>Submit engagement for formal CloudE5 Assessor Review.</span>
+                <span>Submit engagement for formal TLI Assessor Review.</span>
               </li>
               <li className="flex items-start space-x-2.5">
                 <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5">

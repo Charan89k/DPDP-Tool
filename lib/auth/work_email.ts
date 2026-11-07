@@ -1,5 +1,5 @@
 /**
- * CloudE5 — work email rule for customer accounts.
+ * TLI — work email rule for customer accounts.
  *
  * Customer users (sign-up, invitations, users added by an administrator) and organisation contact
  * addresses must use their organisation's own domain, not a free personal mailbox provider.

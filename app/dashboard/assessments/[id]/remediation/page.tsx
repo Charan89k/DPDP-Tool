@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
 import { getAssessmentRemediations } from "@/lib/remediation";
+import { ReportLockedError } from "@/lib/payments/access";
 import questionnaireData from "@/data/questionnaire_v1.json";
 import { RemediationManagementClient } from "@/components/remediation/RemediationManagementClient";
 
@@ -37,7 +38,14 @@ export default async function AssessmentRemediationPage({ params }: Props) {
   }
 
   // Fetch remediation tasks under RLS
-  const remediations = await getAssessmentRemediations(sessionUser, id);
+  let remediations: Awaited<ReturnType<typeof getAssessmentRemediations>>;
+  try {
+    remediations = await getAssessmentRemediations(sessionUser, id);
+  } catch (error) {
+    // Customers before payment: the report page shows the report status and how to pay.
+    if (error instanceof ReportLockedError) redirect(`/dashboard/reports/${id}`);
+    throw error;
+  }
 
   // Compile question options for dropdown
   const questionOptions = questionnaireData.questions.map((q) => ({

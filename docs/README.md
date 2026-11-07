@@ -1,11 +1,13 @@
-# CloudE5 documentation
+# TLI platform documentation
 
-## Running CloudE5
+## Running TLI
 
 | Document | Covers |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, request flow, deployment modes and design limits |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Installation, configuration, backups, upgrades and troubleshooting |
+| [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) | Staging sign-off checklist for paid report delivery |
+| [PAYMENTS.md](PAYMENTS.md) | Razorpay payment-gated report delivery, webhooks, email delivery, Live Mode checklist |
 | [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
 | [ONBOARDING.md](ONBOARDING.md) | Self-service and administrator-created organisations, roles, two-factor sign-in |
 | [SECURITY_MODEL.md](SECURITY_MODEL.md) | Tenant isolation, accounts and sessions, HTTP hardening, evidence files |

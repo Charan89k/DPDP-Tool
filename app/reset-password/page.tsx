@@ -36,7 +36,7 @@ function ResetPassword() {
       }
       router.push("/login?notice=password-reset");
     } catch {
-      setError("Unable to reach CloudE5. Please try again.");
+      setError("Unable to reach the TLI platform. Please try again.");
       setIsSubmitting(false);
     }
   };

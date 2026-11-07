@@ -96,7 +96,7 @@ export function Topbar({ user, onOpenNavigation, navigationOpen = false }: Topba
           </h2>
         </div>
         <p className="hidden sm:block text-[11px] text-slate-500 font-medium truncate">
-          CloudE5 · DPDP compliance workspace
+          Truth Labs International · DPDP compliance workspace
         </p>
       </div>
 

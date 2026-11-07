@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Invitation Acceptance & Account Activation API
+ * TLI — Invitation Acceptance & Account Activation API
  *
  * POST /api/auth/invitations/accept
  * Verifies the single-use token, validates expiration, creates the user account,

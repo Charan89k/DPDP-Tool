@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Removal of questionnaire answers cached in the browser by earlier versions.
+ * TLI — Removal of questionnaire answers cached in the browser by earlier versions.
  *
  * Answers used to be copied to localStorage, which survives sign-out and is readable by anyone
  * using the same browser profile. They are now kept only in memory and on the server; these

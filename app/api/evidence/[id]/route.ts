@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Evidence Item Management API Endpoint
+ * TLI — Evidence Item Management API Endpoint
  *
  * GET /api/evidence/[id] — Retrieve evidence metadata
  * PATCH /api/evidence/[id] — Record reviewer decision (VERIFIED / REJECTED) with audit trail
@@ -7,6 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { customerFindingsLocked } from "@/lib/payments/access";
 import { getCurrentSession } from "@/lib/auth/session";
 import { EvidenceVaultService } from "@/lib/storage/service";
 import { ValidationError } from "@/lib/storage/validation";
@@ -59,7 +60,8 @@ export async function GET(
         status: record.status,
         uploadedByUserId: record.uploadedByUserId,
         verifiedByReviewerId: record.verifiedByReviewerId,
-        verificationNotes: record.verificationNotes,
+        // Assessor notes on evidence are findings: customers see them once the report is paid for.
+        verificationNotes: (await customerFindingsLocked(sessionUser, record.assessmentId)) ? null : record.verificationNotes,
         verifiedAt: record.verifiedAt,
         createdAt: record.createdAt,
       },
@@ -106,7 +108,7 @@ export async function PATCH(
   // Assessors only can record review decisions
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Forbidden: Only authorized CloudE5 assessors can record evidence review decisions." },
+      { error: "Forbidden: Only authorized TLI assessors can record evidence review decisions." },
       { status: 403 }
     );
   }

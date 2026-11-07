@@ -1,5 +1,5 @@
 /**
- * CloudE5 — TOTP multi-factor authentication.
+ * TLI — TOTP multi-factor authentication.
  *
  * - Authenticator-app codes (RFC 6238: SHA-1, 6 digits, 30-second steps, ±1 step tolerance).
  * - Secrets are encrypted at rest with AES-256-GCM. The key is CLOUDE5_ENCRYPTION_KEY (32 bytes,
@@ -23,7 +23,7 @@ import { verifyPassword } from "./passwords.ts";
 import { PersistentRateLimiter } from "./rate_limit.ts";
 import type { SessionUser } from "./types.ts";
 
-const ISSUER = "CloudE5";
+const ISSUER = "Truth Labs International";
 const RECOVERY_CODE_COUNT = 10;
 const CHALLENGE_TTL_SECONDS = 5 * 60;
 const CHALLENGE_AUDIENCE = "cloude5-mfa-challenge";

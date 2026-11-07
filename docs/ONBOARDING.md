@@ -1,13 +1,13 @@
 # Onboarding customers
 
-A customer organisation joins CloudE5 in one of two ways: it signs itself up, or a platform
+A customer organisation joins TLI in one of two ways: it signs itself up, or a platform
 administrator creates it. Both need working email (verification, password reset and invitation links),
 so configure SMTP first ([SELF_HOSTING.md](SELF_HOSTING.md#configuration-reference)). With the `mail`
 profile, emails are caught by Mailpit at `http://localhost:8025` instead of being delivered.
 
 ## Option A: self-service sign-up
 
-1. Send the customer your CloudE5 address.
+1. Send the customer your TLI address.
 2. They choose **Create account** and enter their name, work email, organisation name and password.
    Customer accounts must use a work address: free mailbox domains such as Gmail, Yahoo or Outlook are refused
    (also for invitations and users added by an administrator).

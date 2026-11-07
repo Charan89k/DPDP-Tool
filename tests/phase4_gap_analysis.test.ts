@@ -14,7 +14,8 @@
  * 10. Re-audit cycle comparative trends and metrics deltas.
  */
 
-import { describe, it, after } from "node:test";
+import { describe, it, before, after } from "node:test";
+import { markReportPaidForTests } from "./helpers/paid_report.ts";
 import assert from "node:assert/strict";
 import { pool } from "../lib/db/pool.ts";
 import manifestData from "../data/questionnaire_v1.json" with { type: "json" };
@@ -54,6 +55,12 @@ const customerSession: SessionUser = {
 };
 
 describe("Phase 4: Gap Analysis Engine & Risk Prioritization Verification", () => {
+  // These suites exercise post-payment customer access (findings, remediation); the lock itself is
+  // covered in tests/findings_access.test.ts.
+  before(async () => {
+    for (const id of [ASSESSMENT_ALPHA_ID, ASSESSMENT_BETA_ID]) await markReportPaidForTests(id);
+  });
+
   after(async () => {
     // Keep connection pool alive for remaining tests
   });

@@ -26,7 +26,7 @@ function VerifyEmail() {
       .then(({ data, errorMessage }) =>
         setState(errorMessage ? { status: "failed", message: errorMessage } : { status: "done", message: data.message })
       )
-      .catch(() => setState({ status: "failed", message: "Unable to reach CloudE5. Please try again." }));
+      .catch(() => setState({ status: "failed", message: "Unable to reach the TLI platform. Please try again." }));
   }, [token]);
 
   const view = token

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Self-service account lifecycle.
+ * TLI — Self-service account lifecycle.
  *
  * - registerOrganization: creates a CLIENT organisation and its first CLIENT_ADMIN atomically.
  *   Public registration can never create platform (TLI_*) roles.

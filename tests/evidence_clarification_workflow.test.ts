@@ -313,7 +313,7 @@ describe("Phase 3D.3: Evidence Vault & Clarification Workflows", () => {
       },
       (err: Error) =>
         err instanceof ValidationError &&
-        err.message.includes("Only authorized CloudE5 assessors can record evidence review decisions")
+        err.message.includes("Only authorized TLI assessors can record evidence review decisions")
     );
   });
 

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Deterministic Scoring Service
+ * TLI — Deterministic Scoring Service
  *
  * Provides database-backed calculation and persistence of assessment scoring
  * strictly under PostgreSQL Row-Level Security (RLS) and trusted session context.
@@ -13,6 +13,7 @@
 
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
+import { assertFindingsAccess } from "../payments/access.ts";
 import { calculateAssessmentScores } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "./config.ts";
 import type {
@@ -51,6 +52,8 @@ export async function getAssessmentScores(
   if (!assessmentId) {
     throw new ScoringServiceError("Assessment ID is required", "INVALID_INPUT", 400);
   }
+  // Customers see scores only after the final report has been paid for.
+  await assertFindingsAccess(sessionUser, assessmentId);
 
   return await executeWithRls(sessionUser, async (client) => {
     // 1. Fetch assessment scoping and lifecycle status

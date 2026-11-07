@@ -1,6 +1,8 @@
 <div align="center">
 
-# DPDP
+# Truth Labs International (TLI)
+
+**DPDP Compliance Platform**
 
 **DPDP Act readiness assessments for Indian organisations: guided, evidence-backed and self-hosted.**
 
@@ -17,18 +19,18 @@
 
 [Features](#features) · [Screenshots](#screenshots) · [Quick start](#quick-start) · [Deploy](#deploy) · [Production](#production-deployment) · [Architecture](#architecture) · [Documentation](#documentation)
 
-<img src="docs/images/summary.png" alt="CloudE5 assessment summary with readiness score, section breakdown and statutory deficits" width="900">
+<img src="docs/images/summary.png" alt="TLI assessment summary with readiness score, section breakdown and statutory deficits" width="900">
 
 </div>
 
-CloudE5 helps an organisation measure its readiness for India's **Digital Personal Data Protection
+TLI helps an organisation measure its readiness for India's **Digital Personal Data Protection
 Act, 2023**. Teams answer a guided 60-question assessment mapped to a documented control library, attach
 supporting evidence, and receive an explainable gap register, provisional readiness metrics and a
 corrective action plan. It runs as a single Docker container with an embedded SQLite database: no
 external database or cloud services required.
 
 > [!IMPORTANT]
-> CloudE5 is a self-assessment tool. Its results come from the information an organisation provides,
+> TLI is a self-assessment tool. Its results come from the information an organisation provides,
 > using a documented, provisional methodology. They are not legal advice and not a determination of
 > compliance with the DPDP Act or the DPDP Rules.
 
@@ -41,6 +43,8 @@ external database or cloud services required.
 - Deterministic scoring and gap analysis; every finding traces back to the answer and control behind it
 - Assessor review, clarification threads, approval workflow and lifecycle history
 - Report generation (.docx) and remediation (CAPA) tracking with owners and due dates
+- Paid report delivery through Razorpay: the issued report unlocks only after a server-verified payment
+  and is emailed to the customer and the TLI assessor, with delivery tracking and resend ([guide](docs/PAYMENTS.md))
 - Works on desktop, tablet and phone: the navigation becomes a drawer and every page fits the screen
 
 **Customers and platform staff**
@@ -153,10 +157,10 @@ Never edit a migration that has already been applied.
    ("525 Unauthorized IP address").
 4. Set in `.env`: `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_SECURE=false` (STARTTLS is
    still required), `SMTP_USER=<Brevo SMTP login>`, `SMTP_PASSWORD=<SMTP key>`,
-   `SMTP_FROM="CloudE5 <no-reply@<domain>>"`, then recreate the `cloude5` container.
+   `SMTP_FROM="Truth Labs International <no-reply@<domain>>"`, then recreate the `cloude5` container.
 
 Delivery problems show in Brevo under **Transactional → Logs**. A "hard bounce" (for example
-`550 5.1.1 User does not exist`) comes from the recipient's mail server, not from CloudE5: check that the
+`550 5.1.1 User does not exist`) comes from the recipient's mail server, not from TLI: check that the
 mailbox exists and that the recipient domain's MX records point at one mail provider, then remove the
 address from Brevo's blocked contacts and resend.
 
@@ -203,6 +207,7 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 | [Architecture](docs/ARCHITECTURE.md) | Components, request flow, deployment modes and design limits |
 | [Onboarding customers](docs/ONBOARDING.md) | Self-service and administrator-created organisations, roles, two-factor |
 | [Self-hosting](docs/SELF_HOSTING.md) | Installation, configuration, backups, upgrades, troubleshooting |
+| [Paid report delivery](docs/PAYMENTS.md) | Razorpay setup (Test and Live Mode), webhooks, report access control, email delivery |
 | [Production checklist](docs/PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
 | [Security model](docs/SECURITY_MODEL.md) | Tenant isolation, account security, security headers |
 | [Changelog](CHANGELOG.md) | What changed, with links to each pull request |

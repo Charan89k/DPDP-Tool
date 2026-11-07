@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Rate limiting
+ * TLI — Rate limiting
  *
  * Sliding-window limits persisted in SQLite (rate_limit_buckets), so they survive restarts:
  * - Failed sign-ins: 5 per 15 minutes per client IP and per email address.
@@ -8,7 +8,7 @@
  * - New organisation registrations: 30 per hour across the installation.
  *
  * Client IPs come only from headers the deployment trusts (see resolveClientIp). Limits apply to a
- * single CloudE5 server; for internet-facing deployments also rate-limit at the reverse proxy.
+ * single TLI server; for internet-facing deployments also rate-limit at the reverse proxy.
  */
 
 import crypto from "node:crypto";
@@ -34,7 +34,7 @@ export function isValidIp(ip: string): boolean {
 /**
  * Resolves the client IP address used for rate limiting and audit logs.
  *
- * Only headers set by infrastructure CloudE5 is told to trust are honoured, because any client can
+ * Only headers set by infrastructure TLI is told to trust are honoured, because any client can
  * send arbitrary X-Real-IP / CF-Connecting-IP / X-Forwarded-For values:
  * - Vercel (VERCEL=1): X-Vercel-Forwarded-For / X-Real-IP / X-Forwarded-For are set by the platform.
  * - Self-hosted behind a reverse proxy (default; Caddy, nginx `$proxy_add_x_forwarded_for`): the

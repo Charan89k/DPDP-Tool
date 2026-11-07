@@ -1,10 +1,10 @@
 /**
- * CloudE5 — Transactional email templates (plain text + minimal accessible HTML).
+ * TLI — Transactional email templates (plain text + minimal accessible HTML).
  */
 
-import type { EmailMessage } from "./mailer.ts";
+import type { EmailAttachment, EmailMessage } from "./mailer.ts";
 
-const BRAND = "CloudE5";
+const BRAND = "Truth Labs International";
 
 function escapeHtml(value: string): string {
   return value
@@ -94,4 +94,68 @@ export function invitationEmail(to: string, organisation: string, inviter: strin
     ],
     { label: "Accept invitation", url }
   );
+}
+
+export interface ReportDeliveryDetails {
+  organisation: string;
+  engagementCode: string;
+  reportTitle: string;
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  amountLabel: string;
+  paidAt: string;
+  reportUrl: string;
+  supportEmail: string | null;
+  attachment: EmailAttachment;
+}
+
+function supportLine(supportEmail: string | null): string {
+  return supportEmail
+    ? `Questions about this report? Contact the TLI team at ${supportEmail}.`
+    : "Questions about this report? Reply to your TLI engagement contact.";
+}
+
+/** The final report for the customer, sent once their payment has been verified. */
+export function reportDeliveryClientEmail(to: string, recipientName: string, d: ReportDeliveryDetails): EmailMessage {
+  const base = message(
+    to,
+    `Your DPDP compliance report ${d.engagementCode} from ${BRAND}`,
+    "Your final compliance report is ready",
+    [
+      `Hello ${recipientName},`,
+      `Thank you for your payment. The final DPDP compliance report for ${d.organisation} is attached.`,
+      `Report: ${d.reportTitle}`,
+      `Assessment reference: ${d.engagementCode}`,
+      `Payment reference: ${d.razorpayPaymentId} (order ${d.razorpayOrderId}), ${d.amountLabel}, paid ${d.paidAt}`,
+      "You can also download the report at any time after signing in. The download link requires your account; it is not a public link.",
+      supportLine(d.supportEmail),
+    ],
+    { label: "Open the report", url: d.reportUrl }
+  );
+  return { ...base, attachments: [d.attachment] };
+}
+
+/** An identical copy of the delivered report for the central TLI assessor mailbox. */
+export function reportDeliveryAssessorEmail(
+  to: string,
+  d: ReportDeliveryDetails & { clientContact: string; clientDeliveryStatus: string }
+): EmailMessage {
+  const base = message(
+    to,
+    `[TLI] Paid report delivered: ${d.organisation} ${d.engagementCode}`,
+    "A customer has paid for their final report",
+    [
+      `Organisation: ${d.organisation}`,
+      `Client contact: ${d.clientContact}`,
+      `Assessment reference: ${d.engagementCode}`,
+      `Report: ${d.reportTitle}`,
+      `Razorpay payment ID: ${d.razorpayPaymentId} (order ${d.razorpayOrderId})`,
+      `Amount: ${d.amountLabel}`,
+      `Paid at: ${d.paidAt}`,
+      `Client email delivery status: ${d.clientDeliveryStatus}`,
+      "The attached report is identical to the copy sent to the customer.",
+    ],
+    { label: "Open the payment dashboard", url: d.reportUrl }
+  );
+  return { ...base, attachments: [d.attachment] };
 }

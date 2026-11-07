@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Lifecycle Module
+ * TLI — Assessment Lifecycle Module
  */
 
 export * from "./types.ts";

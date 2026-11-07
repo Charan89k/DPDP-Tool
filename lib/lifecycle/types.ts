@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Lifecycle Types
+ * TLI — Assessment Lifecycle Types
  *
  * Canonical 14-state assessment lifecycle types as defined in:
  * - docs/reference/03_assessment_workflow_and_state_machine.md

@@ -1,7 +1,7 @@
 /**
- * CloudE5 — Professional Word (.docx) Exporter
+ * TLI — Professional Word (.docx) Exporter
  *
- * Implements authoritative report generation preserving CloudE5
+ * Implements authoritative report generation preserving Truth Labs International
  * brand typography, tables, headers, footers, pagination, draft watermarks,
  * and complete 60-question audit provenance.
  */
@@ -85,7 +85,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         alignment: AlignmentType.RIGHT,
         children: [
           new TextRun({
-            text: "CloudE5 — DPDP Compliance Advisory | ",
+            text: "TLI — DPDP Compliance Advisory | ",
             size: 16,
             font: "Arial",
             color: BRAND_STONE_MUTED,
@@ -108,7 +108,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         alignment: AlignmentType.JUSTIFIED,
         children: [
           new TextRun({
-            text: `REF: CE5-REP-${data.assessment.id.slice(0, 8).toUpperCase()} | CONFIDENTIAL & PROPRIETARY | Page `,
+            text: `REF: TLI-REP-${data.assessment.id.slice(0, 8).toUpperCase()} | CONFIDENTIAL & PROPRIETARY | Page `,
             size: 16,
             font: "Arial",
             color: BRAND_STONE_MUTED,
@@ -194,7 +194,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
       spacing: { before: 200, after: 100 },
       children: [
         new TextRun({
-          text: "CloudE5",
+          text: "Truth Labs International",
           bold: true,
           size: 36,
           font: "Georgia",
@@ -257,7 +257,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         new TableRow({
           children: [
             createTableCell("Lead Consultant", { isHeader: true, widthPct: 25 }),
-            createTableCell(data.assessment.leadConsultantName || "Assigned by CloudE5", { widthPct: 25 }),
+            createTableCell(data.assessment.leadConsultantName || "Assigned by Truth Labs International", { widthPct: 25 }),
             createTableCell("Evaluation Date", { isHeader: true, widthPct: 25 }),
             createTableCell(new Date(data.auditTrail.generatedAt).toLocaleDateString("en-IN"), {
               widthPct: 25,
@@ -290,7 +290,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
       spacing: { after: 160 },
       children: [
         new TextRun({
-          text: "The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable statutory safeguards. In alignment with the CloudE5 methodology, statutory compliance is evaluated on a strict non-compensatory standard: mathematical averages in procedural areas do not cure or offset material deficits in core statutory obligations.",
+          text: "The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable statutory safeguards. In alignment with the TLI methodology, statutory compliance is evaluated on a strict non-compensatory standard: mathematical averages in procedural areas do not cure or offset material deficits in core statutory obligations.",
           size: 18,
           font: "Arial",
           color: BRAND_STONE_DARK,
@@ -671,7 +671,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
         new TableRow({
           children: [
             createTableCell(
-              `${data.auditTrail.approvedByUserName || data.assessment.leadConsultantName || "CloudE5 Lead"}\nApproved Date: ${
+              `${data.auditTrail.approvedByUserName || data.assessment.leadConsultantName || "TLI Lead"}\nApproved Date: ${
                 data.auditTrail.approvedAt
                   ? new Date(data.auditTrail.approvedAt).toLocaleDateString("en-IN")
                   : "Pending Formal Issuance"
@@ -679,7 +679,7 @@ export async function generateWordReport(data: ReportDocumentData): Promise<Buff
               { widthPct: 50 }
             ),
             createTableCell(
-              "CloudE5\nDigital Personal Data Protection Practice\nForensic Privacy & Advisory Division",
+              "Truth Labs International\nDigital Personal Data Protection Practice\nForensic Privacy & Advisory Division",
               { widthPct: 50, bold: true }
             ),
           ],

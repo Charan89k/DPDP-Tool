@@ -79,7 +79,7 @@ export default async function SettingsPage() {
               </span>
               <p className="text-slate-600 mt-0.5">
                 {isConsultant
-                  ? "Authorized CloudE5 platform reviewer. Cross-tenant assessment evaluation privileges active."
+                  ? "Authorized TLI platform reviewer. Cross-tenant assessment evaluation privileges active."
                   : "Authorized client organization contributor. Access strictly restricted to tenant boundary."}
               </p>
             </div>
@@ -130,7 +130,7 @@ export default async function SettingsPage() {
               </span>
               <span className="text-slate-700 font-medium">
                 {sessionUser.tenantType === "TLI"
-                  ? "CloudE5 Platform Operator"
+                  ? "TLI Platform Operator"
                   : sessionUser.isSdf
                   ? "Significant Data Fiduciary (Section 10 Additional Obligations)"
                   : "Standard Data Fiduciary"}
@@ -159,7 +159,7 @@ export default async function SettingsPage() {
               </span>
             </div>
             <p className="text-slate-500">
-              Every query runs through CloudE5&apos;s tenant policy layer, bound to your verified identity for that request, so you only ever see your own organisation&apos;s data.
+              Every query runs through Truth Labs International&apos;s tenant policy layer, bound to your verified identity for that request, so you only ever see your own organisation&apos;s data.
             </p>
           </div>
 

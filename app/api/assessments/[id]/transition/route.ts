@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Lifecycle Transition API
+ * TLI — Assessment Lifecycle Transition API
  *
  * GET /api/assessments/[id]/transition
  * Retrieves current lifecycle state, permitted transitions for authenticated caller,

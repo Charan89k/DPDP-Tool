@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Customer Organization API
+ * TLI — Customer Organization API
  *
  * GET  /api/customers - List customer organizations accessible to authenticated user
  * POST /api/customers - Create a new customer organization (Platform Administrator only)

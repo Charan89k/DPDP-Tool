@@ -62,7 +62,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
         <header className="relative z-10">
           <Link
             href="/"
-            aria-label="CloudE5 home"
+            aria-label="TLI home"
             className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
           >
             <BrandMark variant="dark" size="sm" showTagline />
@@ -94,7 +94,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
         <footer className="relative z-10 hidden sm:flex items-start gap-2.5 text-[11px] text-slate-400 border-t border-white/10 pt-5 leading-relaxed">
           <ShieldCheck className="w-4 h-4 text-sky-300 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>
-            CloudE5 supports compliance self-assessment. Results are not legal advice and do not
+            TLI supports compliance self-assessment. Results are not legal advice and do not
             certify compliance with the DPDP Act.
           </span>
         </footer>

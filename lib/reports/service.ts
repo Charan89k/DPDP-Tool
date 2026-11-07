@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Report Service
+ * TLI — Report Service
  *
  * Coordinates draft compilation, document generation, formal lead approval,
  * immutable report snapshots, and download retrieval under PostgreSQL RLS.
@@ -110,7 +110,7 @@ export async function generateReportDocument(
 
   const prefix = data.auditTrail.isDraft ? "DRAFT_" : "FINAL_";
   const safeCode = data.assessment.engagementCode.replace(/[^A-Za-z0-9._-]/g, "_");
-  const filename = `CloudE5_DPDP_Report_${prefix}${safeCode}_${new Date()
+  const filename = `TLI_DPDP_Report_${prefix}${safeCode}_${new Date()
     .toISOString()
     .split("T")[0]}.docx`;
 
@@ -293,7 +293,7 @@ export async function getIssuedReportDocument(
   }
   return {
     buffer,
-    filename: typeof meta.fileName === "string" ? meta.fileName : `CloudE5_DPDP_Report_FINAL_${assessmentId}.docx`,
+    filename: typeof meta.fileName === "string" ? meta.fileName : `TLI_DPDP_Report_FINAL_${assessmentId}.docx`,
     contentType: DOCX_CONTENT_TYPE,
     sha256,
     datasetSha256: snapshot.dataset_sha256_hash,

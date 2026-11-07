@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Evidence Download API Endpoint
+ * TLI — Evidence Download API Endpoint
  *
  * GET /api/evidence/[id]/download
  * Enforces tenant boundary isolation, fail-closed scan status validation,

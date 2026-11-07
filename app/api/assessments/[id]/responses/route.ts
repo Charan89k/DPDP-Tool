@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Responses API
+ * TLI — Assessment Responses API
  *
  * GET /api/assessments/[id]/responses
  * Fetches saved questionnaire responses for the assessment.

@@ -1,7 +1,7 @@
 /**
- * CloudE5 — Database access entry point.
+ * TLI — Database access entry point.
  *
- * CloudE5 stores all data in a local SQLite database (see lib/db/sqlite). This module keeps the
+ * TLI stores all data in a local SQLite database (see lib/db/sqlite). This module keeps the
  * `pool` facade that application code imports; it mirrors the node-postgres API so queries,
  * transactions and results behave as before.
  *

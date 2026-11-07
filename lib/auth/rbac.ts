@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Role-Based Access Control (RBAC) Matrix
+ * TLI — Role-Based Access Control (RBAC) Matrix
  *
  * Implements strict, server-side permission rules for the 7 defined application roles.
  * Denies access by default.

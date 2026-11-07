@@ -1,8 +1,8 @@
 /**
- * CloudE5 — Tenant-scoped execution engine.
+ * TLI — Tenant-scoped execution engine.
  *
  * Binds a unit of database work to a verified identity so the SQLite tenant policy layer
- * (lib/db/sqlite/policies.ts — the CloudE5 equivalent of PostgreSQL row-level security)
+ * (lib/db/sqlite/policies.ts — the TLI equivalent of PostgreSQL row-level security)
  * filters every read and checks every write.
  *
  * Guarantees:

@@ -2,6 +2,25 @@
 
 Notable changes to CloudE5, newest first. Each entry links to the pull request that introduced it.
 
+## Unreleased — Truth Labs International and paid report delivery
+
+- **Rebrand:** the product is now Truth Labs International (TLI): logo (shield with TLI monogram),
+  browser icon, page titles, sign-in and registration screens, dashboards, emails, the Word report
+  (template `TLI-REP-V1.1`) and documentation. Technical identifiers keep their names so existing
+  installations keep working: `CLOUDE5_*` settings, the `.cloude5/` data directory, the `cloude5`
+  container and the two-factor key-derivation labels. Reports issued before this change keep their
+  original branding (they are immutable).
+- **Paid report delivery (Razorpay):** customers' administrators pay for the issued final report; the
+  server verifies every payment (checkout signature plus Razorpay API lookup, signed webhooks,
+  reconciliation) before the report unlocks, then emails it to the customer and the TLI assessor mailbox
+  with tracked, retryable deliveries. New **Payments** page for TLI staff (filters, failed-email alerts,
+  resend, reconciliation, report price). Migration **0009**. See [docs/PAYMENTS.md](docs/PAYMENTS.md).
+- **Behaviour change:** customers no longer download draft reports; they get the issued report after
+  payment. Detailed findings (gap analysis, scores and deficits, remediation tasks, assessor notes on
+  evidence) are also released to customers only after payment; before that they see status, readiness
+  and price. TLI staff are unaffected.
+- README screenshots retaken with the new branding (synthetic test data).
+
 ## 2026-10-28 — Live at cloude5.tech
 
 - **Hosting:** moved from a laptop trial to a VPS behind Caddy (automatic HTTPS) at

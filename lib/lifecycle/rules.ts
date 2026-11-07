@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Lifecycle Rules Engine
+ * TLI — Assessment Lifecycle Rules Engine
  *
  * Implements the deterministic state transition graph, authorized roles,
  * and precondition rules documented in docs/reference/03, docs/reference/09 and docs/archive/31.
@@ -87,7 +87,7 @@ export const LIFECYCLE_TRANSITIONS: LifecycleTransitionRule[] = [
     to: "SUBMITTED_FOR_REVIEW",
     label: "Submit Questionnaire for Assessor Review",
     authorizedRoles: ["CLIENT_ADMIN", "TLI_SUPER_ADMIN"],
-    description: "Submits client responses and evidence to CloudE5 assessors. Freezes client edits.",
+    description: "Submits client responses and evidence to TLI assessors. Freezes client edits.",
   },
   {
     from: "DATA_GATHERING",
@@ -107,7 +107,7 @@ export const LIFECYCLE_TRANSITIONS: LifecycleTransitionRule[] = [
     label: "Commence Assessor Review",
     authorizedRoles: ["TLI_LEAD_CONSULTANT", "TLI_REVIEWER", "TLI_SUPER_ADMIN"],
     requiresReviewerAssignment: true,
-    description: "CloudE5 assessor begins independent evaluation of responses and attached evidence.",
+    description: "TLI assessor begins independent evaluation of responses and attached evidence.",
   },
   {
     from: "SUBMITTED_FOR_REVIEW",

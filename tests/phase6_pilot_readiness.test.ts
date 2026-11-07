@@ -17,6 +17,7 @@
  */
 
 import { describe, it, before, after } from "node:test";
+import { markReportPaidForTests } from "./helpers/paid_report.ts";
 import type { RemediationStatus } from "../lib/remediation/types.ts";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
@@ -349,6 +350,8 @@ describe("Phase 6: End-to-End Pilot Validation & Production Acceptance", () => {
   });
 
   it("6. Assessor Review Workspace: assessor records review findings and verifies client note redaction", async () => {
+    // The customer reads findings below, which requires the paid final report.
+    await markReportPaidForTests(testAssessmentId);
     await executeWithRls(PILOT_REVIEWER_USER, async (client) => {
       await client.query(
         `INSERT INTO questionnaire_assessor_reviews (

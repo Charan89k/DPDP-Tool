@@ -1,7 +1,7 @@
 /**
- * CloudE5 — Tenant isolation policy layer for SQLite.
+ * TLI — Tenant isolation policy layer for SQLite.
  *
- * SQLite has no row-level security, so CloudE5 enforces the same rules the PostgreSQL
+ * SQLite has no row-level security, so TLI enforces the same rules the PostgreSQL
  * deployment enforced (migrations 002–014, final state) through per-connection objects
  * created when the connection opens:
  *
@@ -210,6 +210,16 @@ export const TABLE_POLICIES: TablePolicy[] = [
   // Signed-out sessions: users may see only their own (the session check runs in tenant context);
   // rows are written only by the privileged sign-out path.
   { table: "revoked_sessions", select: `$.user_id = ${USER}`, insert: "DENY", update: "DENY", delete: "DENY" },
+  // Report payments and email deliveries are visible to whoever can see the assessment, and written
+  // only by the privileged payment service after it has verified the payment with Razorpay, so no
+  // tenant session can forge a paid order or a delivery record.
+  { table: "report_payments", select: `$.assessment_id IN (SELECT a.id FROM temp.assessments a)`, insert: "DENY", update: "DENY", delete: "DENY" },
+  { table: "report_deliveries", select: `$.assessment_id IN (SELECT a.id FROM temp.assessments a)`, insert: "DENY", update: "DENY", delete: "DENY" },
+  // Raw webhook bookkeeping is handled only by the privileged webhook handler.
+  { table: "payment_events", select: "0", insert: "DENY", update: "DENY", delete: "DENY" },
+  // Platform settings (report price) are readable by signed-in users; changed only through the
+  // administrator settings service.
+  { table: "platform_settings", select: "1", insert: "DENY", update: "DENY", delete: "DENY" },
 ];
 
 /** Reference data readable by every authenticated user but never writable at runtime. */

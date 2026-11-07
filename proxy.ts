@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Request proxy (Next.js 16 convention, formerly middleware).
+ * TLI — Request proxy (Next.js 16 convention, formerly middleware).
  *
  * CSRF defence in depth: the session cookie is SameSite=Lax, and in addition every state-changing
  * API request (POST, PUT, PATCH, DELETE) must carry an Origin (or, failing that, Referer) header
@@ -19,6 +19,8 @@ import type { NextRequest } from "next/server";
 import { API_CONTENT_SECURITY_POLICY, buildContentSecurityPolicy, createNonce } from "./lib/http/csp.ts";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+/** Server-to-server callbacks authenticated by their own signature, not by a browser session. */
+const SIGNED_WEBHOOK_PATHS = new Set(["/api/payments/razorpay/webhook"]);
 
 function originOf(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -50,7 +52,7 @@ export function isSameOriginRequest(
 
 export function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/")) {
-    if (UNSAFE_METHODS.has(req.method) && !isSameOriginRequest(req)) {
+    if (UNSAFE_METHODS.has(req.method) && !SIGNED_WEBHOOK_PATHS.has(req.nextUrl.pathname) && !isSameOriginRequest(req)) {
       return NextResponse.json({ error: "Cross-site request rejected." }, { status: 403 });
     }
     const response = NextResponse.next();

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Versioned SQLite migrations.
+ * TLI — Versioned SQLite migrations.
  *
  * - Migrations are the files in migrations/sqlite named NNNN_description.sql, applied in order.
  * - Each migration runs in its own transaction and is recorded in schema_migrations with its
@@ -153,7 +153,7 @@ export async function migrateDatabase(
   if (status.unknownApplied.length > 0) {
     throw new MigrationError(
       `The database contains migrations unknown to this release: ${status.unknownApplied.join(", ")}. ` +
-        "This database was upgraded by a newer CloudE5 version; do not downgrade."
+        "This database was upgraded by a newer TLI version; do not downgrade."
     );
   }
   if (status.pending.length === 0) {

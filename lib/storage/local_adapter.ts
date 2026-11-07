@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Local Disk Storage Adapter
+ * TLI — Local Disk Storage Adapter
  *
  * Implements real local-disk evidence vault operations with strict tenant isolation,
  * directory traversal protection, SHA-256 calculation, and fail-closed safety.

@@ -51,7 +51,7 @@ function LoginForm() {
       router.push(getSafeRedirectUrl(redirectTarget));
       router.refresh();
     } catch {
-      setErrorMessage("Unable to reach CloudE5. Check your connection and try again.");
+      setErrorMessage("Unable to reach the TLI platform. Check your connection and try again.");
       setIsLoading(false);
     }
   };
@@ -79,7 +79,7 @@ function LoginForm() {
       router.push(getSafeRedirectUrl(redirectTarget));
       router.refresh();
     } catch {
-      setErrorMessage("Unable to reach CloudE5. Check your connection and try again.");
+      setErrorMessage("Unable to reach the TLI platform. Check your connection and try again.");
       setIsLoading(false);
     }
   };
@@ -134,10 +134,10 @@ function LoginForm() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle="Access your organisation's CloudE5 workspace."
+      subtitle="Access your organisation's TLI workspace."
       footer={
         <p>
-          New to CloudE5?{" "}
+          New to TLI?{" "}
           <Link href="/register" className="font-semibold text-[#0066FF] hover:underline">
             Create an organisation account
           </Link>

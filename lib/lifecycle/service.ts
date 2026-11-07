@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Lifecycle Service
+ * TLI — Assessment Lifecycle Service
  *
  * Implements server-side lifecycle transitions, precondition guards,
  * role authorization, audit logging, and immutable snapshot enforcement

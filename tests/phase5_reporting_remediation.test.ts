@@ -15,7 +15,8 @@
  * 10. Multi-tenant isolation under live PostgreSQL RLS for reports and remediations.
  */
 
-import { describe, it, after } from "node:test";
+import { describe, it, before, after } from "node:test";
+import { markReportPaidForTests } from "./helpers/paid_report.ts";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -65,6 +66,12 @@ const CLIENT_ALPHA_SESSION: SessionUser = {
 
 
 describe("Phase 5: Reporting, Approval & Remediation Management", () => {
+  // These suites exercise post-payment customer access (findings, remediation); the lock itself is
+  // covered in tests/findings_access.test.ts.
+  before(async () => {
+    for (const id of [ASSESSMENT_ALPHA_ID, ASSESSMENT_BETA_ID]) await markReportPaidForTests(id);
+  });
+
   it("1. should compile comprehensive report data traceable to source questions and provisions", async () => {
     const reportData = await compileReportDocumentData(
       CONSULTANT_SESSION,
@@ -147,7 +154,7 @@ with zipfile.ZipFile('${tempFilePath}', 'r') as z:
     assert 'word/document.xml' in names, 'Missing word/document.xml'
     assert '[Content_Types].xml' in names, 'Missing [Content_Types].xml'
     doc_xml = z.read('word/document.xml').decode('utf-8')
-    assert 'CloudE5' in doc_xml, 'Missing brand header'
+    assert 'Truth Labs International' in doc_xml, 'Missing brand header'
     assert 'DRAFT ASSESSMENT REPORT' in doc_xml, 'Missing draft banner'
     assert 'Alpha Healthcare Technologies' in doc_xml, 'Missing client name'
     assert 'SEC-001' in doc_xml, 'Missing canonical question code'

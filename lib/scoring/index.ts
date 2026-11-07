@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Scoring Module
+ * TLI — Scoring Module
  *
  * Public entrypoint for the deterministic, non-compensatory scoring engine.
  */

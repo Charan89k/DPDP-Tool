@@ -6,12 +6,12 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    default: "CloudE5 — DPDP compliance self-assessment",
-    template: "%s · CloudE5",
+    default: "Truth Labs International — DPDP compliance assessment",
+    template: "%s · Truth Labs International",
   },
   description:
-    "CloudE5 helps organisations assess their readiness for India's Digital Personal Data Protection Act, 2023, manage supporting evidence, and plan corrective actions.",
-  applicationName: "CloudE5",
+    "TLI helps organisations assess their readiness for India's Digital Personal Data Protection Act, 2023, manage supporting evidence, and plan corrective actions.",
+  applicationName: "Truth Labs International",
 };
 
 export default function RootLayout({

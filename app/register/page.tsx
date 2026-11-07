@@ -44,11 +44,11 @@ export default function RegisterPage() {
         setCompletedMessage(
           data.emailDelivered
             ? data.message
-            : "Your account was created, but this server could not send the verification email. Please contact the CloudE5 administrator of this installation."
+            : "Your account was created, but this server could not send the verification email. Please contact the TLI administrator of this installation."
         );
       }
     } catch {
-      setError("Unable to reach CloudE5. Check your connection and try again.");
+      setError("Unable to reach the TLI platform. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +113,7 @@ export default function RegisterPage() {
           <label className="flex items-start gap-2.5 text-xs text-slate-600 leading-relaxed">
             <input type="checkbox" checked={form.acceptTerms} onChange={update("acceptTerms")} required className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0066FF] focus:ring-[#0066FF]" />
             <span>
-              I understand that CloudE5 provides self-assessment tooling, that its results are not legal advice, and that my
+              I understand that TLI provides self-assessment tooling, that its results are not legal advice, and that my
               organisation is responsible for the information it enters.
             </span>
           </label>

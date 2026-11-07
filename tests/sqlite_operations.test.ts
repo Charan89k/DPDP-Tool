@@ -97,7 +97,7 @@ describe("CloudE5 SQLite installation and upgrades", () => {
     const { file, db } = freshDb("newer.db");
     await migrateDatabase(db, file);
     await assert.rejects(migrateDatabase(db, file, ALL.slice(0, 2)), (err: unknown) =>
-      err instanceof MigrationError && /newer CloudE5 version/.test(err.message)
+      err instanceof MigrationError && /newer TLI version/.test(err.message)
     );
     db.close();
   });

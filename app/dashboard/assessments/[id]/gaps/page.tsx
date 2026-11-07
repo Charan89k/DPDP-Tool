@@ -2,6 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getCurrentSession } from "@/lib/auth/session";
 import { getAssessmentGapAnalysis } from "@/lib/gaps";
+import { ReportLockedError } from "@/lib/payments/access";
 import { GapAnalysisDashboardClient } from "@/components/gaps/GapAnalysisDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,8 @@ export default async function AssessmentGapAnalysisPage({
   try {
     gapData = await getAssessmentGapAnalysis(sessionUser, id);
   } catch (error) {
+    // Customers before payment: the report page shows the report status and how to pay.
+    if (error instanceof ReportLockedError) redirect(`/dashboard/reports/${id}`);
     console.error("Error loading assessment gap analysis:", error);
     redirect(`/dashboard/assessments/${id}/summary`);
   }

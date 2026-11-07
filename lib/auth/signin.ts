@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Session issuance shared by password sign-in and the MFA verification step.
+ * TLI — Session issuance shared by password sign-in and the MFA verification step.
  */
 
 import { pool } from "../db/pool.ts";

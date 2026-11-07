@@ -17,6 +17,10 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { formatDate, formatDateTime } from "@/lib/format/dates";
+import { isTliRole } from "@/lib/auth/rbac";
+import { getReportAccessView } from "@/lib/payments/queries";
+import type { ReportAccessView } from "@/lib/payments/queries";
+import { ReportPaymentPanel } from "@/components/payments/ReportPaymentPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +32,7 @@ interface ReportAssessmentRow {
   id: string;
   tenant_id: string;
   title: string;
+  engagement_code: string;
   status: string;
   issued_at: Date | string | null;
   target_framework: string;
@@ -61,6 +66,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           a.id,
           a.tenant_id,
           a.title,
+          a.engagement_code,
           a.status,
           a.issued_at,
           fv.name AS target_framework,
@@ -85,6 +91,41 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
     });
   } catch (err) {
     console.error("Error fetching report under RLS:", err);
+  }
+
+  // Customers see the report only after a verified payment; TLI staff always see it.
+  const isStaff = isTliRole(sessionUser.role);
+  let accessView: ReportAccessView | null = null;
+  if (assessment && !isStaff) {
+    try {
+      accessView = await getReportAccessView(sessionUser, id);
+    } catch (err) {
+      console.error("Error loading report payment status:", err);
+    }
+  }
+  const lockedForCustomer = !isStaff && !accessView?.unlocked;
+
+  if (assessment && lockedForCustomer) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-12">
+        <Link
+          href="/dashboard/reports"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to All Reports</span>
+        </Link>
+        <header>
+          <h1 className="text-2xl font-bold text-slate-900">{assessment.title}</h1>
+          <p className="text-sm text-slate-600 mt-1">{assessment.tenant_name}</p>
+        </header>
+        {accessView ? (
+          <ReportPaymentPanel assessmentId={assessment.id} engagementCode={assessment.engagement_code} view={accessView} />
+        ) : (
+          <p className="text-sm text-rose-700">The report status could not be loaded. Please refresh the page.</p>
+        )}
+      </div>
+    );
   }
 
   let gapData: GapAnalysisOutput | null = null;
@@ -171,6 +212,10 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
         </div>
       </div>
 
+      {accessView && (
+        <ReportPaymentPanel assessmentId={assessment.id} engagementCode={assessment.engagement_code} view={accessView} />
+      )}
+
       {/* Synthetic Preview / Watermark Notice */}
       {!isFinalIssued ? (
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
@@ -183,7 +228,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-950 flex items-start gap-2.5">
           <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
           <div className="leading-relaxed">
-            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the CloudE5 lead consultant. The issued document is archived as it was approved, and its snapshot record cannot be changed or deleted (enforced by database triggers).
+            <strong>OFFICIALLY ISSUED REGULATORY COMPLIANCE REPORT:</strong> This report has been formally approved and issued by the TLI lead consultant. The issued document is archived as it was approved, and its snapshot record cannot be changed or deleted (enforced by database triggers).
           </div>
         </div>
       )}
@@ -196,11 +241,11 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded border border-stone-400 bg-stone-900 flex items-center justify-center text-white font-serif font-bold text-sm tracking-tight">
-                CE5
+                TLI
               </div>
               <div>
                 <h1 className="font-serif text-lg font-bold tracking-tight text-stone-900">
-                  CloudE5
+                  Truth Labs International
                 </h1>
                 <p className="text-[11px] font-mono text-stone-500 uppercase tracking-widest">
                   Forensic Privacy & Compliance Advisory
@@ -209,7 +254,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
 
             <div className="text-right font-mono text-xs text-stone-500 space-y-0.5">
-              <div>REF: <strong className="text-stone-800">CE5-REP-{assessment.id.slice(0, 8).toUpperCase()}</strong></div>
+              <div>REF: <strong className="text-stone-800">TLI-REP-{assessment.id.slice(0, 8).toUpperCase()}</strong></div>
               <div>DATE: {formatDate(new Date())}</div>
               <div>STATUS: <strong className="text-stone-900">{assessment.status}</strong></div>
             </div>
@@ -250,7 +295,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             </div>
             <div>
               <span className="text-stone-500 block text-[10px]">Lead Forensic Consultant:</span>
-              <span className="text-stone-800 font-sans text-xs">{assessment.lead_consultant_name || "Assigned by CloudE5"}</span>
+              <span className="text-stone-800 font-sans text-xs">{assessment.lead_consultant_name || "Assigned by Truth Labs International"}</span>
             </div>
           </div>
         </section>
@@ -261,7 +306,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
             2. Executive Evaluation Summary
           </h3>
           <p className="text-xs text-stone-700 leading-relaxed">
-            The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable obligations for entities processing digital personal data. In accordance with the CloudE5 methodology, statutory compliance is evaluated on a <strong>non-compensatory standard</strong>: high operational maturity in administrative areas (e.g., privacy policies) does not cure or mitigate material technical deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notifications).
+            The Digital Personal Data Protection Act, 2023 establishes mandatory, non-negotiable obligations for entities processing digital personal data. In accordance with the TLI methodology, statutory compliance is evaluated on a <strong>non-compensatory standard</strong>: high operational maturity in administrative areas (e.g., privacy policies) does not cure or mitigate material technical deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notifications).
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
             <div className="p-3 bg-stone-50 rounded border border-stone-200">
@@ -373,7 +418,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
           </h3>
           <div className="space-y-2.5 text-xs text-stone-700 leading-relaxed">
             <p>
-              Under the CloudE5 methodology, self-attestations and policy manuals without demonstrable technical implementation logs or automated enforcement do not constitute satisfactory proof of compliance.
+              Under the TLI methodology, self-attestations and policy manuals without demonstrable technical implementation logs or automated enforcement do not constitute satisfactory proof of compliance.
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-stone-600 text-[11px]">
               <li><strong>Notice & Transparency:</strong> Generic commercial terms of service bundling data consent violate Section 5(1) itemized requirements.</li>
@@ -442,7 +487,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
               <span className="font-mono text-[10px] uppercase font-bold text-stone-500 block">
                 Issuing Forensic Authority
               </span>
-              <strong className="text-stone-900 font-serif block mt-1">CloudE5</strong>
+              <strong className="text-stone-900 font-serif block mt-1">Truth Labs International</strong>
               <p className="text-stone-500 text-[11px] mt-0.5">DPDP Compliance & Forensic Evaluation Practice</p>
             </div>
             <div>

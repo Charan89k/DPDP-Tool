@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Current Session Context
+ * TLI — Current Session Context
  *
  * GET /api/auth/me
  * Returns the signed-in user's profile after re-checking the session against the database, so

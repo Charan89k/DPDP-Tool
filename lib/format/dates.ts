@@ -1,10 +1,10 @@
 /**
- * CloudE5 — date display.
+ * TLI — date display.
  *
  * Dates are rendered on the server (UTC) and again in the browser (the viewer's zone). Formatting
  * with the runtime's default locale and time zone makes the two disagree, which React reports as a
  * hydration error. Every displayed date therefore uses one fixed locale and time zone (India, since
- * CloudE5 assesses the DPDP Act). Safe to import from client components.
+ * TLI assesses the DPDP Act). Safe to import from client components.
  */
 
 export const DISPLAY_LOCALE = "en-IN";

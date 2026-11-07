@@ -1,5 +1,5 @@
 /**
- * CloudE5 — SQL dialect bridge for the SQLite data layer.
+ * TLI — SQL dialect bridge for the SQLite data layer.
  *
  * Application queries are written in a portable subset of SQL with PostgreSQL-style `$n`
  * placeholders. This module performs a small, deterministic set of rewrites so the same

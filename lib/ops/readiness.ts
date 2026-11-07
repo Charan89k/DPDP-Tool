@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Health and readiness checks.
+ * TLI — Health and readiness checks.
  *
  * Liveness (/api/health): the process is up and can execute a query on the database.
  * Readiness (/api/ready): the database is reachable with every migration applied, the evidence
@@ -16,6 +16,8 @@ import { isSmtpConfigured } from "../email/mailer.ts";
 import { errorMessage } from "../http/errors.ts";
 import { resolveEvidenceDirSetting } from "../storage/local_adapter.ts";
 import { getConfiguredScanner } from "../storage/malware_scanner.ts";
+import { getRazorpayConfig } from "../payments/razorpay.ts";
+import { assessorEmailAddress } from "../payments/delivery.ts";
 
 export interface CheckResult {
   name: string;
@@ -86,6 +88,25 @@ export async function checkMalwareScanner(env: Record<string, string | undefined
   }
 }
 
+/** Only when Razorpay keys are set: paid report delivery needs the webhook secret and assessor mailbox. */
+export function checkPayments(env: Record<string, string | undefined> = process.env): CheckResult | null {
+  try {
+    const config = getRazorpayConfig(env);
+    if (!config) return null;
+    const missing = [
+      ...(config.webhookSecret ? [] : ["RAZORPAY_WEBHOOK_SECRET"]),
+      ...(assessorEmailAddress(env) ? [] : ["TLI_ASSESSOR_EMAIL"]),
+    ];
+    if (missing.length > 0) return { name: "payments", ok: false, detail: `Missing payment settings: ${missing.join(", ")}.` };
+    if (env.NODE_ENV === "production" && config.mode === "test") {
+      return { name: "payments", ok: true, detail: "Razorpay is in test mode." };
+    }
+    return { name: "payments", ok: true };
+  } catch (err) {
+    return { name: "payments", ok: false, detail: errorMessage(err) };
+  }
+}
+
 export async function runReadinessChecks(): Promise<{ ready: boolean; checks: CheckResult[] }> {
   const database = await checkDatabase();
   const checks = [
@@ -96,5 +117,7 @@ export async function runReadinessChecks(): Promise<{ ready: boolean; checks: Ch
   ];
   const scanner = await checkMalwareScanner();
   if (scanner) checks.push(scanner);
+  const payments = checkPayments();
+  if (payments) checks.push(payments);
   return { ready: checks.every((c) => c.ok), checks };
 }

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Database-Backed Gap Analysis Service
+ * TLI — Database-Backed Gap Analysis Service
  *
  * Implements tenant-scoped retrieval of questionnaire responses, assessor reviews,
  * evidence items, clarification threads, and historical re-audit cycles strictly
@@ -9,6 +9,7 @@
 import { executeWithRls } from "../db/rls.ts";
 import type { SessionUser } from "../auth/types.ts";
 import { isClientRole } from "../auth/rbac.ts";
+import { assertFindingsAccess } from "../payments/access.ts";
 import { evaluateAssessmentGaps } from "./engine.ts";
 import type { GapEngineInput } from "./engine.ts";
 import { DEFAULT_PROVISIONAL_CONFIG } from "../scoring/config.ts";
@@ -36,6 +37,8 @@ export async function getAssessmentGapAnalysis(
   assessmentId: string,
   config: ScoringModelConfig = DEFAULT_PROVISIONAL_CONFIG
 ): Promise<GapAnalysisOutput> {
+  // Customers see findings only after the final report has been paid for.
+  await assertFindingsAccess(sessionUser, assessmentId);
   const result = await computeAssessmentGapAnalysis(sessionUser, assessmentId, config);
   return isClientRole(sessionUser.role) ? redactInternalAssessorNotes(result) : result;
 }

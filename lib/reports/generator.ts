@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Report Data Compiler
+ * TLI — Report Data Compiler
  *
  * Compiles exhaustive, auditable report data across all 60 questions,
  * 13 statutory domains, evidence items, assessor reviews, and remediations.
@@ -292,14 +292,14 @@ export async function compileReportDocumentData(
     methodologyDisclosures: {
       scoringStatus: "PROVISIONAL_PENDING_APPROVAL",
       provisionalModel: "SCORING-V1-PROVISIONAL",
-      governanceReference: "CloudE5 Governance Register (DEC-01 through DEC-10)",
+      governanceReference: "TLI Governance Register (DEC-01 through DEC-10)",
       nonCompensatoryDisclaimer:
         "Non-Compensatory Evaluation Principle: Overall readiness scores and mathematical averages do not mitigate or cure material deficiencies in mandatory statutory safeguards (such as Section 8(4) security controls or Section 8(6) breach notification requirements).",
       statutoryCeilingDisclaimer:
         "Regulatory Exposure Disclosure: Statutory penalties are adjudicated exclusively by the Data Protection Board of India upon complaint, inquiry, or statutory audit pursuant to Section 33(2) guiding factors.",
     },
     auditTrail: {
-      reportTemplateVersion: "CE5-REP-V1.0",
+      reportTemplateVersion: "TLI-REP-V1.1",
       isDraft: effectiveIsDraft,
       draftWatermarkNotice: effectiveIsDraft
         ? "DRAFT AUDIT REPORT — FOR INTERNAL CONSULTING REVIEW ONLY — NOT AN OFFICIAL ADVISORY OPINION"

@@ -1,11 +1,11 @@
 /**
- * CloudE5 — Platform administrator bootstrap.
+ * TLI — Platform administrator bootstrap.
  *
- * A fresh CloudE5 installation has no accounts. Customer organisations register themselves;
+ * A fresh TLI installation has no accounts. Customer organisations register themselves;
  * the platform operator's first administrator is created with this module (via
  * `npm run admin:create`). It is idempotent:
  *
- * - The platform operator tenant ("CloudE5 Platform", type TLI) is created once.
+ * - The platform operator tenant ("TLI Platform", type TLI) is created once.
  * - An existing administrator with the same email is never modified unless `resetPassword` is set.
  * - A strong random password is generated unless the operator supplies one. It is returned once so
  *   the CLI can write it to a 0600 credentials file; it is never logged or stored in plaintext.
@@ -16,7 +16,7 @@ import { pool } from "../db/pool.ts";
 import { hashPassword } from "../auth/passwords.ts";
 
 export const PLATFORM_TENANT_SLUG = "cloude5-platform";
-export const PLATFORM_TENANT_NAME = "CloudE5 Platform";
+export const PLATFORM_TENANT_NAME = "TLI Platform";
 export const MIN_ADMIN_PASSWORD_LENGTH = 14;
 
 const PASSWORD_CHARSETS = {

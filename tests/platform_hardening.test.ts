@@ -416,10 +416,19 @@ describe("Platform hardening: content security policy", () => {
 
     const policy = buildContentSecurityPolicy(first, true);
     const scriptSrc = policy.split("; ").find((d) => d.startsWith("script-src")) ?? "";
-    assert.equal(scriptSrc, `script-src 'self' 'nonce-${first}' 'strict-dynamic'`);
+    assert.equal(scriptSrc, `script-src 'self' 'nonce-${first}' 'strict-dynamic' https://checkout.razorpay.com`);
     assert.doesNotMatch(scriptSrc, /unsafe-inline|unsafe-eval/);
     assert.match(policy, /frame-ancestors 'none'/);
     assert.match(policy, /object-src 'none'/);
+  });
+
+  it("lets Razorpay Checkout load, frame its form and reach its API and telemetry, and nothing else", () => {
+    // Staging found Checkout's telemetry calls blocked by connect-src 'self'.
+    const policy = buildContentSecurityPolicy(createNonce(), true);
+    const directive = (name: string) => policy.split("; ").find((d) => d.startsWith(`${name} `)) ?? "";
+    assert.match(directive("script-src"), /https:\/\/checkout\.razorpay\.com/);
+    assert.equal(directive("frame-src"), "frame-src https://api.razorpay.com https://checkout.razorpay.com");
+    assert.equal(directive("connect-src"), "connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com");
   });
 
   it("adds only what the development server needs outside production", () => {

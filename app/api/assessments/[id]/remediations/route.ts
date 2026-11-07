@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ReportLockedError } from "@/lib/payments/access";
 import { z } from "zod";
 import { calendarDateSchema } from "@/lib/http/dates";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -14,6 +15,9 @@ const PRIORITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"] as con
 const isoDate = calendarDateSchema;
 
 function remediationErrorResponse(err: unknown, context: string) {
+  if (err instanceof ReportLockedError) {
+    return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+  }
   if (err instanceof RemediationError) {
     return NextResponse.json({ error: err.message }, { status: err.statusCode });
   }

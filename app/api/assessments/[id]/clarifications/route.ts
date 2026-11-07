@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Clarifications Management API
+ * TLI — Clarifications Management API
  *
  * GET /api/assessments/[id]/clarifications
  * - Retrieves all clarification threads and threaded messages for an assessment under RLS.

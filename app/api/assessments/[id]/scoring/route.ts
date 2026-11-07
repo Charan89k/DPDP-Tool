@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Deterministic Scoring Engine API
+ * TLI — Deterministic Scoring Engine API
  *
  * GET /api/assessments/[id]/scoring
  * Computes and returns deterministic assessment scoring, including:
@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { canReviewAssessment } from "@/lib/auth/rbac";
+import { ReportLockedError } from "@/lib/payments/access";
 import {
   getAssessmentScores,
   persistAssessmentScores,
@@ -60,6 +61,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   } catch (error) {
     const sessionError = sessionErrorResponse(error);
     if (sessionError) return sessionError;
+    if (error instanceof ReportLockedError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     if (error instanceof ScoringServiceError) {
       return NextResponse.json(
         { error: error.message, code: error.code },
@@ -90,7 +94,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
   if (!canReviewAssessment(sessionUser.role)) {
     return NextResponse.json(
-      { error: "Forbidden: Only authorized CloudE5 assessors or admins may snapshot scores." },
+      { error: "Forbidden: Only authorized TLI assessors or admins may snapshot scores." },
       { status: 403 }
     );
   }

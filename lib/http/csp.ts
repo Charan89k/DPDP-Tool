@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Content Security Policy.
+ * TLI — Content Security Policy.
  *
  * Pages get a fresh nonce per request (set by proxy.ts). Next.js reads the nonce from the request's
  * Content-Security-Policy header and adds it to every script it renders, so scripts run only when
@@ -11,11 +11,15 @@
 export function buildContentSecurityPolicy(nonce: string, isProduction: boolean): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProduction ? "" : " 'unsafe-eval'"}`,
+    // checkout.razorpay.com: Razorpay Checkout, loaded by a nonce-trusted script on the report page.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com${isProduction ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self'${isProduction ? "" : " ws: wss:"}`,
+    // Razorpay Checkout's script calls its API and telemetry endpoints from the page itself.
+    `connect-src 'self'${isProduction ? "" : " ws: wss:"} https://api.razorpay.com https://lumberjack.razorpay.com`,
+    // Razorpay Checkout renders its payment form in an iframe served from these origins.
+    "frame-src https://api.razorpay.com https://checkout.razorpay.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -23,7 +23,7 @@ export default function ForgotPasswordPage() {
       const { data, errorMessage } = await readJsonResponse<{ message: string }>(res);
       setResult(errorMessage ? { tone: "error", message: errorMessage } : { tone: "success", message: data.message });
     } catch {
-      setResult({ tone: "error", message: "Unable to reach CloudE5. Please try again." });
+      setResult({ tone: "error", message: "Unable to reach the TLI platform. Please try again." });
     } finally {
       setIsSubmitting(false);
     }

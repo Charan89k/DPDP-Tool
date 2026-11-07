@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Remediation Workflow Types
+ * TLI — Remediation Workflow Types
  *
  * Defines contracts for Corrective and Preventive Action (CAPA) tracking,
  * ownership assignment, closure submissions, and assessor validation.

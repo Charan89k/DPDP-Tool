@@ -17,7 +17,7 @@ command="${1:-serve}"
 case "$command" in
   serve)
     if [ ! -f "$CLOUDE5_DATABASE_PATH" ]; then
-      echo "CloudE5: no database found at $CLOUDE5_DATABASE_PATH." >&2
+      echo "TLI: no database found at $CLOUDE5_DATABASE_PATH." >&2
       echo "Initialise it first:  docker compose run --rm cloude5 migrate" >&2
       exit 1
     fi

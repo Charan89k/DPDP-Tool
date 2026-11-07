@@ -1,5 +1,5 @@
 /**
- * CloudE5 — SQLite query client with a node-postgres compatible surface.
+ * TLI — SQLite query client with a node-postgres compatible surface.
  *
  * Application code keeps using `pool.query(sql, params)` and `pool.connect()` /
  * `client.query("BEGIN;")` / `client.release()`. Underneath:

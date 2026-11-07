@@ -16,6 +16,7 @@ changes, only hosting and configuration. Step-by-step commands are in [SELF_HOST
 | 9 | Server hardening | Firewall allowing only 22, 80 and 443; SSH keys only; automatic security updates | Reduce attack surface |
 | 10 | Monitoring | External uptime check on `https://cloude5.example.com/api/ready` | Know when it is down |
 | 11 | Releases | Deploy from `main`: `git pull && docker compose build && docker compose stop cloude5 && docker compose run --rm cloude5 migrate && docker compose up -d` ([Upgrade](SELF_HOSTING.md#upgrade)). `migrate` writes a backup before changing the schema; the app refuses to start while migrations are pending | Repeatable upgrades |
+| 12 | Paid reports (optional) | Razorpay keys, webhook secret and `TLI_ASSESSOR_EMAIL` in `.env`; webhook at `/api/payments/razorpay/webhook`; set the price under **Payments** ([PAYMENTS.md](PAYMENTS.md), including the Live Mode checklist) | Customers buy and receive the final report |
 
 After the switch:
 

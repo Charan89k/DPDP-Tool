@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Customer User Provisioning API
+ * TLI — Customer User Provisioning API
  *
  * POST /api/customers/[id]/users
  * Provisions a client user for the specified customer organization.

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { getAssessmentGapAnalysis, GapsServiceError } from "@/lib/gaps";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
+import { ReportLockedError } from "@/lib/payments/access";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,9 @@ export async function GET(
   } catch (error) {
     const sessionError = sessionErrorResponse(error);
     if (sessionError) return sessionError;
+    if (error instanceof ReportLockedError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     console.error("GET /api/assessments/[id]/gaps error:", error);
 
     if (error instanceof GapsServiceError) {

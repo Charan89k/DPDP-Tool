@@ -1,5 +1,5 @@
 /**
- * CloudE5 — SQLite connection management.
+ * TLI — SQLite connection management.
  *
  * One process-wide connection is used for all requests. SQLite serializes writers anyway, and a
  * single connection lets the tenant policy context (temp._ctx, see policies.ts) live on the
@@ -105,7 +105,7 @@ export function openDatabase(filePath: string, options: OpenOptions = {}): Sqlit
           ? `Applied migrations differ from this release's files (${status.checksumMismatches.join(", ")}). ` +
               'Run "npm run db:verify" and restore the original migration files.'
           : `Database schema is not up to date (${status.pending.length} pending migration(s)). ` +
-              'Run "npm run db:migrate" before starting CloudE5.'
+              'Run "npm run db:migrate" before starting Truth Labs International.'
       );
     }
     const columnsByTable = Object.fromEntries(

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — User Invitations API
+ * TLI — User Invitations API
  *
  * POST /api/customers/[id]/invitations
  * Generates a cryptographically secure, single-use, time-limited invitation token.

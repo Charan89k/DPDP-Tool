@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Create (or reset) the platform operator administrator.
+ * TLI — Create (or reset) the platform operator administrator.
  *
  *   npm run admin:create -- --email=admin@example.com --name="Platform Admin"
  *   npm run admin:create -- --email=admin@example.com --name="Platform Admin" --reset-password
@@ -44,7 +44,7 @@ async function main(): Promise<number> {
   if (result.generatedPassword) {
     fs.writeFileSync(
       credentialsFile,
-      `CloudE5 platform administrator\nEmail: ${result.email}\nPassword: ${result.generatedPassword}\n` +
+      `TLI platform administrator\nEmail: ${result.email}\nPassword: ${result.generatedPassword}\n` +
         "Sign in, then delete this file.\n",
       { mode: 0o600 }
     );

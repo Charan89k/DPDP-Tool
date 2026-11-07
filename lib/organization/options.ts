@@ -1,5 +1,5 @@
 /**
- * CloudE5 — choices offered in the onboarding organisation profile. Kept apart from profile.ts,
+ * TLI — choices offered in the onboarding organisation profile. Kept apart from profile.ts,
  * which reaches the database, so the onboarding page can import them in the browser.
  */
 

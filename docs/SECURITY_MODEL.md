@@ -1,4 +1,4 @@
-# CloudE5 security model
+# TLI platform security model
 
 ## Tenant isolation
 
@@ -14,7 +14,7 @@ settings, and 44 policies filtered rows and checked writes.
 
 ### Current design (SQLite)
 
-SQLite has no row-level security. CloudE5 reproduces the same policies in a single, central layer
+SQLite has no row-level security. TLI reproduces the same policies in a single, central layer
 (`lib/db/sqlite/policies.ts`) that every query passes through:
 
 1. **Identity binding.** `executeWithRls()` (`lib/db/rls.ts`) opens a transaction, re-verifies the
@@ -88,7 +88,7 @@ deactivated accounts, revoked sessions and identifier manipulation, and verify t
   so concurrent requests cannot exceed the limit.
   Client IPs come only from headers the deployment trusts: the rightmost `X-Forwarded-For` entry
   (appended by the reverse proxy); `X-Real-IP` only with `CLOUDE5_TRUST_X_REAL_IP=true`;
-  `CF-Connecting-IP` only with `TRUST_CLOUDFLARE_IP_HEADER=true`. Expose CloudE5 only through a
+  `CF-Connecting-IP` only with `TRUST_CLOUDFLARE_IP_HEADER=true`. Expose TLI only through a
   reverse proxy so clients cannot write the rightmost entry themselves. If no trusted header carries
   a valid address, all such requests share the bucket `127.0.0.1`; running without a proxy therefore
   makes per-IP limits installation-wide (per-email limits still apply).

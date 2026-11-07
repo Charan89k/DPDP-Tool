@@ -1,7 +1,7 @@
 {
   "name": "cloude5",
   "version": "1.0.0",
-  "description": "CloudE5: DPDP Act (India) readiness assessments with evidence, gap analysis and remediation tracking",
+  "description": "Truth Labs International (TLI): DPDP Act (India) readiness assessments with evidence, gap analysis and remediation tracking",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -31,6 +31,7 @@
     "nodemailer": "^10.1.6",
     "otpauth": "^9.5.2",
     "qrcode": "^1.5.4",
+    "razorpay": "^2.9.8",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zod": "^4.6.7"

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Evidence upload response contract, shared by POST /api/evidence/upload and the
+ * TLI — Evidence upload response contract, shared by POST /api/evidence/upload and the
  * browser components that upload evidence. Type-only: safe to import from client code.
  */
 

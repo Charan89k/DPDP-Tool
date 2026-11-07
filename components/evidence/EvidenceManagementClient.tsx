@@ -828,7 +828,7 @@ export function EvidenceManagementClient({
               </button>
             </div>
 
-            {/* The file itself is only shown by downloading it: CloudE5 never renders uploaded documents inline. */}
+            {/* The file itself is only shown by downloading it: TLI never renders uploaded documents inline. */}
             <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3 text-xs text-slate-600">
               <p>
                 Open the file to check its contents before verifying it. Uploaded on{" "}

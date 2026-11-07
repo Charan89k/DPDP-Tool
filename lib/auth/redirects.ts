@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Safe Redirect Handler
+ * TLI — Safe Redirect Handler
  *
  * Prevents Open Redirect vulnerabilities (CWE-601) by strictly validating
  * target redirect paths. Rejects external schemes, protocol-relative URLs,

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Deterministic Scoring Engine
+ * TLI — Deterministic Scoring Engine
  *
  * Pure, side-effect-free calculation domain engine implementing the non-compensatory
  * dual-metric evaluation model.

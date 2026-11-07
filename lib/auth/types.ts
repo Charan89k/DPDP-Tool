@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Authentication & Identity Types
+ * TLI — Authentication & Identity Types
  *
  * Defines the 7 application roles, session context structures, and authentication contracts.
  */

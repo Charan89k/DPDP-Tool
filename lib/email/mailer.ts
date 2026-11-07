@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Transactional email delivery.
+ * TLI — Transactional email delivery.
  *
  * Production: SMTP via nodemailer, configured with SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER,
  * SMTP_PASSWORD and SMTP_FROM. If SMTP is not configured in production, nothing is sent and the
@@ -16,11 +16,18 @@ import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
 export interface EmailMessage {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments?: EmailAttachment[];
 }
 
 export type EmailDeliveryResult =
@@ -76,9 +83,11 @@ function writeToDevOutbox(message: EmailMessage, env: Env): void {
   );
   const body = [
     `To: ${message.to}`,
-    `From: ${env.SMTP_FROM || "CloudE5 <no-reply@localhost>"}`,
+    `From: ${env.SMTP_FROM || "Truth Labs International <no-reply@localhost>"}`,
     `Subject: ${message.subject}`,
     "Content-Type: text/plain; charset=utf-8",
+    // shortcut: the dev outbox lists attachments instead of MIME-encoding them; real mail goes through SMTP.
+    ...(message.attachments ?? []).map((a) => `X-Attachment: ${a.filename} (${a.content.length} bytes)`),
     "",
     message.text,
   ].join("\n");
@@ -97,6 +106,7 @@ export async function sendEmail(
         subject: message.subject,
         text: message.text,
         html: message.html,
+        attachments: message.attachments,
       });
       return { sent: true, channel: "smtp" };
     } catch (err) {

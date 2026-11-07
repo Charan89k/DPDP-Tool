@@ -56,7 +56,7 @@ export function SecuritySettings({
       if (result.errorMessage) setMessage({ tone: "error", text: result.errorMessage });
       return result;
     } catch {
-      setMessage({ tone: "error", text: "Unable to reach CloudE5. Please try again." });
+      setMessage({ tone: "error", text: "Unable to reach the TLI platform. Please try again." });
       return { data: {}, errorMessage: "network" } as JsonResult<T>;
     } finally {
       setBusy(false);
@@ -149,7 +149,7 @@ export function SecuritySettings({
         {setup && (
           <form onSubmit={confirm} className="grid sm:grid-cols-[auto,1fr] gap-5 items-start p-4 rounded-lg border border-slate-200 bg-slate-50">
             {/* eslint-disable-next-line @next/next/no-img-element -- server-generated data URL */}
-            <img src={setup.qrCodeDataUrl} alt="QR code to add CloudE5 to your authenticator app" width={180} height={180} className="rounded bg-white p-2 border border-slate-200" />
+            <img src={setup.qrCodeDataUrl} alt="QR code to add TLI to your authenticator app" width={180} height={180} className="rounded bg-white p-2 border border-slate-200" />
             <div className="space-y-3">
               <p className="text-sm text-slate-700">
                 1. Scan the QR code with your authenticator app, or enter this key manually:
@@ -189,7 +189,7 @@ export function SecuritySettings({
 
         {continueHref && enabled && (
           <Link href={continueHref} className={`${primaryButton} inline-block`}>
-            Continue to CloudE5
+            Continue to Truth Labs International
           </Link>
         )}
 
@@ -220,7 +220,7 @@ export function SecuritySettings({
             <h3 className="text-sm font-semibold text-slate-900">Require two-factor for your organisation</h3>
             <p className="text-sm text-slate-600 mt-1">
               {orgRequired
-                ? "On. Every member must use two-factor; members without it are asked to set it up when they next open CloudE5."
+                ? "On. Every member must use two-factor; members without it are asked to set it up when they next open Truth Labs International."
                 : enabled
                   ? "Off. Members choose whether to use two-factor."
                   : "Off. Turn on two-factor for your own account first."}

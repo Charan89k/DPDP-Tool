@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Assessment Evidence & Coverage API Endpoint
+ * TLI — Assessment Evidence & Coverage API Endpoint
  *
  * GET /api/assessments/[id]/evidence
  * Returns all active compliance evidence items associated with the specified assessment
@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/session";
 import { executeWithRls } from "@/lib/db/rls";
+import { customerFindingsLocked } from "@/lib/payments/access";
 import { errorMessage } from "@/lib/http/errors";
 import { sessionErrorResponse } from "@/lib/http/session_errors";
 
@@ -39,6 +40,7 @@ export async function GET(
   }
 
   try {
+    const notesLocked = await customerFindingsLocked(sessionUser, assessmentId);
     const result = await executeWithRls(sessionUser, async (client) => {
       // 1. Verify assessment exists and caller has access under RLS
       const assessRes = await client.query(
@@ -96,7 +98,8 @@ export async function GET(
         uploadedByName: row.uploaded_by_name || "Authorized User",
         verifiedByReviewerId: row.verified_by_reviewer_id,
         verifiedByName: row.verified_by_name || null,
-        verificationNotes: row.verification_notes || null,
+        // Assessor notes on evidence are findings: customers see them once the report is paid for.
+        verificationNotes: notesLocked ? null : row.verification_notes || null,
         verifiedAt: row.verified_at ? row.verified_at.toISOString() : null,
         createdAt: row.created_at ? row.created_at.toISOString() : null,
       }));

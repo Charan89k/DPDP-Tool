@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Canonical question code checks (server side).
+ * TLI — Canonical question code checks (server side).
  *
  * Responses and assessor reviews are keyed by question code. Only the 60 canonical codes count
  * towards completeness, so invented codes can neither be stored nor satisfy a lifecycle guard.

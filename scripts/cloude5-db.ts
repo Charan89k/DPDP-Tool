@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Database operations CLI.
+ * TLI — Database operations CLI.
  *
  *   npm run db:migrate                  Create (first run) or upgrade the database; backs up before upgrading.
  *   npm run db:status                   Show applied and pending migrations.
@@ -129,7 +129,7 @@ async function main(): Promise<number> {
     case "restore": {
       const source = args.find((a) => !a.startsWith("--"));
       if (!source || !args.includes("--confirm")) {
-        console.error("Usage: npm run db:restore -- <backup-file> --confirm   (stop CloudE5 first)");
+        console.error("Usage: npm run db:restore -- <backup-file> --confirm   (stop TLI first)");
         return 2;
       }
       const sourcePath = path.resolve(source);

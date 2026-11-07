@@ -111,7 +111,7 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
 
   await signIn(page, account.email, account.password);
   await expect(page).toHaveURL(/\/dashboard\/onboarding/);
-  await expect(page.getByRole("heading", { name: "Set up your CloudE5 workspace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up your TLI workspace" })).toBeVisible();
 
   // Customer accounts must use a work email address.
   const personal = await page.request.post("/api/auth/register", {
@@ -156,13 +156,16 @@ test("register, verify, onboard and start an assessment", async ({ page }) => {
   const saved = await saveAnswers({ "GOV-001": { selectedOption: "Implemented", commentsAndJustification: "Policy approved" } });
   expect(saved.status(), await saved.text()).toBe(200);
 
-  // The summary reads the scoring engine's output: one Implemented answer gives a non-zero readiness.
+  // Scores and findings are released to customers only with the paid final report: the summary shows
+  // the lock notice and the scoring and gap APIs refuse with 402 Payment Required.
   const pageErrors: string[] = [];
   page.on("pageerror", (err) => pageErrors.push(err.message));
   await page.goto(`/dashboard/assessments/${assessmentId}/summary`);
   await expect(page.getByText("Indicative Readiness Score")).toBeVisible();
-  await expect(page.getByText("100.0%").first()).toBeVisible();
-  await expect(page.getByText("Maturity 5.00/5.0")).toBeVisible();
+  await expect(page.getByText("Scores are released with your final report once payment is confirmed.")).toBeVisible();
+  await expect(page.getByText("Maturity 5.00/5.0")).toHaveCount(0);
+  expect((await page.request.get(`/api/assessments/${assessmentId}/scoring`)).status()).toBe(402);
+  expect((await page.request.get(`/api/assessments/${assessmentId}/gaps`)).status()).toBe(402);
   expect(pageErrors).toEqual([]);
 
   const clean = await upload("privacy-policy.pdf", "application/pdf", Buffer.from(`%PDF-1.7\nPrivacy policy\n${"A".repeat(300)}\n%%EOF`));

@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Customer Organization Detail API
+ * TLI — Customer Organization Detail API
  *
  * GET /api/customers/[id]
  * Fetches organization details, provisioned users, invitations, and assessments.

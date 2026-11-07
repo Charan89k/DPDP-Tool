@@ -1,6 +1,6 @@
-# CloudE5 architecture
+# TLI platform architecture
 
-CloudE5 is one Next.js application in one container. All state (database, evidence files and
+TLI is one Next.js application in one container. All state (database, evidence files and
 backups) lives in a single data volume. Optional sidecar containers add HTTPS, virus scanning, a test
 mail catcher or a public tunnel.
 

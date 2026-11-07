@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Authentication Login Endpoint
+ * TLI — Authentication Login Endpoint
  *
  * POST /api/auth/login
  * Validates user credentials, issues cryptographically signed session tokens,

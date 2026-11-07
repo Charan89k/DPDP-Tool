@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Password Security Module
+ * TLI — Password Security Module
  *
  * Implements secure password verification and hashing using bcryptjs.
  */

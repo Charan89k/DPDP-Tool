@@ -1,5 +1,5 @@
 /**
- * CloudE5 — RLS-Scoped Assessments Endpoint
+ * TLI — RLS-Scoped Assessments Endpoint
  *
  * GET /api/assessments
  * Fetches assessment records accessible to the authenticated user.

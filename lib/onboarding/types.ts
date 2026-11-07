@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Customer Onboarding Types
+ * TLI — Customer Onboarding Types
  */
 
 import type { UserRole } from "../auth/types.ts";

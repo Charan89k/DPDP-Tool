@@ -1,6 +1,6 @@
-# Self-hosting CloudE5
+# Self-hosting the TLI platform
 
-CloudE5 runs as one container with a persistent data volume. All state lives in that volume:
+TLI runs as one container with a persistent data volume. All state lives in that volume:
 
 | Path in container | Contents |
 |---|---|
@@ -27,7 +27,7 @@ on a network filesystem (NFS, SMB) or share one file between servers.
 ## 2. Install
 
 ```bash
-git clone <your CloudE5 repository> cloude5 && cd cloude5
+git clone <your TLI repository> cloude5 && cd cloude5
 cp .env.example .env
 openssl rand -base64 48        # paste as SESSION_SECRET
 nano .env                      # set CLOUDE5_PUBLIC_URL, SESSION_SECRET and SMTP_* values
@@ -85,7 +85,7 @@ public HTTPS address from a Cloudflare quick tunnel, with a local mail catcher i
 
 ```bash
 cp .env.example .env     # generate SESSION_SECRET and CLOUDE5_ENCRYPTION_KEY as above
-# in .env: SMTP_HOST=mailpit  SMTP_PORT=1025  SMTP_FROM="CloudE5 <no-reply@cloude5.local>"
+# in .env: SMTP_HOST=mailpit  SMTP_PORT=1025  SMTP_FROM="Truth Labs International <no-reply@cloude5.local>"
 #          TRUST_CLOUDFLARE_IP_HEADER=true
 docker compose build && docker compose run --rm cloude5 migrate
 docker compose --profile mail --profile tunnel up -d
@@ -96,7 +96,7 @@ docker compose logs cloudflared | grep trycloudflare.com   # your public URL
 Account emails appear at http://localhost:8025 and never leave the machine, so this suits testing,
 not real users. The tunnel URL changes whenever the tunnel restarts, and the site is offline while
 the machine is off or asleep. Platforms without a persistent disk (for example Vercel or other
-serverless hosts) cannot run CloudE5, because the SQLite database and evidence files must persist.
+serverless hosts) cannot run TLI, because the SQLite database and evidence files must persist.
 
 ## Configuration reference
 
@@ -196,7 +196,7 @@ downgrade); always restore the pre-migration backup when rolling back across mig
 
 | Symptom | Cause and fix |
 |---|---|
-| Container exits: "no database found" | The volume is not mounted or `migrate` was never run. Check `docker compose config`, then run `migrate`. CloudE5 never creates an empty database implicitly. |
+| Container exits: "no database found" | The volume is not mounted or `migrate` was never run. Check `docker compose config`, then run `migrate`. TLI never creates an empty database implicitly. |
 | "Database schema is not up to date" | Run `migrate` after upgrading. |
 | "Applied migrations differ from this release's files" | A migration file was edited. Restore the original files from the release. |
 | Users cannot sign in after registering | Email verification is required. Check SMTP settings and `/api/ready`; as a fallback use `verify-email`. |

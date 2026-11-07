@@ -77,7 +77,7 @@ export default async function HomePage() {
               Assess your DPDP readiness and know exactly what to fix.
             </h1>
             <p className="mt-5 text-base text-slate-300 max-w-xl leading-relaxed">
-              CloudE5 guides your organisation through a structured DPDP self-assessment, keeps supporting evidence in one
+              TLI guides your organisation through a structured DPDP self-assessment, keeps supporting evidence in one
               private workspace, and turns your answers into an explainable gap register and corrective action plan.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -146,7 +146,7 @@ export default async function HomePage() {
             ))}
           </div>
           <p className="mt-10 text-xs text-slate-500 max-w-3xl leading-relaxed">
-            CloudE5 is a self-assessment tool. Scores and findings are generated from the information your organisation
+            TLI is a self-assessment tool. Scores and findings are generated from the information your organisation
             provides using a documented, provisional methodology. They are not legal advice, are not a determination of
             compliance with the DPDP Act or the DPDP Rules, and do not replace review by qualified legal counsel.
           </p>

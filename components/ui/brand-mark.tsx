@@ -8,15 +8,30 @@ interface BrandMarkProps {
 }
 
 const SIZES = {
-  sm: { mark: "h-7 w-auto", word: "text-lg", tag: "text-[9px]" },
-  md: { mark: "h-9 w-auto", word: "text-2xl", tag: "text-[10px]" },
-  lg: { mark: "h-11 w-auto", word: "text-3xl", tag: "text-[11px]" },
+  sm: { mark: "h-8 w-auto", word: "text-lg", name: "text-[10px]", tag: "text-[9px]" },
+  md: { mark: "h-10 w-auto", word: "text-2xl", name: "text-[11px]", tag: "text-[10px]" },
+  lg: { mark: "h-12 w-auto", word: "text-3xl", name: "text-xs", tag: "text-[11px]" },
 };
 
+/** The shield emblem alone; the same artwork is the browser icon (app/icon.svg). */
+export function BrandEmblem({ className = "", dark = false }: { className?: string; dark?: boolean }) {
+  return (
+    <svg viewBox="0 0 40 44" className={className} aria-hidden="true">
+      <path d="M20 2 37 8v12.5C37 31 29.8 38.6 20 42 10.2 38.6 3 31 3 20.5V8Z" fill="#0B3B6F" />
+      <path
+        d="M20 5.4 34 10.3v10.2C34 29.2 28.2 35.6 20 38.6 11.8 35.6 6 29.2 6 20.5V10.3Z"
+        fill="none"
+        stroke={dark ? "#60A5FA" : "#3B82F6"}
+        strokeWidth="1.4"
+      />
+      <path d="M11.5 15h8M15.5 15v12M21.5 15v12h5M29.5 15v12" fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /**
- * CloudE5 brand mark: the company logo's cloud outline with a cube in front of it, and the
- * CloudE5 wordmark. `variant` selects colours for dark (navy) or light backgrounds.
- * The same emblem is the browser icon (app/icon.svg).
+ * Truth Labs International brand mark: the shield emblem with the TLI monogram, the TLI wordmark
+ * and the full company name. `variant` selects colours for dark (navy) or light backgrounds.
  */
 export function BrandMark({
   variant = "light",
@@ -28,25 +43,12 @@ export function BrandMark({
   const s = SIZES[size];
 
   return (
-    <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      <svg viewBox="2 4 44 36" className={`${s.mark} flex-shrink-0`} aria-hidden="true">
-        <path
-          d="M13 30.5a6.5 6.5 0 0 1-.9-12.94A9.8 9.8 0 0 1 30.6 13a7.6 7.6 0 0 1 8.9 6.3A5.7 5.7 0 0 1 36.5 30.5Z"
-          fill="none"
-          stroke={isDark ? "#CBD5E1" : "#334155"}
-          strokeWidth="2.6"
-          strokeLinejoin="round"
-        />
-        <path d="M24 17.2 33.4 22.6v10.8L24 38.8l-9.4-5.4V22.6Z" fill="#3B7DD8" />
-        <path d="M24 21.2 30 24.6v6.8L24 34.8l-6-3.4v-6.8Z" fill="#FFFFFF" />
-        <path d="M18 24.6 24 28l6-3.4M24 28v6.8" fill="none" stroke="#3B7DD8" strokeWidth="1.7" strokeLinejoin="round" />
-      </svg>
-      <span className="flex flex-col leading-none">
-        <span
-          className={`${s.word} font-bold tracking-tight ${isDark ? "text-white" : "text-[#0B192C]"}`}
-          aria-label="CloudE5"
-        >
-          Cloud<span className="text-[#3B82F6]">E5</span>
+    <div className={`inline-flex items-center gap-2.5 select-none ${className}`} role="img" aria-label="Truth Labs International">
+      <BrandEmblem className={`${s.mark} flex-shrink-0`} dark={isDark} />
+      <span className="flex flex-col leading-none" aria-hidden="true">
+        <span className={`${s.word} font-bold tracking-tight ${isDark ? "text-white" : "text-[#0B192C]"}`}>TLI</span>
+        <span className={`${s.name} mt-0.5 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+          Truth Labs International
         </span>
         {showTagline && (
           <span

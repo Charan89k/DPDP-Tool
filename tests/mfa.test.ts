@@ -72,7 +72,7 @@ describe("CloudE5 two-factor authentication", () => {
 
   it("enrols with an encrypted secret and confirms with a valid code", async () => {
     const setup = await beginMfaEnrolment(user);
-    assert.match(setup.otpauthUri, /^otpauth:\/\/totp\/CloudE5:/);
+    assert.match(setup.otpauthUri, /^otpauth:\/\/totp\/Truth%20Labs%20International:/);
     assert.match(setup.qrCodeDataUrl, /^data:image\/png;base64,/);
 
     const raw = (await pool.query("SELECT mfa_secret_encrypted, mfa_enabled FROM users WHERE id = $1", [user.userId])).rows[0];

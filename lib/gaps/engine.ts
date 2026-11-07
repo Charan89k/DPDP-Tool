@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Deterministic Gap Analysis Engine
+ * TLI — Deterministic Gap Analysis Engine
  *
  * Pure, side-effect-free calculation engine for compliance gap discovery,
  * explainable risk factor prioritization, and statutory domain rollups.
@@ -436,7 +436,7 @@ export function evaluateAssessmentGaps(
             gapType = "EVIDENCE_DEFICIENCY";
             gapSeverity = "HIGH_DEFICIT";
             highCount++;
-            factualObservation = `Evidence submitted for 'Implemented' status was inspected and rejected by CloudE5 assessor.`;
+            factualObservation = `Evidence submitted for 'Implemented' status was inspected and rejected by TLI assessor.`;
             // Assessor deficiency notes are internal working papers (redacted for customers), so
             // the customer-visible explanation never copies them.
             explanation = `Assessor rejected attached evidence due to deficiencies or insufficient proof.`;
@@ -699,7 +699,7 @@ export function evaluateAssessmentGaps(
     assessmentTitle: input.assessmentTitle || "DPDP Compliance Gap Assessment",
     assessmentStatus: input.assessmentStatus || "IN_PROGRESS",
     frameworkName: input.frameworkName || "DPDPA-2023-V1.0",
-    leadConsultantName: input.leadConsultantName || "CloudE5 Lead",
+    leadConsultantName: input.leadConsultantName || "TLI Lead",
     isSdf: Boolean(input.isSdf),
     summary,
     gaps: allGaps,

@@ -59,7 +59,7 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
       }),
     }).catch(() => null);
     setBusy(false);
-    if (!res) return setError("Unable to reach CloudE5. Please try again.");
+    if (!res) return setError("Unable to reach the TLI platform. Please try again.");
     const { data, errorMessage } = await readJsonResponse(res);
     if (errorMessage) {
       setError(errorMessage);
@@ -79,7 +79,7 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
     }).catch(() => null);
     if (!res) {
       setBusy(false);
-      return setError("Unable to reach CloudE5. Please try again.");
+      return setError("Unable to reach the TLI platform. Please try again.");
     }
     const { data, errorMessage } = await readJsonResponse<{ assessment: { id: string } }>(res);
     if (errorMessage || !data.assessment?.id) {
@@ -96,7 +96,7 @@ export function OnboardingClient({ organization, adminName }: { organization: Or
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wider text-[#0066FF]">Welcome, {adminName}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Set up your CloudE5 workspace</h1>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Set up your TLI workspace</h1>
         <p className="mt-1 text-sm text-slate-600">Two short steps, then you can start answering the assessment.</p>
       </div>
 

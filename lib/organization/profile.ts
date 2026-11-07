@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Organisation profile and onboarding.
+ * TLI — Organisation profile and onboarding.
  *
  * Customer administrators maintain their organisation's profile (industry, Significant Data
  * Fiduciary status as notified by the Central Government, DPO / grievance contact) and complete

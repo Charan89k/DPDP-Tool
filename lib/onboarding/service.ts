@@ -1,5 +1,5 @@
 /**
- * CloudE5 — Customer Onboarding Domain Service
+ * TLI — Customer Onboarding Domain Service
  *
  * Implements server-side customer organization onboarding, user provisioning,
  * cryptographic token invitations, and assessment assignment workflows
@@ -724,7 +724,7 @@ export async function createCustomerAssessment(
 ): Promise<CreatedAssessmentRecord> {
   if (!isTliRole(sessionUser.role)) {
     throw new OnboardingError(
-      "Only authorized CloudE5 consultants can initialize DPDP compliance assessments.",
+      "Only authorized TLI consultants can initialize DPDP compliance assessments.",
       "FORBIDDEN",
       403
     );
