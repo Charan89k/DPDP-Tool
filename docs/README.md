@@ -6,6 +6,7 @@
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, request flow, deployment modes and design limits |
 | [SELF_HOSTING.md](SELF_HOSTING.md) | Installation, configuration, backups, upgrades and troubleshooting |
+| [CONSULTATIONS_AND_REMEDIATION.md](CONSULTATIONS_AND_REMEDIATION.md) | Consultation booking, calendar invitations, notifications, remediation workflow, API |
 | [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) | Staging sign-off checklist for paid report delivery |
 | [PAYMENTS.md](PAYMENTS.md) | Razorpay payment-gated report delivery, webhooks, email delivery, Live Mode checklist |
 | [PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |

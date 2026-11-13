@@ -159,3 +159,14 @@ export function reportDeliveryAssessorEmail(
   );
   return { ...base, attachments: [d.attachment] };
 }
+
+/** A Truth Labs International branded message for consultation and remediation notifications. */
+export function brandedEmail(
+  to: string,
+  subject: string,
+  title: string,
+  paragraphs: string[],
+  action?: { label: string; url: string }
+): EmailMessage {
+  return message(to, subject, title, paragraphs, action);
+}

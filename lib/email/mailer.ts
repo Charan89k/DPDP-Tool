@@ -28,6 +28,8 @@ export interface EmailMessage {
   text: string;
   html: string;
   attachments?: EmailAttachment[];
+  /** iCalendar invitation (iTIP REQUEST or CANCEL) sent as a real calendar invite. */
+  calendar?: { method: "REQUEST" | "CANCEL"; content: string };
 }
 
 export type EmailDeliveryResult =
@@ -88,8 +90,10 @@ function writeToDevOutbox(message: EmailMessage, env: Env): void {
     "Content-Type: text/plain; charset=utf-8",
     // shortcut: the dev outbox lists attachments instead of MIME-encoding them; real mail goes through SMTP.
     ...(message.attachments ?? []).map((a) => `X-Attachment: ${a.filename} (${a.content.length} bytes)`),
+    ...(message.calendar ? [`X-Calendar-Method: ${message.calendar.method}`] : []),
     "",
     message.text,
+    ...(message.calendar ? ["", message.calendar.content] : []),
   ].join("\n");
   fs.writeFileSync(file, body, { mode: 0o600 });
 }
@@ -107,6 +111,9 @@ export async function sendEmail(
         text: message.text,
         html: message.html,
         attachments: message.attachments,
+        icalEvent: message.calendar
+          ? { method: message.calendar.method, content: message.calendar.content, filename: "invite.ics" }
+          : undefined,
       });
       return { sent: true, channel: "smtp" };
     } catch (err) {

@@ -2,6 +2,20 @@
 
 Notable changes to CloudE5, newest first. Each entry links to the pull request that introduced it.
 
+## Unreleased — Consultations and remediation management
+
+- **Consultations:** customers book TLI assessors from real availability (each assessor's hours in their
+  own timezone, buffers, notice, blocked dates); double booking is refused by the database. Calendar
+  invitations (RFC 5545 REQUEST/CANCEL, stable UID and SEQUENCE) go to the customer and the assessor;
+  rescheduling and cancellation update the same event; 24-hour and 1-hour reminders (configurable).
+- **Remediation requests:** after a paid report, customers select gaps and request help; TLI reviews,
+  asks questions and sends versioned proposals (frozen once sent); accepted proposals start an
+  engagement with one corrective action per gap. Gaps close only on TLI verification. No charges.
+- **Dashboards:** customer Consultations and Remediation pages; TLI Appointments (week calendar,
+  filters, failed-email retry), Availability and Remediation (verification queue) pages; "Continue Your
+  Compliance Journey" section on paid reports.
+- Migration **0010**. See [docs/CONSULTATIONS_AND_REMEDIATION.md](docs/CONSULTATIONS_AND_REMEDIATION.md).
+
 ## Unreleased — Truth Labs International and paid report delivery
 
 - **Rebrand:** the product is now Truth Labs International (TLI): logo (shield with TLI monogram),

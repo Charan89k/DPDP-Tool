@@ -21,6 +21,7 @@ import { isTliRole } from "@/lib/auth/rbac";
 import { getReportAccessView } from "@/lib/payments/queries";
 import type { ReportAccessView } from "@/lib/payments/queries";
 import { ReportPaymentPanel } from "@/components/payments/ReportPaymentPanel";
+import { ComplianceJourney } from "@/components/payments/ComplianceJourney";
 
 export const dynamic = "force-dynamic";
 
@@ -215,6 +216,7 @@ export default async function ReportDetailPage({ params }: ReportDetailPageProps
       {accessView && (
         <ReportPaymentPanel assessmentId={assessment.id} engagementCode={assessment.engagement_code} view={accessView} />
       )}
+      {accessView?.unlocked && <ComplianceJourney assessmentId={assessment.id} />}
 
       {/* Synthetic Preview / Watermark Notice */}
       {!isFinalIssued ? (

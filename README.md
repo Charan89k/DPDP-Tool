@@ -43,6 +43,8 @@ external database or cloud services required.
 - Deterministic scoring and gap analysis; every finding traces back to the answer and control behind it
 - Assessor review, clarification threads, approval workflow and lifecycle history
 - Report generation (.docx) and remediation (CAPA) tracking with owners and due dates
+- Consultation booking with real assessor availability, calendar invitations (Google, Outlook, ICS) and reminders
+- Remediation requests for selected gaps, versioned TLI proposals, tracked corrective actions and TLI-only gap verification ([guide](docs/CONSULTATIONS_AND_REMEDIATION.md))
 - Paid report delivery through Razorpay: the issued report unlocks only after a server-verified payment
   and is emailed to the customer and the TLI assessor, with delivery tracking and resend ([guide](docs/PAYMENTS.md))
 - Works on desktop, tablet and phone: the navigation becomes a drawer and every page fits the screen
@@ -207,6 +209,7 @@ layouts (the `mobile` and `tablet` projects fail if any workspace page spills pa
 | [Architecture](docs/ARCHITECTURE.md) | Components, request flow, deployment modes and design limits |
 | [Onboarding customers](docs/ONBOARDING.md) | Self-service and administrator-created organisations, roles, two-factor |
 | [Self-hosting](docs/SELF_HOSTING.md) | Installation, configuration, backups, upgrades, troubleshooting |
+| [Consultations and remediation](docs/CONSULTATIONS_AND_REMEDIATION.md) | Booking, availability, calendar invitations, reminders, remediation requests, proposals, gap verification, API |
 | [Paid report delivery](docs/PAYMENTS.md) | Razorpay setup (Test and Live Mode), webhooks, report access control, email delivery |
 | [Production checklist](docs/PRODUCTION_CHECKLIST.md) | Moving from a laptop trial to a production server |
 | [Security model](docs/SECURITY_MODEL.md) | Tenant isolation, account security, security headers |

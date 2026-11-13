@@ -32,6 +32,7 @@ const BYPASS = "(SELECT bypass FROM temp._ctx)";
 
 const SUPER_ADMIN = `${ROLE} = 'TLI_SUPER_ADMIN'`;
 const CONSULTANT = `${ROLE} IN ('TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')`;
+const TLI_ANY = `${ROLE} IN ('TLI_SUPER_ADMIN', 'TLI_LEAD_CONSULTANT', 'TLI_REVIEWER')`;
 const CLIENT_WRITER = `${ROLE} IN ('CLIENT_ADMIN', 'CLIENT_BU_LEAD', 'CLIENT_CONTRIBUTOR')`;
 const OPEN_STATUSES = "('DRAFT', 'SCOPING', 'SCOPE_LOCKED', 'DATA_GATHERING')";
 /** Read-only executive viewers may see but never write rows guarded by this. */
@@ -220,6 +221,42 @@ export const TABLE_POLICIES: TablePolicy[] = [
   // Platform settings (report price) are readable by signed-in users; changed only through the
   // administrator settings service.
   { table: "platform_settings", select: "1", insert: "DENY", update: "DENY", delete: "DENY" },
+  // Consultations and remediation requests (migration 0010). Every write goes through the
+  // privileged consultation/remediation services after they authorise the caller.
+  { table: "appointment_types", select: "1", insert: "DENY", update: "DENY", delete: "DENY" },
+  { table: "assessor_availability", select: TLI_ANY, insert: "DENY", update: "DENY", delete: "DENY" },
+  { table: "availability_exceptions", select: TLI_ANY, insert: "DENY", update: "DENY", delete: "DENY" },
+  {
+    table: "appointments",
+    select: `(${SUPER_ADMIN} OR ${ROLE} = 'TLI_LEAD_CONSULTANT' OR $.assessor_user_id = ${USER} OR ${ownTenant("$.tenant_id")})`,
+    insert: "DENY",
+    update: "DENY",
+    delete: "DENY",
+  },
+  {
+    table: "notification_deliveries",
+    select: `(${SUPER_ADMIN} OR ${ROLE} = 'TLI_LEAD_CONSULTANT' OR ${ownTenant("$.tenant_id")} OR ($.entity_type = 'appointment' AND $.entity_id IN (SELECT ap.id FROM temp.appointments ap)))`,
+    insert: "DENY",
+    update: "DENY",
+    delete: "DENY",
+  },
+  // Remediation requests are visible exactly when their assessment is visible.
+  { table: "remediation_requests", select: `$.assessment_id IN (SELECT a.id FROM temp.assessments a)`, insert: "DENY", update: "DENY", delete: "DENY" },
+  ...["remediation_request_gaps", "remediation_messages", "remediation_documents"].map((table) => ({
+    table,
+    select: `$.request_id IN (SELECT r.id FROM temp.remediation_requests r)`,
+    insert: "DENY" as const,
+    update: "DENY" as const,
+    delete: "DENY" as const,
+  })),
+  // Customers never see a proposal TLI is still drafting.
+  {
+    table: "remediation_proposals",
+    select: `($.request_id IN (SELECT r.id FROM temp.remediation_requests r) AND ($.status <> 'DRAFT' OR ${TLI_ANY}))`,
+    insert: "DENY",
+    update: "DENY",
+    delete: "DENY",
+  },
 ];
 
 /** Reference data readable by every authenticated user but never writable at runtime. */

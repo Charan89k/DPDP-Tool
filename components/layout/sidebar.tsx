@@ -13,6 +13,9 @@ import {
   Settings,
   Shield,
   CreditCard,
+  CalendarDays,
+  Clock,
+  ClipboardCheck,
 } from "lucide-react";
 import { SessionUser } from "@/lib/auth/types";
 import { isTliRole } from "@/lib/auth/rbac";
@@ -38,6 +41,9 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
           { label: "Evidence", href: "/dashboard/evidence", icon: FileText, exact: false },
           { label: "Reports", href: "/dashboard/reports", icon: BarChart3, exact: false },
           { label: "Payments", href: "/dashboard/payments", icon: CreditCard, exact: false },
+          { label: "Appointments", href: "/dashboard/appointments", icon: CalendarDays, exact: false },
+          { label: "Availability", href: "/dashboard/availability", icon: Clock, exact: false },
+          { label: "Remediation", href: "/dashboard/remediation-requests", icon: ClipboardCheck, exact: false },
           { label: "Settings", href: "/dashboard/settings", icon: Settings, exact: false },
         ]
       : [
@@ -62,6 +68,8 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
             exact: false,
             alsoActive: /^\/dashboard\/assessments\/[^/]+\/(summary|gaps|remediation)$/,
           },
+          { label: "Consultations", href: "/dashboard/consultations", icon: CalendarDays, exact: false },
+          { label: "Remediation", href: "/dashboard/remediation-requests", icon: ClipboardCheck, exact: false },
           { label: "Team", href: `/dashboard/customers/${user.tenantId}`, icon: Users, exact: false },
           { label: "Settings", href: "/dashboard/settings", icon: Settings, exact: false },
         ];
