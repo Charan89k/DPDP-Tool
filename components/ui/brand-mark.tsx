@@ -8,30 +8,52 @@ interface BrandMarkProps {
 }
 
 const SIZES = {
-  sm: { mark: "h-8 w-auto", word: "text-lg", name: "text-[10px]", tag: "text-[9px]" },
-  md: { mark: "h-10 w-auto", word: "text-2xl", name: "text-[11px]", tag: "text-[10px]" },
-  lg: { mark: "h-12 w-auto", word: "text-3xl", name: "text-xs", tag: "text-[11px]" },
+  sm: {
+    mark: "h-8 w-auto",
+    word: "text-[14px] tracking-[0.05em]",
+    bar: "h-[2px] w-7 mt-0.5 mb-0.5",
+    intl: "text-[8.5px] tracking-[0.24em]",
+    tag: "text-[8px] tracking-[0.16em]",
+    badge: "text-[9px] px-1.5 py-0.5",
+  },
+  md: {
+    mark: "h-10 w-auto",
+    word: "text-[17px] tracking-[0.06em]",
+    bar: "h-[2.5px] w-9 mt-0.5 mb-0.5",
+    intl: "text-[10px] tracking-[0.26em]",
+    tag: "text-[9px] tracking-[0.18em]",
+    badge: "text-[10px] px-2 py-0.5",
+  },
+  lg: {
+    mark: "h-14 w-auto",
+    word: "text-[22px] tracking-[0.07em]",
+    bar: "h-[3px] w-12 mt-1 mb-0.5",
+    intl: "text-[12px] tracking-[0.28em]",
+    tag: "text-[10px] tracking-[0.20em]",
+    badge: "text-[11px] px-2.5 py-0.5",
+  },
 };
 
-/** The shield emblem alone; the same artwork is the browser icon (app/icon.svg). */
+/**
+ * Truth Labs International official digital winged "T" emblem.
+ * Uses high-resolution clean asset with cyan/teal and electric blue trust gradients.
+ */
 export function BrandEmblem({ className = "", dark = false }: { className?: string; dark?: boolean }) {
   return (
-    <svg viewBox="0 0 40 44" className={className} aria-hidden="true">
-      <path d="M20 2 37 8v12.5C37 31 29.8 38.6 20 42 10.2 38.6 3 31 3 20.5V8Z" fill="#0B3B6F" />
-      <path
-        d="M20 5.4 34 10.3v10.2C34 29.2 28.2 35.6 20 38.6 11.8 35.6 6 29.2 6 20.5V10.3Z"
-        fill="none"
-        stroke={dark ? "#60A5FA" : "#3B82F6"}
-        strokeWidth="1.4"
-      />
-      <path d="M11.5 15h8M15.5 15v12M21.5 15v12h5M29.5 15v12" fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img
+      src="/favicon-clean.png"
+      alt="Truth Labs International emblem"
+      aria-hidden="true"
+      className={`object-contain flex-shrink-0 ${dark ? "drop-shadow-[0_2px_8px_rgba(44,179,196,0.35)]" : "drop-shadow-[0_2px_6px_rgba(6,20,91,0.12)]"} ${className}`}
+    />
   );
 }
 
 /**
- * Truth Labs International brand mark: the shield emblem with the TLI monogram, the TLI wordmark
- * and the full company name. `variant` selects colours for dark (navy) or light backgrounds.
+ * Truth Labs International official brand mark:
+ * Official winged "T" emblem, high-contrast TRUTH LABS wordmark, cyan accent divider,
+ * tracked INTERNATIONAL wordmark, and TLI indicator.
  */
 export function BrandMark({
   variant = "light",
@@ -43,17 +65,27 @@ export function BrandMark({
   const s = SIZES[size];
 
   return (
-    <div className={`inline-flex items-center gap-2.5 select-none ${className}`} role="img" aria-label="Truth Labs International">
+    <div
+      className={`inline-flex items-center gap-3 select-none ${className}`}
+      role="img"
+      aria-label="Truth Labs International"
+    >
       <BrandEmblem className={`${s.mark} flex-shrink-0`} dark={isDark} />
       <span className="flex flex-col leading-none" aria-hidden="true">
-        <span className={`${s.word} font-bold tracking-tight ${isDark ? "text-white" : "text-[#0B192C]"}`}>TLI</span>
-        <span className={`${s.name} mt-0.5 font-semibold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
-          Truth Labs International
+        <span className="flex items-center gap-1.5">
+          <span className={`${s.word} font-extrabold ${isDark ? "text-white" : "text-[#06145B]"}`}>
+            TRUTH LABS
+          </span>
+          <span className={`${s.badge} font-bold rounded bg-[#2CB3C4]/15 text-[#2CB3C4] border border-[#2CB3C4]/30 uppercase`}>TLI</span>
+        </span>
+        <span className={`${s.bar} bg-[#2CB3C4] rounded-full`} />
+        <span className={`${s.intl} font-bold uppercase text-[#2CB3C4]`}>
+          INTERNATIONAL
         </span>
         {showTagline && (
           <span
-            className={`${s.tag} mt-1 font-semibold uppercase tracking-[0.18em] ${
-              isDark ? "text-slate-400" : "text-slate-500"
+            className={`${s.tag} mt-1 font-semibold uppercase ${
+              isDark ? "text-slate-400" : "text-[#223471]"
             }`}
           >
             DPDP Compliance

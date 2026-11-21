@@ -56,45 +56,52 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] text-[#0F172A]">
-      <header className="bg-[#0B192C] text-white">
-        <nav className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between" aria-label="Main">
+    <div className="min-h-screen bg-[#F4F7FB] text-[#06145B]">
+      <header className="bg-[#06145B] text-white relative overflow-hidden">
+        {/* Subtle cyber trust ambient lighting matching truthlabs-intl.com */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#2CB3C4]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-80 h-80 bg-[#0B63FF]/15 rounded-full blur-3xl pointer-events-none" />
+
+        <nav className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 h-18 flex items-center justify-between" aria-label="Main">
           <BrandMark variant="dark" size="sm" />
           <div className="flex items-center gap-3 text-sm">
-            <Link href="/login" className="px-3 py-2 rounded-lg text-slate-200 hover:text-white hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+            <Link href="/login" className="px-3.5 py-2 rounded-lg text-slate-200 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]">
               Sign in
             </Link>
-            <Link href="/register" className="px-4 py-2 rounded-lg bg-[#0066FF] hover:bg-[#0052CC] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+            <Link href="/register" className="px-4.5 py-2 rounded-lg bg-gradient-to-r from-[#071D77] to-[#0B63FF] hover:from-[#0B63FF] hover:to-[#2CB3C4] border border-[#2CB3C4]/30 font-semibold text-white shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]">
               Get started
             </Link>
           </div>
         </nav>
 
-        <section className="max-w-6xl mx-auto px-5 sm:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20 grid lg:grid-cols-2 gap-10 items-center">
+        <section className="relative z-10 max-w-6xl mx-auto px-5 sm:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20 grid lg:grid-cols-2 gap-10 items-center">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-300">Digital Personal Data Protection Act, 2023</p>
-            <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
-              Assess your DPDP readiness and know exactly what to fix.
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2CB3C4]">Digital Personal Data Protection Act, 2023</p>
+            <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+              Assess your DPDP readiness and{" "}
+              <span className="bg-gradient-to-r from-[#2CB3C4] to-[#4D73B8] bg-clip-text text-transparent">
+                know exactly what to fix.
+              </span>
             </h1>
-            <p className="mt-5 text-base text-slate-300 max-w-xl leading-relaxed">
+            <p className="mt-5 text-base text-slate-300 max-w-xl leading-relaxed font-medium">
               TLI guides your organisation through a structured DPDP self-assessment, keeps supporting evidence in one
               private workspace, and turns your answers into an explainable gap register and corrective action plan.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/register" className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-[#0066FF] hover:bg-[#0052CC] font-semibold text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
-                Create an organisation account <ArrowRight className="w-4 h-4" aria-hidden="true" />
+              <Link href="/register" className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gradient-to-r from-[#071D77] to-[#0B63FF] hover:from-[#0B63FF] hover:to-[#2CB3C4] border border-[#2CB3C4]/40 font-semibold text-sm text-white shadow-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]">
+                Create an organisation account <ArrowRight className="w-4 h-4 text-[#2CB3C4]" aria-hidden="true" />
               </Link>
-              <Link href="/login" className="inline-flex items-center px-5 py-3 rounded-lg border border-white/20 hover:bg-white/10 font-semibold text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+              <Link href="/login" className="inline-flex items-center px-5 py-3 rounded-lg border border-white/20 hover:bg-white/10 font-semibold text-sm text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]">
                 Sign in
               </Link>
             </div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
             <p className="text-sm font-semibold text-white">What the assessment covers</p>
             <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-300">
               {getCanonicalQuestionnaireSections().map((section) => section.title).map((area) => (
                 <li key={area} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-sky-300 flex-shrink-0" aria-hidden="true" />
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#2CB3C4] flex-shrink-0" aria-hidden="true" />
                   {area}
                 </li>
               ))}
@@ -105,28 +112,28 @@ export default async function HomePage() {
 
       <main>
         <section className="max-w-6xl mx-auto px-5 sm:px-8 py-16" aria-labelledby="how-heading">
-          <h2 id="how-heading" className="text-2xl font-bold tracking-tight">How it works</h2>
+          <h2 id="how-heading" className="text-2xl font-bold tracking-tight text-[#06145B]">How it works</h2>
           <ol className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {STEPS.map((step, index) => (
-              <li key={step.title} className="bg-white rounded-xl border border-slate-200 p-5">
-                <span className="w-8 h-8 rounded-full bg-blue-50 text-[#0066FF] font-bold text-sm flex items-center justify-center">{index + 1}</span>
-                <h3 className="mt-4 font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{step.body}</p>
+              <li key={step.title} className="bg-white rounded-xl border border-[#C9D9F6] p-5 shadow-xs">
+                <span className="w-8 h-8 rounded-full bg-[#2CB3C4]/15 border border-[#2CB3C4]/30 text-[#06145B] font-extrabold text-sm flex items-center justify-center">{index + 1}</span>
+                <h3 className="mt-4 font-bold text-[#06145B]">{step.title}</h3>
+                <p className="mt-2 text-sm text-[#223471] leading-relaxed">{step.body}</p>
               </li>
             ))}
           </ol>
         </section>
 
-        <section className="bg-white border-y border-slate-200" aria-labelledby="outputs-heading">
+        <section className="bg-white border-y border-[#C9D9F6]" aria-labelledby="outputs-heading">
           <div className="max-w-6xl mx-auto px-5 sm:px-8 py-16">
-            <h2 id="outputs-heading" className="text-2xl font-bold tracking-tight">What you get</h2>
+            <h2 id="outputs-heading" className="text-2xl font-bold tracking-tight text-[#06145B]">What you get</h2>
             <div className="mt-8 grid sm:grid-cols-2 gap-5">
               {OUTPUTS.map(({ icon: Icon, title, body }) => (
-                <div key={title} className="flex gap-4 p-5 rounded-xl border border-slate-200">
-                  <Icon className="w-6 h-6 text-[#0066FF] flex-shrink-0" aria-hidden="true" />
+                <div key={title} className="flex gap-4 p-5 rounded-xl border border-[#C9D9F6]">
+                  <Icon className="w-6 h-6 text-[#2CB3C4] flex-shrink-0" aria-hidden="true" />
                   <div>
-                    <h3 className="font-semibold">{title}</h3>
-                    <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{body}</p>
+                    <h3 className="font-bold text-[#06145B]">{title}</h3>
+                    <p className="mt-1.5 text-sm text-[#223471] leading-relaxed">{body}</p>
                   </div>
                 </div>
               ))}
@@ -135,13 +142,13 @@ export default async function HomePage() {
         </section>
 
         <section className="max-w-6xl mx-auto px-5 sm:px-8 py-16" aria-labelledby="trust-heading">
-          <h2 id="trust-heading" className="text-2xl font-bold tracking-tight">Built for sensitive compliance data</h2>
+          <h2 id="trust-heading" className="text-2xl font-bold tracking-tight text-[#06145B]">Built for sensitive compliance data</h2>
           <div className="mt-8 grid md:grid-cols-3 gap-5">
             {PRINCIPLES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="bg-white rounded-xl border border-slate-200 p-5">
-                <Icon className="w-5 h-5 text-[#0066FF]" aria-hidden="true" />
-                <h3 className="mt-3 font-semibold">{title}</h3>
-                <p className="mt-1.5 text-sm text-slate-600 leading-relaxed">{body}</p>
+              <div key={title} className="bg-white rounded-xl border border-[#C9D9F6] p-5">
+                <Icon className="w-5 h-5 text-[#2CB3C4]" aria-hidden="true" />
+                <h3 className="mt-3 font-bold text-[#06145B]">{title}</h3>
+                <p className="mt-1.5 text-sm text-[#223471] leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
@@ -153,7 +160,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="bg-[#0B192C] text-slate-400 text-xs">
+      <footer className="bg-[#06145B] text-slate-400 text-xs border-t border-[#132356]">
         <div className="max-w-6xl mx-auto px-5 sm:px-8 py-6 flex flex-wrap items-center justify-between gap-3">
           <BrandMark variant="dark" size="sm" />
           <span>Compliance self-assessment for India&apos;s DPDP Act, 2023.</span>

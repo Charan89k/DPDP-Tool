@@ -33,7 +33,7 @@ interface AuthShellProps {
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F4F7FB] text-[#0F172A]">
-      <aside className="w-full lg:w-[46%] bg-[#0B192C] text-white px-6 py-6 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-between relative overflow-hidden">
+      <aside className="w-full lg:w-[46%] bg-[#06145B] text-white px-6 py-6 sm:p-10 lg:p-12 xl:p-14 flex flex-col justify-between relative overflow-hidden">
         <svg
           className="absolute bottom-0 left-0 w-full pointer-events-none opacity-30"
           viewBox="0 0 900 450"
@@ -43,19 +43,19 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
         >
           <path
             d="M-50 360 C 180 260, 360 410, 580 320 C 720 255, 820 280, 950 230 L 950 480 L -50 480 Z"
-            fill="#0066FF"
-            fillOpacity="0.12"
+            fill="#0B63FF"
+            fillOpacity="0.14"
           />
           <path
             d="M-50 310 C 200 210, 420 360, 620 250 C 730 195, 830 220, 950 180"
-            stroke="#0066FF"
-            strokeOpacity="0.4"
+            stroke="#2CB3C4"
+            strokeOpacity="0.5"
             strokeWidth="1.5"
           />
           <path
             d="M-50 345 C 190 270, 390 380, 600 290 C 720 235, 810 255, 950 220"
-            stroke="#38BDF8"
-            strokeOpacity="0.25"
+            stroke="#4D73B8"
+            strokeOpacity="0.35"
           />
         </svg>
 
@@ -63,7 +63,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
           <Link
             href="/"
             aria-label="TLI home"
-            className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+            className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]"
           >
             <BrandMark variant="dark" size="sm" showTagline />
           </Link>
@@ -72,17 +72,17 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
         <div className="relative z-10 my-6 lg:my-auto space-y-8 hidden sm:block">
           <p className="text-2xl lg:text-3xl xl:text-4xl font-bold tracking-tight leading-tight">
             Understand your DPDP readiness.
-            <span className="block text-sky-300">Fix what matters first.</span>
+            <span className="block text-[#2CB3C4]">Fix what matters first.</span>
           </p>
           <ul className="space-y-5">
             {FEATURES.map(({ icon: Icon, title: featureTitle, description }) => (
               <li key={featureTitle} className="flex items-start gap-4">
-                <span className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-sky-300">
+                <span className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 text-[#2CB3C4]">
                   <Icon className="w-5 h-5" aria-hidden="true" />
                 </span>
                 <span>
                   <span className="block text-sm font-semibold">{featureTitle}</span>
-                  <span className="block text-xs text-slate-400 mt-1 leading-relaxed max-w-sm">
+                  <span className="block text-xs text-slate-300 mt-1 leading-relaxed max-w-sm">
                     {description}
                   </span>
                 </span>
@@ -91,8 +91,8 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
           </ul>
         </div>
 
-        <footer className="relative z-10 hidden sm:flex items-start gap-2.5 text-[11px] text-slate-400 border-t border-white/10 pt-5 leading-relaxed">
-          <ShieldCheck className="w-4 h-4 text-sky-300 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <footer className="relative z-10 hidden sm:flex items-start gap-2.5 text-[11px] text-slate-300 border-t border-white/10 pt-5 leading-relaxed">
+          <ShieldCheck className="w-4 h-4 text-[#2CB3C4] flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>
             TLI supports compliance self-assessment. Results are not legal advice and do not
             certify compliance with the DPDP Act.

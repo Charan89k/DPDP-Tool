@@ -4,23 +4,37 @@
 
 :root {
   --background: #F4F7FB;
-  --foreground: #0F172A;
+  --foreground: #06145B;
+
+  /* Truth Labs International Brand Tokens */
+  --ink: #06145B;
+  --muted: #223471;
+  --cyan: #2CB3C4;
+  --teal: #0C9EAB;
+  --blue: #4D73B8;
+  --green: #057044;
+  --line: #C9D9F6;
+  --panel: #FFFFFFEB;
 
   /* TLI Enterprise Design Tokens */
-  --tli-navy: #0B192C;
-  --tli-navy-dark: #081323;
-  --tli-navy-border: #15273F;
-  --tli-blue: #0066FF;
-  --tli-blue-hover: #0052CC;
-  --tli-blue-light: #F0F7FF;
+  --tli-navy: #06145B;
+  --tli-navy-dark: #040D3D;
+  --tli-navy-border: #132356;
+  --tli-cyan: #2CB3C4;
+  --tli-cyan-dark: #0C9EAB;
+  --tli-cyan-light: #E8F8FA;
+  --tli-blue: #4D73B8;
+  --tli-blue-hover: #3B5FA3;
+  --tli-blue-light: #EEF3FC;
+  --tli-electric: #0B63FF;
   --tli-surface: #F4F7FB;
-  --tli-border: #E2E8F0;
-  --tli-text-primary: #0F172A;
-  --tli-text-secondary: #64748B;
+  --tli-border: #C9D9F6;
+  --tli-text-primary: #06145B;
+  --tli-text-secondary: #223471;
 
   /* Status Tokens */
-  --status-success: #10B981;
-  --status-success-light: #ECFDF5;
+  --status-success: #057044;
+  --status-success-light: #E6F7EF;
   --status-warning: #F59E0B;
   --status-warning-light: #FFFBEB;
   --status-danger: #EF4444;
@@ -32,13 +46,13 @@
 body {
   color: var(--tli-text-primary);
   background: var(--tli-surface);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-manrope), "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom focus ring styling for accessible keyboard navigation */
 :focus-visible {
-  outline: 2px solid var(--tli-blue);
+  outline: 2px solid var(--tli-cyan);
   outline-offset: 2px;
 }

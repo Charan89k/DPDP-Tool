@@ -77,7 +77,7 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
   return (
     <aside
       id="app-sidebar"
-      className={`w-64 bg-[#0B192C] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#15273F] fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
+      className={`w-64 bg-[#06145B] text-slate-300 flex flex-col flex-shrink-0 select-none border-r border-[#132356] fixed inset-y-0 left-0 z-40 transform transition-transform duration-200 lg:static lg:translate-x-0 ${
         mobileOpen ? "translate-x-0" : "-translate-x-full invisible lg:visible"
       }`}
       aria-label="Main navigation"
@@ -87,7 +87,7 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
         <Link
           href="/dashboard"
           aria-label="TLI dashboard"
-          className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+          className="inline-block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2CB3C4]"
         >
           <BrandMark variant="dark" size="sm" showTagline />
         </Link>
@@ -109,11 +109,11 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
               aria-current={isActive ? "page" : undefined}
               className={`flex items-center space-x-3.5 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-[#0066FF] text-white shadow-sm font-semibold"
-                  : "text-slate-300 hover:text-white hover:bg-[#162740]"
+                  ? "bg-gradient-to-r from-[#071D77] to-[#0B63FF] border border-[#2CB3C4]/30 text-white shadow-sm font-semibold"
+                  : "text-slate-300 hover:text-white hover:bg-[#0D2577]/60"
               }`}
             >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-[#2CB3C4]" : "text-slate-400"}`} />
               <span>{item.label}</span>
             </Link>
           );
@@ -121,9 +121,9 @@ export function Sidebar({ user, mobileOpen = false, onNavigate }: SidebarProps) 
       </nav>
 
       {/* Brand Tagline Footer matching reference design */}
-      <div className="p-4 border-t border-[#15273F] flex items-center space-x-2 text-xs text-slate-300 font-medium">
-        <Shield className="w-4 h-4 text-slate-400 flex-shrink-0" />
-        <span className="text-[11px] text-slate-400">Privacy | Trust | Compliance</span>
+      <div className="p-4 border-t border-[#132356] flex items-center space-x-2 text-xs text-slate-300 font-medium">
+        <Shield className="w-4 h-4 text-[#2CB3C4] flex-shrink-0" />
+        <span className="text-[11px] text-slate-300">Privacy | Trust | Compliance</span>
       </div>
     </aside>
   );
