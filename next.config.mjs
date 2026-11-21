@@ -4,6 +4,9 @@ const isProduction = process.env.NODE_ENV === "production";
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    agentUpgrade: "security",
+  },
   // Native SQLite driver and SMTP client run only on the Node.js server runtime.
   serverExternalPackages: ["better-sqlite3", "nodemailer", "razorpay"],
   // Self-contained server bundle for the Docker image (node .next/standalone/server.js).

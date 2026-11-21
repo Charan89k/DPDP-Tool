@@ -13,6 +13,8 @@ import { migrateDatabase } from "../lib/db/sqlite/migrate.ts";
 const TEMPLATE = path.resolve(process.cwd(), ".test-db", "template.db");
 
 fs.mkdirSync(path.dirname(TEMPLATE), { recursive: true });
+fs.mkdirSync(path.resolve(process.cwd(), ".test-db", "outbox"), { recursive: true });
+fs.mkdirSync(path.resolve(process.cwd(), ".test-db", "evidence"), { recursive: true });
 for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${TEMPLATE}${suffix}`, { force: true });
 
 const db = new Database(TEMPLATE);
