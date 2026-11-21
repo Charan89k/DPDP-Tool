@@ -31,6 +31,7 @@ WORKDIR /app
 # Web server (standalone bundle) and static assets.
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
 # Production dependencies, operations CLI, and versioned migrations for db:* / admin:create.
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/package.json ./package.json

@@ -42,7 +42,7 @@ export function BrandEmblem({ className = "", dark = false }: { className?: stri
   return (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img
-      src="/favicon-clean.png"
+      src="/icon.svg"
       alt="Truth Labs International emblem"
       aria-hidden="true"
       className={`object-contain flex-shrink-0 ${dark ? "drop-shadow-[0_2px_8px_rgba(44,179,196,0.35)]" : "drop-shadow-[0_2px_6px_rgba(6,20,91,0.12)]"} ${className}`}
